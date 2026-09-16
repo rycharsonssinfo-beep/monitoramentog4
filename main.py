@@ -35,7 +35,7 @@ if "iniciado" not in st.session_state:
 if "links_salvos" not in st.session_state:
     st.session_state.links_salvos = "https://exemplo.com/painel-1\nhttps://exemplo.com/painel-2"
 if "tempo_salvo" not in st.session_state:
-    st.session_state.tempo_salvo = 35
+    st.session_state.tempo_salvo = 30
 
 # --- TELA DE CONFIGURAÇÃO (Tema Claro) ---
 if not st.session_state.iniciado:
@@ -46,7 +46,6 @@ if not st.session_state.iniciado:
         st.markdown("## 📊 Configurar Painel de Monitoramento")
         st.markdown("Insira os links que deseja rotacionar na tela de suporte.")
         
-        # O campo de texto agora puxa direto de `st.session_state.links_salvos`
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
             value=st.session_state.links_salvos,
@@ -69,7 +68,6 @@ if not st.session_state.iniciado:
             if not lista_links:
                 st.error("Por favor, insira pelo menos um link válido.")
             else:
-                # Salva os valores permanentemente na sessão antes de mudar de tela
                 st.session_state.links_salvos = links_texto
                 st.session_state.tempo_salvo = tempo_segundos
                 st.session_state.links = lista_links
@@ -86,20 +84,19 @@ else:
     col_info, col_full, col_btn = st.columns([5, 1.5, 1.3])
     
     with col_info:
-        st.markdown(f"🟢 **Modo de Rotação Automática Ativo** ({len(links)} painéis cadastrados) | Intervalo: **{tempo}s**")
+        st.markdown(f"🟢 **Modo de Rotação com Posição Fixa Ativo** ({len(links)} painéis) | Intervalo: **{tempo}s**")
         
     with col_full:
         st.markdown("💡 **Aperte F11** p/ Tela Cheia")
 
     with col_btn:
         if st.button("⚙️ Alterar Links", use_container_width=True):
-            # Apenas muda o estado para voltar à tela de config (os links já estão salvos em st.session_state.links_salvos)
             st.session_state.iniciado = False
             st.rerun()
 
     links_json = json.dumps(links)
 
-    # HTML/JS inteligente que alterna os links dinamicamente
+    # HTML/JS avançado que cria múltiplos iframes simultâneos para preservar a posição exata
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -109,8 +106,14 @@ else:
             body, html {{
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
             }}
+            .iframe-container {{
+                width: 100%; height: calc(100vh - 35px); display: none; background: #ffffff;
+            }}
+            .iframe-container.ativo {{
+                display: block;
+            }}
             iframe {{
-                width: 100%; height: calc(100vh - 35px); border: none; display: block; background: #ffffff;
+                width: 100%; height: 100%; border: none; display: block;
             }}
             #barra-status {{
                 width: 100%; height: 35px; background: #e2e8f0; color: #1e293b;
@@ -120,9 +123,10 @@ else:
         </style>
     </head>
     <body>
-        <iframe id="frame-tela" src=""></iframe>
+        <div id="telas-wrapper"></div>
+        
         <div id="barra-status">
-            <span id="info-texto">Carregando painel...</span>
+            <span id="info-texto">Carregando painéis...</span>
             <span id="contador-tempo">Próxima rotação em {tempo}s</span>
         </div>
 
@@ -130,23 +134,52 @@ else:
             const links = {links_json};
             const tempoSegundos = {tempo};
             let indiceAtual = 0;
-            
-            const iframe = document.getElementById('frame-tela');
+            const wrappers = [];
+
+            const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
 
-            function carregarProximaTela() {{
-                if (links.length === 0) return;
+            // Cria um iframe fixo para cada link da lista
+            links.forEach((link, index) => {{
+                const container = document.createElement('div');
+                container.className = 'iframe-container' + (index === 0 ? ' ativo' : '');
                 
-                iframe.src = links[indiceAtual];
+                const iframe = document.createElement('iframe');
+                iframe.src = link;
+                
+                container.appendChild(iframe);
+                wrapperDiv.appendChild(container);
+                wrappers.push(container);
+            }});
+
+            function atualizarExibicao() {{
+                if (links.length === 0) return;
+
+                // Esconde todos e mostra apenas o da vez atual
+                wrappers.forEach((w, i) => {{
+                    if (i === indiceAtual) {{
+                        w.classList.add('ativo');
+                    }} else {{
+                        w.classList.remove('ativo');
+                    }}
+                }});
+
                 infoTexto.innerText = "Exibindo painel " + (indiceAtual + 1) + " de " + links.length + " (" + links[indiceAtual] + ")";
                 
+                // Avança para o próximo índice mantendo os anteriores congelados na mesma posição
                 indiceAtual = (indiceAtual + 1) % links.length;
             }}
 
-            carregarProximaTela();
-            setInterval(carregarProximaTela, tempoSegundos * 1000);
+            // Executa a primeira atualização de visibilidade
+            if(links.length > 0) {{
+                infoTexto.innerText = "Exibindo painel 1 de " + links.length + " (" + links[0] + ")";
+            }}
 
+            // Roda a troca baseada no tempo configurado
+            setInterval(atualizarExibicao, tempoSegundos * 1000);
+
+            // Contador regressivo visual por segundo
             let tempoRestante = tempoSegundos;
             setInterval(function() {{
                 tempoRestante--;
