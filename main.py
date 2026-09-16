@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para ocultar elementos nativos do Streamlit e zerar margens
+# CSS Customizado para ocultar elementos nativos e zerar margens indesejadas
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -29,7 +29,6 @@ st.markdown("""
         
         h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
-        /* Botão principal com fundo verde petróleo e texto branco visível */
         .stButton button[kind="primary"] {
             background-color: #0d5c58 !important;
             color: #ffffff !important;
@@ -51,7 +50,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicializa o estado da sessão
+# Inicialização das variáveis de sessão
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 if "links_salvos" not in st.session_state:
@@ -61,7 +60,7 @@ if "tempo_salvo" not in st.session_state:
 if "indice_atual" not in st.session_state:
     st.session_state.indice_atual = 0
 
-# --- TELA DE CONFIGURAÇÃO (só aparece se NÃO estiver iniciado) ---
+# --- FLUXO 1: TELA DE CONFIGURAÇÃO ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -101,7 +100,7 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA DE EXIBIÇÃO EM ROTAÇÃO (só aparece se ESTIVER iniciado) ---
+# --- FLUXO 2: TELA DE EXIBIÇÃO EM ROTAÇÃO ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
@@ -109,7 +108,7 @@ else:
     
     link_atual = links[indice]
 
-    # Barra superior integrada
+    # Barra superior integrada de controle
     col_info, col_btn1, col_btn2, col_full, col_btn3 = st.columns([2.5, 0.9, 0.9, 0.9, 1.2])
     
     with col_info:
