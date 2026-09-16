@@ -97,7 +97,7 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO AUTOMÁTICA COM CONTROLES VISÍVEIS ---
+# --- TELA 2: EXIBIÇÃO COM BARRA DE CONTROLE NO TOPO ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
@@ -111,7 +111,7 @@ else:
             st.session_state.iniciado = False
             st.rerun()
 
-    # Componente HTML/JS unificado contendo o relógio regressivo, botões e rotação de telas
+    # Componente HTML/JS unificado com a barra de status posicionada no TOPO
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -122,8 +122,16 @@ else:
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
+            /* Barra de status fixa no TOPO agora */
+            #barra-status {{
+                width: 100%; height: 40px; background: #0d5c58; color: #ffffff;
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 0 20px; font-size: 13px; font-weight: 600;
+                position: fixed; top: 0; left: 0; z-index: 9999;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            }}
             #telas-wrapper {{
-                width: 100%; height: calc(100vh - 40px); position: relative;
+                width: 100%; height: calc(100vh - 40px); position: absolute; top: 40px; left: 0;
             }}
             .iframe-container {{
                 width: 100%; height: 100%; 
@@ -136,13 +144,6 @@ else:
             }}
             iframe {{
                 width: 100%; height: 100%; border: none; display: block;
-            }}
-            #barra-status {{
-                width: 100%; height: 40px; background: #0d5c58; color: #ffffff;
-                display: flex; justify-content: space-between; align-items: center;
-                padding: 0 20px; font-size: 13px; font-weight: 600;
-                position: fixed; bottom: 0; left: 0; z-index: 9999;
-                box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
             }}
             .botoes-grupo {{
                 display: flex; gap: 10px; align-items: center;
@@ -158,8 +159,7 @@ else:
         </style>
     </head>
     <body>
-        <div id="telas-wrapper"></div>
-        
+        <!-- Barra de controle fixa no topo -->
         <div id="barra-status">
             <span id="info-texto">Carregando painéis...</span>
             
@@ -169,6 +169,8 @@ else:
                 <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0; font-weight: 500;">Próxima em {tempo}s</span>
             </div>
         </div>
+
+        <div id="telas-wrapper"></div>
 
         <script>
             const links = {links_json};
@@ -225,7 +227,6 @@ else:
             }}
 
             function atualizarPainelAtual() {{
-                // Recarrega levemente o iframe atual para puxar novos dados mantendo o scroll
                 const itemAtual = iframes[indiceAtual];
                 const scrollKey = "scroll_pos_" + itemAtual.link;
                 try {{
@@ -274,8 +275,5 @@ else:
     </html>
     """
     
-    # Renderiza o componente fluído preenchendo a tela
+    # Renderiza o componente fluído preenchendo a tela logo abaixo da barra superior
     st.components.v1.html(html_painel, height=930, scrolling=False)
-    
-    # Renderiza o componente ocupando o restante da tela
-    st.components.v1.html(html_painel, height=920, scrolling=False)
