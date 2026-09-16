@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Configuração da página em modo wide e ocultando o menu lateral automaticamente
+# Configuração da página em modo wide
 st.set_page_config(
     page_title="Painel de Monitoramento Pro",
     page_icon="📊",
@@ -9,15 +9,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS para limpar totalmente a interface do Streamlit e maximizar o espaço
+# CSS limpo, moderno e com TEMA CLARO (fundo claro, sem dark mode)
 st.markdown("""
     <style>
-        /* Oculta cabeçalho, menu hambúrguer e rodapé nativos do Streamlit */
         header {visibility: hidden !important;}
         #MainMenu {visibility: hidden !important;}
         footer {visibility: hidden !important;}
         
-        /* Remove margens e paddings excessivos da página */
         .block-container {
             padding-top: 5px !important;
             padding-bottom: 0px !important;
@@ -25,7 +23,11 @@ st.markdown("""
             padding-right: 10px !important;
             max-width: 100% !important;
         }
-        .stApp { background-color: #0f1115; }
+        /* Fundo totalmente claro */
+        .stApp { background-color: #f4f6f9 !important; }
+        
+        /* Estilização dos textos e botões para o tema claro */
+        h2, p, span { color: #1e293b !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -35,7 +37,7 @@ if "iniciado" not in st.session_state:
 if "indice_atual" not in st.session_state:
     st.session_state.indice_atual = 0
 
-# --- TELA DE CONFIGURAÇÃO ---
+# --- TELA DE CONFIGURAÇÃO (Tema Claro) ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -78,7 +80,7 @@ else:
     tempo = st.session_state.tempo
     
     # Barra de controle compacta no topo
-    col_info, col_ant, col_prox, col_full, col_btn = st.columns([3.5, 1, 1, 1.2, 1.3])
+    col_info, col_ant, col_prox, col_full, col_btn = st.columns([3.5, 1, 1, 1.3, 1.3])
     
     with col_info:
         st.markdown(f"🟢 **Painel Ativo** ({st.session_state.indice_atual + 1}/{len(links)}) | Intervalo: **{tempo}s**")
@@ -94,9 +96,8 @@ else:
             st.rerun()
 
     with col_full:
-        # Botão para acionar o modo tela cheia real do navegador via JavaScript global
-        if st.button("🖥️ Tela Cheia", use_container_width=True):
-            pass  # A ação real de fullscreen ocorre via componente JS abaixo
+        # Orientação clara sobre o Tela Cheia padrão (F11)
+        st.markdown("💡 **Aperte F11** p/ Tela Cheia", help="Pressione a tecla F11 no teclado da TV/Monitor para preencher a tela inteira.")
 
     with col_btn:
         if st.button("⚙️ Alterar Links", use_container_width=True):
@@ -105,7 +106,7 @@ else:
 
     link_atual = links[st.session_state.indice_atual]
 
-    # HTML/JS robusto que ocupa 100% da tela real e gerencia o tempo de rotação + Fullscreen
+    # HTML/JS limpo e com fundo branco para evitar qualquer tela escura durante o carregamento
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -113,15 +114,15 @@ else:
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body, html {{
-                width: 100%; height: 100vh; overflow: hidden; background: #000;
+                width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
             }}
             iframe {{
-                width: 100%; height: calc(100vh - 35px); border: none; display: block; background: #fff;
+                width: 100%; height: calc(100vh - 35px); border: none; display: block; background: #ffffff;
             }}
             #barra-status {{
-                width: 100%; height: 35px; background: #1e293b; color: #fff;
+                width: 100%; height: 35px; background: #e2e8f0; color: #1e293b;
                 display: flex; justify-content: space-between; align-items: center;
-                padding: 0 15px; font-family: sans-serif; font-size: 12px;
+                padding: 0 15px; font-family: sans-serif; font-size: 12px; font-weight: 500;
             }}
         </style>
     </head>
@@ -138,21 +139,10 @@ else:
             setTimeout(function() {{
                 window.location.reload();
             }}, tempoMs);
-
-            // Tenta ativar tela cheia caso o botão tenha sido acionado
-            function goFullscreen() {{
-                if (!document.fullscreenElement) {{
-                    document.documentElement.requestFullscreen().catch(err => {{
-                        console.log("Erro ao entrar em tela cheia: ", err);
-                    }});
-                }}
-            }}
-            // Se o usuário clicar em qualquer lugar da tela ou se for chamado
-            window.addEventListener('click', goFullscreen, {{ once: true }});
         </script>
     </body>
     </html>
     """
     
-    # Renderiza o iframe ocupando toda a altura disponível da janela (820 pixels para evitar scroll)
-    components.html(html_painel, height=820, scrolling=False)
+    # Renderiza o iframe ocupando toda a altura sem barras de corte
+    components.html(html_painel, height=830, scrolling=False)
