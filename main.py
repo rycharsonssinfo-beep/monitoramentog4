@@ -9,14 +9,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilização CSS customizada para deixar o visual limpo, moderno e sem poluição
+# Estilização CSS customizada
 st.markdown("""
     <style>
-        /* Oculta o cabeçalho padrão do Streamlit para dar aspecto de app dedicado */
         header {visibility: hidden;}
         .stApp { background-color: #f4f6f9; }
         
-        /* Estilização dos títulos e blocos */
         .main-title {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: #1e293b;
@@ -29,12 +27,19 @@ st.markdown("""
             font-size: 14px;
             margin-bottom: 25px;
         }
+        /* Estilo customizado para os botões de controle */
+        .stButton button {
+            border-radius: 8px;
+            font-weight: 600;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# Inicializa o estado da sessão para controlar a exibição
+# Inicializa o estado da sessão
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
+if "indice_atual" not in st.session_state:
+    st.session_state.indice_atual = 0
 
 # --- TELA DE CONFIGURAÇÃO ---
 if not st.session_state.iniciado:
@@ -45,14 +50,12 @@ if not st.session_state.iniciado:
         st.markdown('<p class="main-title">📊 Configurar Painel de Monitoramento</p>', unsafe_allow_html=True)
         st.markdown('<p class="sub-text">Insira os links que deseja rotacionar na tela de suporte.</p>', unsafe_allow_html=True)
         
-        # Caixa de texto para os links
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
             value="https://exemplo.com/painel-1\nhttps://exemplo.com/painel-2",
             height=160
         )
         
-        # Tempo de rotação
         tempo_segundos = st.number_input(
             "Tempo de exibição de cada tela (segundos):",
             min_value=5,
@@ -64,7 +67,6 @@ if not st.session_state.iniciado:
         st.markdown("<br>", unsafe_allow_html=True)
         
         if st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True):
-            # Processa e limpa os links inseridos
             lista_links = [l.strip() for l in links_texto.split("\n") if l.strip()]
             
             if not lista_links:
@@ -72,6 +74,7 @@ if not st.session_state.iniciado:
             else:
                 st.session_state.links = lista_links
                 st.session_state.tempo = tempo_segundos
+                st.session_state.indice_atual = 0
                 st.session_state.iniciado = True
                 st.rerun()
 
@@ -80,63 +83,85 @@ else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
-    # Barra de controle superior discreta (com botão para voltar às configurações)
-    col_info, col_btn = st.columns([8, 2])
+    # Barra de controle superior com botões interativos
+    col_info, col_ant, col_prox, col_full, col_btn = st.columns([4, 1, 1, 1, 1.5])
+    
     with col_info:
-        st.markdown(f"**Modo de Rotação Ativo** | Total de painéis: `{len(links)}` | Intervalo: `{tempo}s`")
+        st.markdown(f"**Painel Ativo** | Total: `{len(links)}` | Intervalo: `{tempo}s`")
+        
+    with col_ant:
+        if st.button("⬅️ Anterior", use_container_width=True):
+            st.session_state.indice_atual = (st.session_state.indice_atual - 1) % len(links)
+            st.rerun()
+            
+    with col_prox:
+        if st.button("Próxima ➡️", use_container_width=True):
+            st.session_state.indice_atual = (st.session_state.indice_atual + 1) % len(links)
+            st.rerun()
+
+    with col_full:
+        # Botão de Tela Cheia via JavaScript injetado
+        if st.button("🖥️ Tela Cheia", use_container_width=True):
+            components.html("""
+                <script>
+                    function toggleFullScreen() {
+                        if (!document.fullscreenElement) {
+                            document.documentElement.requestFullscreen();
+                        } else {
+                            if (document.exitFullscreen) {
+                                document.exitFullscreen();
+                            }
+                        }
+                    }
+                    toggleFullScreen();
+                </script>
+            """, height=0)
+
     with col_btn:
         if st.button("⚙️ Alterar Links", use_container_width=True):
             st.session_state.iniciado = False
             st.rerun()
 
-    # Código HTML/JS injetado via componente para fazer a rotação automática dos iframes com o tempo escolhido
-    # Isso garante que a página recarregue os dados e alterne de forma fluida sem travar o Streamlit
+    # Link atual selecionado pelo estado
+    link_atual = links[st.session_state.indice_atual]
+    indice_exibicao = st.session_state.indice_atual + 1
+
+    # Código HTML/JS para exibição do iframe e rotação automática controlada por tempo
     html_rotacao = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <style>
             body, html {{
-                margin: 0; padding: 0; width: 100%; height: 100vh; overflow: hidden; background: #fff;
+                margin: 0; padding: 0; width: 100%; height: calc(100vh - 70px); overflow: hidden; background: #fff;
             }}
             iframe {{
-                width: 100%; height: 100vh; border: none; display: block;
+                width: 100%; height: 100%; border: none; display: block;
             }}
             #barra-status {{
                 position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%);
                 background: rgba(30, 41, 59, 0.9); color: #fff; padding: 8px 18px;
                 border-radius: 20px; font-family: sans-serif; font-size: 13px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999;
-                transition: opacity 0.3s;
+                pointer-events: none;
             }}
         </style>
-    </thhead>
+    </head>
     <body>
-        <iframe id="frame-tela" src=""></iframe>
-        <div id="barra-status">Carregando painel...</div>
+        <iframe id="frame-tela" src="{link_atual}"></iframe>
+        <div id="barra-status">Exibindo painel {indice_exibicao} de {len(links)} ({link_atual})</div>
 
         <script>
-            const links = {links};
+            // Rotação automática baseada no tempo configurado caso o usuário não clique em nada
             const tempoMs = {tempo} * 1000;
-            let index = 0;
             
-            const iframe = document.getElementById('frame-tela');
-            const status = document.getElementById('barra-status');
-
-            function atualizarTela() {{
-                if (links.length === 0) return;
-                iframe.src = links[index];
-                status.innerText = "Exibindo painel " + (index + 1) + " de " + links.length + " (" + links[index] + ")";
-                index = (index + 1) % links.length;
-            }}
-
-            // Executa imediatamente e depois a cada intervalo
-            atualizarTela();
-            setInterval(atualizarTela, tempoMs);
+            setTimeout(function() {{
+                // Recarrega a página inteira do Streamlit para avançar o índice automaticamente
+                window.location.reload();
+            }}, tempoMs);
         </script>
     </body>
     </html>
     """
     
-    # Renderiza o componente HTML em tela cheia na aplicação
-    components.html(html_rotacao, height=800, scrolling=False)
+    components.html(html_rotacao, height=750, scrolling=False)
