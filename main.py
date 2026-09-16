@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS limpo, moderno e com TEMA CLARO (fundo claro, sem dark mode)
+# CSS limpo, moderno e com TEMA CLARO
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -23,10 +23,7 @@ st.markdown("""
             padding-right: 10px !important;
             max-width: 100% !important;
         }
-        /* Fundo totalmente claro */
         .stApp { background-color: #f4f6f9 !important; }
-        
-        /* Estilização dos textos e botões para o tema claro */
         h2, p, span { color: #1e293b !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -34,8 +31,6 @@ st.markdown("""
 # Inicializa o estado da sessão
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
-if "indice_atual" not in st.session_state:
-    st.session_state.indice_atual = 0
 
 # --- TELA DE CONFIGURAÇÃO (Tema Claro) ---
 if not st.session_state.iniciado:
@@ -70,7 +65,6 @@ if not st.session_state.iniciado:
             else:
                 st.session_state.links = lista_links
                 st.session_state.tempo = tempo_segundos
-                st.session_state.indice_atual = 0
                 st.session_state.iniciado = True
                 st.rerun()
 
@@ -80,33 +74,24 @@ else:
     tempo = st.session_state.tempo
     
     # Barra de controle compacta no topo
-    col_info, col_ant, col_prox, col_full, col_btn = st.columns([3.5, 1, 1, 1.3, 1.3])
+    col_info, col_full, col_btn = st.columns([5, 1.5, 1.3])
     
     with col_info:
-        st.markdown(f"🟢 **Painel Ativo** ({st.session_state.indice_atual + 1}/{len(links)}) | Intervalo: **{tempo}s**")
+        st.markdown(f"🟢 **Modo de Rotação Automática Ativo** ({len(links)} painéis cadastrados) | Intervalo: **{tempo}s**")
         
-    with col_ant:
-        if st.button("⬅️ Anterior", use_container_width=True):
-            st.session_state.indice_atual = (st.session_state.indice_atual - 1) % len(links)
-            st.rerun()
-            
-    with col_prox:
-        if st.button("Próxima ➡️", use_container_width=True):
-            st.session_state.indice_atual = (st.session_state.indice_atual + 1) % len(links)
-            st.rerun()
-
     with col_full:
-        # Orientação clara sobre o Tela Cheia padrão (F11)
-        st.markdown("💡 **Aperte F11** p/ Tela Cheia", help="Pressione a tecla F11 no teclado da TV/Monitor para preencher a tela inteira.")
+        st.markdown("💡 **Aperte F11** p/ Tela Cheia")
 
     with col_btn:
         if st.button("⚙️ Alterar Links", use_container_width=True):
             st.session_state.iniciado = False
             st.rerun()
 
-    link_atual = links[st.session_state.indice_atual]
+    # Passamos a lista de links em formato Python para o JavaScript gerenciar a rotação real
+    import json
+    links_json = json.dumps(links)
 
-    # HTML/JS limpo e com fundo branco para evitar qualquer tela escura durante o carregamento
+    # HTML/JS inteligente que alterna os links dinamicamente sem atualizar o app inteiro
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -127,22 +112,49 @@ else:
         </style>
     </head>
     <body>
-        <iframe id="frame-tela" src="{link_atual}"></iframe>
+        <iframe id="frame-tela" src=""></iframe>
         <div id="barra-status">
-            <span>Exibindo: {link_atual}</span>
-            <span>Próxima rotação em {tempo}s</span>
+            <span id="info-texto">Carregando painel...</span>
+            <span id="contador-tempo">Próxima rotação em {tempo}s</span>
         </div>
 
         <script>
-            // Rotação automática pelo tempo configurado
-            const tempoMs = {tempo} * 1000;
-            setTimeout(function() {{
-                window.location.reload();
-            }}, tempoMs);
+            const links = {links_json};
+            const tempoSegundos = {tempo};
+            let indiceAtual = 0;
+            
+            const iframe = document.getElementById('frame-tela');
+            const infoTexto = document.getElementById('info-texto');
+            const contadorTempo = document.getElementById('contador-tempo');
+
+            function carregarProximaTela() {{
+                if (links.length === 0) return;
+                
+                // Define o link atual
+                iframe.src = links[indiceAtual];
+                infoTexto.innerText = "Exibindo painel " + (indiceAtual + 1) + " de " + links.length + " (" + links[indiceAtual] + ")";
+                
+                // Prepara o próximo índice para a próxima rodada
+                indiceAtual = (indiceAtual + 1) % links.length;
+            }}
+
+            // Executa imediatamente a primeira tela
+            carregarProximaTela();
+
+            // Configura a troca automática de link baseada no tempo configurado
+            setInterval(carregarProximaTela, tempoSegundos * 1000);
+
+            // Contador regressivo visual opcional por segundo
+            let tempoRestante = tempoSegundos;
+            setInterval(function() {{
+                tempoRestante--;
+                if (tempoRestante < 0) tempoRestante = tempoSegundos - 1;
+                contadorTempo.innerText = "Próxima rotação em " + tempoRestante + "s";
+            }}, 1000);
         </script>
     </body>
     </html>
     """
     
-    # Renderiza o iframe ocupando toda a altura sem barras de corte
+    # Renderiza o componente preenchendo a tela
     components.html(html_painel, height=830, scrolling=False)
