@@ -122,7 +122,7 @@ else:
 
     links_json = json.dumps(links)
 
-    # HTML/JS estruturado para manter os iframes vivos em segundo plano na memória do navegador
+    # HTML/JS estruturado com visibility:hidden para blindar o scroll contra reset do navegador
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -137,10 +137,19 @@ else:
                 width: 100%; height: calc(100vh - 35px); position: relative;
             }}
             .iframe-container {{
-                width: 100%; height: 100%; display: none; background: #ffffff; position: absolute; top: 0; left: 0;
+                width: 100%; height: 100%; 
+                visibility: hidden; 
+                opacity: 0;
+                pointer-events: none;
+                background: #ffffff; 
+                position: absolute; top: 0; left: 0;
+                transition: opacity 0.15s ease-in-out;
             }}
             .iframe-container.ativo {{
-                display: block;
+                visibility: visible;
+                opacity: 1;
+                pointer-events: auto;
+                z-index: 10;
             }}
             iframe {{
                 width: 100%; height: 100%; border: none; display: block;
@@ -189,7 +198,7 @@ else:
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
 
-            // Cria todos os iframes de uma vez e mantém todos ativos em background
+            // Cria todos os iframes de uma vez e mantém todos ativos em background sem destruir o DOM
             links.forEach((link, index) => {{
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === 0 ? ' ativo' : '');
