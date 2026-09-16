@@ -84,7 +84,7 @@ else:
     col_info, col_full, col_btn = st.columns([5, 1.5, 1.3])
     
     with col_info:
-        st.markdown(f"🟢 **Modo de Rotação com Posição Fixa Ativo** ({len(links)} painéis) | Intervalo: **{tempo}s**")
+        st.markdown(f"🟢 **Painéis com Posição Fixa** ({len(links)} cadastrados) | Intervalo: **{tempo}s**")
         
     with col_full:
         st.markdown("💡 **Aperte F11** p/ Tela Cheia")
@@ -96,7 +96,7 @@ else:
 
     links_json = json.dumps(links)
 
-    # HTML/JS avançado que cria múltiplos iframes simultâneos para preservar a posição exata
+    # HTML/JS avançado com botões de navegação manual (Anterior / Próxima) e preservação de posição
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -105,9 +105,10 @@ else:
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body, html {{
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
             .iframe-container {{
-                width: 100%; height: calc(100vh - 35px); display: none; background: #ffffff;
+                width: 100%; height: calc(100vh - 45px); display: none; background: #ffffff;
             }}
             .iframe-container.ativo {{
                 display: block;
@@ -116,9 +117,21 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             #barra-status {{
-                width: 100%; height: 35px; background: #e2e8f0; color: #1e293b;
+                width: 100%; height: 45px; background: #e2e8f0; color: #1e293b;
                 display: flex; justify-content: space-between; align-items: center;
-                padding: 0 15px; font-family: sans-serif; font-size: 12px; font-weight: 500;
+                padding: 0 15px; font-size: 13px; font-weight: 500;
+                border-top: 1px solid #cbd5e1;
+            }}
+            .botoes-grupo {{
+                display: flex; gap: 8px; align-items: center;
+            }}
+            .btn-controle {{
+                background: #0f172a; color: #ffffff; border: none; padding: 5px 12px;
+                border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;
+                transition: background 0.2s;
+            }}
+            .btn-controle:hover {{
+                background: #334155;
             }}
         </style>
     </head>
@@ -127,14 +140,20 @@ else:
         
         <div id="barra-status">
             <span id="info-texto">Carregando painéis...</span>
-            <span id="contador-tempo">Próxima rotação em {tempo}s</span>
+            
+            <div class="botoes-grupo">
+                <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
+                <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
+                <span id="contador-tempo" style="margin-left: 10px; color: #475569;">Próxima em {tempo}s</span>
+            </div>
         </div>
 
         <script>
             const links = {links_json};
             const tempoSegundos = {tempo};
             let indiceAtual = 0;
-            const wrappers = [];
+            let wrappers = [];
+            let temporizador;
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
@@ -156,7 +175,6 @@ else:
             function atualizarExibicao() {{
                 if (links.length === 0) return;
 
-                // Esconde todos e mostra apenas o da vez atual
                 wrappers.forEach((w, i) => {{
                     if (i === indiceAtual) {{
                         w.classList.add('ativo');
@@ -165,27 +183,45 @@ else:
                     }}
                 }});
 
-                infoTexto.innerText = "Exibindo painel " + (indiceAtual + 1) + " de " + links.length + " (" + links[indiceAtual] + ")";
-                
-                // Avança para o próximo índice mantendo os anteriores congelados na mesma posição
+                infoTexto.innerText = "Painel " + (indiceAtual + 1) + " de " + links.length + " (" + links[indiceAtual] + ")";
+            }}
+
+            function irParaProxima() {{
                 indiceAtual = (indiceAtual + 1) % links.length;
+                atualizarExibicao();
+                reiniciarTemporizador();
             }}
 
-            // Executa a primeira atualização de visibilidade
+            // Função acionada pelos botões manuais da barra inferior
+            function mudarTela(direcao) {{
+                indiceAtual = (indiceAtual + direcao + links.length) % links.length;
+                atualizarExibicao();
+                reiniciarTemporizador(); // Reseta o tempo ao clicar manualmente para dar tempo de ler
+            }}
+
+            // Inicializa a exibição da primeira tela
             if(links.length > 0) {{
-                infoTexto.innerText = "Exibindo painel 1 de " + links.length + " (" + links[0] + ")";
+                atualizarExibicao();
             }}
 
-            // Roda a troca baseada no tempo configurado
-            setInterval(atualizarExibicao, tempoSegundos * 1000);
+            // Gerenciamento do ciclo automático de tempo
+            function reiniciarTemporizador() {{
+                clearInterval(temporizador);
+                let tempoRestante = tempoSegundos;
+                contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
 
-            // Contador regressivo visual por segundo
-            let tempoRestante = tempoSegundos;
-            setInterval(function() {{
-                tempoRestante--;
-                if (tempoRestante < 0) tempoRestante = tempoSegundos - 1;
-                contadorTempo.innerText = "Próxima rotação em " + tempoRestante + "s";
-            }}, 1000);
+                temporizador = setInterval(function() {{
+                    tempoRestante--;
+                    if (tempoRestante < 0) {{
+                        irParaProxima();
+                    }} else {{
+                        contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                    }}
+                }}, 1000);
+            }}
+
+            // Inicia o temporizador pela primeira vez
+            reiniciarTemporizador();
         </script>
     </body>
     </html>
