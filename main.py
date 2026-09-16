@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado com as cores corporativas do Grupo S&S (Verde Petróleo #0d5c58 e tons complementares)
+# CSS Customizado com as cores corporativas do Grupo S&S (#0d5c58)
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -26,10 +26,8 @@ st.markdown("""
         }
         .stApp { background-color: #f8fafc !important; }
         
-        /* Estilização de títulos e textos com a cor da marca */
         h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
-        /* Botão principal estilizado com a cor do Grupo S&S */
         .stButton button[kind="primary"] {
             background-color: #0d5c58 !important;
             color: #ffffff !important;
@@ -41,7 +39,6 @@ st.markdown("""
             background-color: #094744 !important;
         }
         
-        /* Caixas de texto e inputs com borda sutil */
         .stTextArea textarea, .stNumberInput input {
             border-color: #cbd5e1 !important;
             border-radius: 8px !important;
@@ -53,21 +50,31 @@ st.markdown("""
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 if "links_salvos" not in st.session_state:
-    st.session_state.links_salvos = "https://exemplo.com/painel-1\nhttps://exemplo.com/painel-2"
+    st.session_state.links_salvos = "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\nhttps://ssinformatica.g4flex.com.br:9090/admin/report/chat/performance"
 if "tempo_salvo" not in st.session_state:
-    st.session_state.tempo_salvo = 30
+    st.session_state.tempo_salvo = 20
 
-# --- TELA DE CONFIGURAÇÃO (Com a Logo e Cores do Grupo S&S) ---
+# --- TELA DE CONFIGURAÇÃO ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Exibe a logo oficial do Grupo S&S centralizada
-        st.image("https://i.ibb.co/3ykc5K32/Grupo-SS.png", width=280)
+        # Cabeçalho visual idêntico ao site corporativo com o selo e nome Grupo S&S
+        st.markdown("""
+            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px;">
+                <div style="width: 55px; height: 55px; border: 3px solid #0d5c58; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e6f2f2;">
+                    <span style="font-size: 24px; font-weight: bold; color: #0d5c58;">S&S</span>
+                </div>
+                <div>
+                    <h1 style="margin: 0; font-size: 28px; color: #0d5c58; font-weight: 800; letter-spacing: -0.5px;">Grupo S&S</h1>
+                    <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Soluções para Gestão Municipal</p>
+                </div>
+            </div>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin-bottom: 25px;">
+        """, unsafe_allow_html=True)
         
-        st.markdown("---")
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
         st.markdown("<p style='color: #64748b !important; font-size: 14px; margin-top: -10px;'>Insira os links dos painéis que deseja rotacionar na tela de suporte.</p>", unsafe_allow_html=True)
         
@@ -105,14 +112,21 @@ else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
-    # Barra superior com identidade visual (Mini Logo + Status + Botões)
-    col_logo, col_info, col_full, col_btn = st.columns([1.5, 3.5, 1.3, 1.2])
+    # Barra superior limpa com a marca corporativa
+    col_logo, col_info, col_full, col_btn = st.columns([2, 3, 1.2, 1.2])
     
     with col_logo:
-        st.image("https://i.ibb.co/3ykc5K32/Grupo-SS.png", width=140)
+        st.markdown("""
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                <div style="width: 32px; height: 32px; border: 2px solid #0d5c58; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e6f2f2;">
+                    <span style="font-size: 13px; font-weight: bold; color: #0d5c58;">S&S</span>
+                </div>
+                <span style="font-weight: 700; color: #0d5c58; font-size: 16px;">Grupo S&S</span>
+            </div>
+        """, unsafe_allow_html=True)
         
     with col_info:
-        st.markdown(f"<p style='margin-top: 10px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | Intervalo: <b>{tempo}s</b></p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='margin-top: 10px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | <b>{tempo}s</b></p>", unsafe_allow_html=True)
         
     with col_full:
         st.markdown("<p style='margin-top: 10px; font-size: 13px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
@@ -126,7 +140,7 @@ else:
 
     links_json = json.dumps(links)
 
-    # HTML/JS customizado com barra inferior na cor corporativa do Grupo S&S
+    # HTML/JS customizado
     html_painel = f"""
     <!DOCTYPE html>
     <html>
