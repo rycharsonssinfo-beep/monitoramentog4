@@ -57,8 +57,6 @@ if "links_salvos" not in st.session_state:
     st.session_state.links_salvos = "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\nhttps://ssinformatica.g4flex.com.br:9090/admin/report/chat/performance"
 if "tempo_salvo" not in st.session_state:
     st.session_state.tempo_salvo = 20
-if "indice_atual" not in st.session_state:
-    st.session_state.indice_atual = 0
 
 # --- TELA 1: CONFIGURAÇÃO ---
 if not st.session_state.iniciado:
@@ -96,44 +94,24 @@ if not st.session_state.iniciado:
                 st.session_state.tempo_salvo = tempo_segundos
                 st.session_state.links = lista_links
                 st.session_state.tempo = tempo_segundos
-                st.session_state.indice_atual = 0
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM CONTROLES NATIVOS DO PYTHON ---
+# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO AUTOMÁTICA COM CONTROLES VISÍVEIS ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
-    indice = st.session_state.indice_atual
     
-    link_atual = links[indice]
     links_json = json.dumps(links)
 
-    # Barra superior integrada controlada diretamente pelo Streamlit
-    col_info, col_btn_ant, col_btn_prox, col_full, col_config = st.columns([2.2, 0.9, 0.9, 1.2, 1.1])
-    
-    with col_info:
-        st.markdown(f"<p style='margin: 8px 0px 0px 10px; font-size: 13px; font-weight: 700; color: #0d5c58 !important;'>🟢 Painel {indice + 1} de {len(links)}</p>", unsafe_allow_html=True)
-
-    with col_btn_ant:
-        if st.button("⬅️ Anterior", use_container_width=True):
-            st.session_state.indice_atual = (indice - 1) % len(links)
-            st.rerun()
-
-    with col_btn_prox:
-        if st.button("Próxima ➡️", use_container_width=True):
-            st.session_state.indice_atual = (indice + 1) % len(links)
-            st.rerun()
-
-    with col_full:
-        st.markdown("<p style='margin: 10px 0px 0px 5px; font-size: 11px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
-
-    with col_config:
+    # Botão de alterar links do Streamlit
+    col_vazio, col_btn = st.columns([5, 1.2])
+    with col_btn:
         if st.button("⚙️ Alterar Links", use_container_width=True):
             st.session_state.iniciado = False
             st.rerun()
 
-    # HTML/JS limpo focado apenas em renderizar os iframes e manter a memória de scroll
+    # Componente HTML/JS unificado contendo o relógio regressivo, botões e rotação de telas
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -142,9 +120,10 @@ else:
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body, html {{
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
             #telas-wrapper {{
-                width: 100%; height: 100%; position: relative;
+                width: 100%; height: calc(100vh - 40px); position: relative;
             }}
             .iframe-container {{
                 width: 100%; height: 100%; 
@@ -158,22 +137,54 @@ else:
             iframe {{
                 width: 100%; height: 100%; border: none; display: block;
             }}
+            #barra-status {{
+                width: 100%; height: 40px; background: #0d5c58; color: #ffffff;
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 0 20px; font-size: 13px; font-weight: 600;
+                position: fixed; bottom: 0; left: 0; z-index: 9999;
+                box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
+            }}
+            .botoes-grupo {{
+                display: flex; gap: 10px; align-items: center;
+            }}
+            .btn-controle {{
+                background: #ffffff; color: #0d5c58; border: none; padding: 4px 12px;
+                border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700;
+                transition: background 0.2s;
+            }}
+            .btn-controle:hover {{
+                background: #e2e8f0;
+            }}
         </style>
     </head>
     <body>
         <div id="telas-wrapper"></div>
+        
+        <div id="barra-status">
+            <span id="info-texto">Carregando painéis...</span>
+            
+            <div class="botoes-grupo">
+                <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
+                <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
+                <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0; font-weight: 500;">Próxima em {tempo}s</span>
+            </div>
+        </div>
 
         <script>
             const links = {links_json};
-            let indiceAtivo = {indice};
+            const tempoSegundos = {tempo};
+            let indiceAtual = 0;
             let iframes = [];
+            let temporizador;
 
             const wrapperDiv = document.getElementById('telas-wrapper');
+            const infoTexto = document.getElementById('info-texto');
+            const contadorTempo = document.getElementById('contador-tempo');
 
-            // Cria os iframes preservando o estado de todos
+            // Cria os iframes antecipadamente para preservar estados e scroll
             links.forEach((link, index) => {{
                 const container = document.createElement('div');
-                container.className = 'iframe-container' + (index === indiceAtivo ? ' ativo' : '');
+                container.className = 'iframe-container' + (index === 0 ? ' ativo' : '');
                 
                 const iframe = document.createElement('iframe');
                 iframe.src = link;
@@ -201,10 +212,70 @@ else:
                 wrapperDiv.appendChild(container);
                 iframes.push({{ container: container, iframe: iframe, link: link }});
             }});
+
+            function atualizarExibicao() {{
+                iframes.forEach((item, i) => {{
+                    if (i === indiceAtual) {{
+                        item.container.classList.add('ativo');
+                    }} else {{
+                        item.container.classList.remove('ativo');
+                    }}
+                }});
+                infoTexto.innerText = "🟢 Painel " + (indiceAtual + 1) + " de " + links.length + " | 💡 Pressione F11 para Tela Cheia";
+            }}
+
+            function atualizarPainelAtual() {{
+                // Recarrega levemente o iframe atual para puxar novos dados mantendo o scroll
+                const itemAtual = iframes[indiceAtual];
+                const scrollKey = "scroll_pos_" + itemAtual.link;
+                try {{
+                    sessionStorage.setItem(scrollKey, JSON.stringify({{
+                        x: itemAtual.iframe.contentWindow.scrollX,
+                        y: itemAtual.iframe.contentWindow.scrollY
+                    }}));
+                }} catch(e) {{}}
+                
+                itemAtual.iframe.src = itemAtual.link;
+            }}
+
+            function irParaProxima() {{
+                indiceAtual = (indiceAtual + 1) % links.length;
+                atualizarExibicao();
+                atualizarPainelAtual();
+                reiniciarTemporizador();
+            }}
+
+            function mudarTela(direcao) {{
+                indiceAtual = (indiceAtual + direcao + links.length) % links.length;
+                atualizarExibicao();
+                reiniciarTemporizador();
+            }}
+
+            atualizarExibicao();
+
+            function reiniciarTemporizador() {{
+                clearInterval(temporizador);
+                let tempoRestante = tempoSegundos;
+                contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+
+                temporizador = setInterval(function() {{
+                    tempoRestante--;
+                    if (tempoRestante < 0) {{
+                        irParaProxima();
+                    }} else {{
+                        contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                    }}
+                }}, 1000);
+            }}
+
+            reiniciarTemporizador();
         </script>
     </body>
     </html>
     """
+    
+    # Renderiza o componente fluído preenchendo a tela
+    st.components.v1.html(html_painel, height=930, scrolling=False)
     
     # Renderiza o componente ocupando o restante da tela
     st.components.v1.html(html_painel, height=920, scrolling=False)
