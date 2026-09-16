@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para ocupar 100% da tela em modo tela cheia (F11) sem margens
+# CSS Customizado para ocultar elementos nativos do Streamlit e zerar margens
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -61,7 +61,7 @@ if "tempo_salvo" not in st.session_state:
 if "indice_atual" not in st.session_state:
     st.session_state.indice_atual = 0
 
-# --- TELA DE CONFIGURAÇÃO ---
+# --- TELA DE CONFIGURAÇÃO (só aparece se NÃO estiver iniciado) ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -101,7 +101,7 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA DE EXIBIÇÃO EM ROTAÇÃO ---
+# --- TELA DE EXIBIÇÃO EM ROTAÇÃO (só aparece se ESTIVER iniciado) ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
@@ -109,7 +109,7 @@ else:
     
     link_atual = links[indice]
 
-    # Barra superior limpa com os botões de controle de tela visíveis
+    # Barra superior integrada
     col_info, col_btn1, col_btn2, col_full, col_btn3 = st.columns([2.5, 0.9, 0.9, 0.9, 1.2])
     
     with col_info:
@@ -133,16 +133,14 @@ else:
             st.session_state.iniciado = False
             st.rerun()
 
-    # Iframe injetado com script interno de captura/restauração de scroll (Simula F11/F5 cirúrgico)
+    # Exibição limpa do iframe preenchendo perfeitamente o restante da tela
     st.markdown(f"""
         <iframe id="meu-iframe" src="{link_atual}" style="width: 100%; height: calc(100vh - 40px); border: none; display: block;"></iframe>
         
         <script>
-            // Chave única baseada no link atual para guardar a posição do scroll no navegador
             const scrollKey = "scroll_pos_" + "{link_atual}";
             const iframe = document.getElementById('meu-iframe');
 
-            // Quando o iframe carregar, restauramos a posição exata de scroll que estava antes do F5
             iframe.onload = function() {{
                 try {{
                     const savedScroll = sessionStorage.getItem(scrollKey);
@@ -150,14 +148,12 @@ else:
                         const pos = JSON.parse(savedScroll);
                         iframe.contentWindow.scrollTo(pos.x, pos.y);
                     }}
-                }} catch (e) {{
-                    console.log("Cross-origin restrição de scroll evitada ou não suportada pelo host.");
-                }}
+                }} catch (e) {{}}
             }};
         </script>
     """, unsafe_allow_html=True)
 
-    # Pausa o tempo determinado e avança para o próximo painel atualizando a página inteira
+    # Ciclo de tempo para avançar automaticamente
     time.sleep(tempo)
     st.session_state.indice_atual = (indice + 1) % len(links)
     st.rerun()
