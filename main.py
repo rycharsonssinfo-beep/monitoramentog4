@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado com o contraste perfeito no botão e design limpo
+# CSS Customizado para remover margens e rodapés excedentes do Streamlit
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -18,13 +18,14 @@ st.markdown("""
         footer {visibility: hidden !important;}
         
         .block-container {
-            padding-top: 20px !important;
+            padding-top: 10px !important;
             padding-bottom: 0px !important;
-            padding-left: 20px !important;
-            padding-right: 20px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
             max-width: 100% !important;
+            overflow: hidden !important;
         }
-        .stApp { background-color: #f8fafc !important; }
+        .stApp { background-color: #f8fafc !important; overflow: hidden !important; }
         
         h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
@@ -101,25 +102,23 @@ else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
-    # Barra superior limpa
-    col_info, col_full, col_btn = st.columns([4, 1.2, 1.5])
+    # Barra superior compacta
+    col_info, col_full, col_btn = st.columns([4, 1.2, 1.2])
     
     with col_info:
-        st.markdown(f"<p style='margin-top: 10px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | <b>{tempo}s</b></p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='margin: 0px; font-size: 13px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | <b>{tempo}s</b></p>", unsafe_allow_html=True)
         
     with col_full:
-        st.markdown("<p style='margin-top: 10px; font-size: 13px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
+        st.markdown("<p style='margin: 0px; font-size: 12px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
 
     with col_btn:
-        st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
         if st.button("⚙️ Alterar Links", use_container_width=True):
             st.session_state.iniciado = False
             st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
     links_json = json.dumps(links)
 
-    # HTML/JS customizado do player de rotação
+    # HTML/JS ajustado para preencher perfeitamente a altura sem sobras
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -130,8 +129,11 @@ else:
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
+            #telas-wrapper {{
+                width: 100%; height: calc(100vh - 40px); position: relative;
+            }}
             .iframe-container {{
-                width: 100%; height: calc(100vh - 45px); display: none; background: #ffffff;
+                width: 100%; height: 100%; display: none; background: #ffffff; position: absolute; top: 0; left: 0;
             }}
             .iframe-container.ativo {{
                 display: block;
@@ -140,17 +142,18 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             #barra-status {{
-                width: 100%; height: 45px; background: #0d5c58; color: #ffffff;
+                width: 100%; height: 40px; background: #0d5c58; color: #ffffff;
                 display: flex; justify-content: space-between; align-items: center;
-                padding: 0 15px; font-size: 13px; font-weight: 500;
+                padding: 0 15px; font-size: 12px; font-weight: 500;
+                position: fixed; bottom: 0; left: 0; z-index: 999;
                 box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
             }}
             .botoes-grupo {{
-                display: flex; gap: 8px; align-items: center;
+                display: flex; gap: 6px; align-items: center;
             }}
             .btn-controle {{
-                background: #ffffff; color: #0d5c58; border: none; padding: 5px 12px;
-                border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700;
+                background: #ffffff; color: #0d5c58; border: none; padding: 3px 10px;
+                border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;
                 transition: background 0.2s;
             }}
             .btn-controle:hover {{
@@ -167,7 +170,7 @@ else:
             <div class="botoes-grupo">
                 <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
                 <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
-                <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0;">Próxima em {tempo}s</span>
+                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0;">Próxima em {tempo}s</span>
             </div>
         </div>
 
@@ -245,4 +248,5 @@ else:
     </html>
     """
     
-    components.html(html_painel, height=830, scrolling=False)
+    # Altura dinâmica calculada para preencher a tela inteira com folga zero
+    components.html(html_painel, height=890, scrolling=False)
