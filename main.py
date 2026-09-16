@@ -4,13 +4,13 @@ import json
 
 # Configuração da página em modo wide
 st.set_page_config(
-    page_title="Painel de Monitoramento Pro",
+    page_title="Painel de Monitoramento - Grupo S&S",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# CSS limpo, moderno e com TEMA CLARO
+# CSS Customizado com as cores corporativas do Grupo S&S (Verde Petróleo #0d5c58 e tons complementares)
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -24,8 +24,28 @@ st.markdown("""
             padding-right: 10px !important;
             max-width: 100% !important;
         }
-        .stApp { background-color: #f4f6f9 !important; }
-        h2, p, span { color: #1e293b !important; }
+        .stApp { background-color: #f8fafc !important; }
+        
+        /* Estilização de títulos e textos com a cor da marca */
+        h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        
+        /* Botão principal estilizado com a cor do Grupo S&S */
+        .stButton button[kind="primary"] {
+            background-color: #0d5c58 !important;
+            color: #ffffff !important;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+        }
+        .stButton button[kind="primary"]:hover {
+            background-color: #094744 !important;
+        }
+        
+        /* Caixas de texto e inputs com borda sutil */
+        .stTextArea textarea, .stNumberInput input {
+            border-color: #cbd5e1 !important;
+            border-radius: 8px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -37,19 +57,24 @@ if "links_salvos" not in st.session_state:
 if "tempo_salvo" not in st.session_state:
     st.session_state.tempo_salvo = 30
 
-# --- TELA DE CONFIGURAÇÃO (Tema Claro) ---
+# --- TELA DE CONFIGURAÇÃO (Com a Logo e Cores do Grupo S&S) ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("## 📊 Configurar Painel de Monitoramento")
-        st.markdown("Insira os links que deseja rotacionar na tela de suporte.")
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Exibe a logo oficial do Grupo S&S centralizada
+        st.image("https://i.ibb.co/3ykc5K32/Grupo-SS.png", width=280)
+        
+        st.markdown("---")
+        st.markdown("### 📊 Configuração do Painel de Monitoramento")
+        st.markdown("<p style='color: #64748b !important; font-size: 14px; margin-top: -10px;'>Insira os links dos painéis que deseja rotacionar na tela de suporte.</p>", unsafe_allow_html=True)
         
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
             value=st.session_state.links_salvos,
-            height=160
+            height=150
         )
         
         tempo_segundos = st.number_input(
@@ -80,23 +105,28 @@ else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
-    # Barra de controle compacta no topo
-    col_info, col_full, col_btn = st.columns([5, 1.5, 1.3])
+    # Barra superior com identidade visual (Mini Logo + Status + Botões)
+    col_logo, col_info, col_full, col_btn = st.columns([1.5, 3.5, 1.3, 1.2])
     
+    with col_logo:
+        st.image("https://i.ibb.co/3ykc5K32/Grupo-SS.png", width=140)
+        
     with col_info:
-        st.markdown(f"🟢 **Painéis com Posição Fixa** ({len(links)} cadastrados) | Intervalo: **{tempo}s**")
+        st.markdown(f"<p style='margin-top: 10px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | Intervalo: <b>{tempo}s</b></p>", unsafe_allow_html=True)
         
     with col_full:
-        st.markdown("💡 **Aperte F11** p/ Tela Cheia")
+        st.markdown("<p style='margin-top: 10px; font-size: 13px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
 
     with col_btn:
+        st.markdown("<div style='margin-top: 5px;'>", unsafe_allow_html=True)
         if st.button("⚙️ Alterar Links", use_container_width=True):
             st.session_state.iniciado = False
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
     links_json = json.dumps(links)
 
-    # HTML/JS avançado com botões de navegação manual (Anterior / Próxima) e preservação de posição
+    # HTML/JS customizado com barra inferior na cor corporativa do Grupo S&S
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -117,21 +147,21 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             #barra-status {{
-                width: 100%; height: 45px; background: #e2e8f0; color: #1e293b;
+                width: 100%; height: 45px; background: #0d5c58; color: #ffffff;
                 display: flex; justify-content: space-between; align-items: center;
                 padding: 0 15px; font-size: 13px; font-weight: 500;
-                border-top: 1px solid #cbd5e1;
+                box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
             }}
             .botoes-grupo {{
                 display: flex; gap: 8px; align-items: center;
             }}
             .btn-controle {{
-                background: #0f172a; color: #ffffff; border: none; padding: 5px 12px;
-                border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;
+                background: #ffffff; color: #0d5c58; border: none; padding: 5px 12px;
+                border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700;
                 transition: background 0.2s;
             }}
             .btn-controle:hover {{
-                background: #334155;
+                background: #e2e8f0;
             }}
         </style>
     </head>
@@ -144,7 +174,7 @@ else:
             <div class="botoes-grupo">
                 <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
                 <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
-                <span id="contador-tempo" style="margin-left: 10px; color: #475569;">Próxima em {tempo}s</span>
+                <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0;">Próxima em {tempo}s</span>
             </div>
         </div>
 
@@ -159,7 +189,6 @@ else:
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
 
-            // Cria um iframe fixo para cada link da lista
             links.forEach((link, index) => {{
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === 0 ? ' ativo' : '');
@@ -192,19 +221,16 @@ else:
                 reiniciarTemporizador();
             }}
 
-            // Função acionada pelos botões manuais da barra inferior
             function mudarTela(direcao) {{
                 indiceAtual = (indiceAtual + direcao + links.length) % links.length;
                 atualizarExibicao();
-                reiniciarTemporizador(); // Reseta o tempo ao clicar manualmente para dar tempo de ler
+                reiniciarTemporizador();
             }}
 
-            // Inicializa a exibição da primeira tela
             if(links.length > 0) {{
                 atualizarExibicao();
             }}
 
-            // Gerenciamento do ciclo automático de tempo
             function reiniciarTemporizador() {{
                 clearInterval(temporizador);
                 let tempoRestante = tempoSegundos;
@@ -220,7 +246,6 @@ else:
                 }}, 1000);
             }}
 
-            // Inicia o temporizador pela primeira vez
             reiniciarTemporizador();
         </script>
     </body>
