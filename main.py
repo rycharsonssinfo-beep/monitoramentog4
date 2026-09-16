@@ -97,21 +97,14 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM BARRA DE CONTROLE NO TOPO ---
+# --- TELA 2: EXIBIÇÃO COM TODOS OS CONTROLE NO TOPO ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
     links_json = json.dumps(links)
 
-    # Botão de alterar links do Streamlit
-    col_vazio, col_btn = st.columns([5, 1.2])
-    with col_btn:
-        if st.button("⚙️ Alterar Links", use_container_width=True):
-            st.session_state.iniciado = False
-            st.rerun()
-
-    # Componente HTML/JS unificado com a barra de status posicionada no TOPO
+    # Componente HTML/JS unificado com a barra de status contendo todos os botões no topo
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -122,16 +115,15 @@ else:
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
-            /* Barra de status fixa no TOPO agora */
             #barra-status {{
-                width: 100%; height: 40px; background: #0d5c58; color: #ffffff;
+                width: 100%; height: 45px; background: #0d5c58; color: #ffffff;
                 display: flex; justify-content: space-between; align-items: center;
                 padding: 0 20px; font-size: 13px; font-weight: 600;
                 position: fixed; top: 0; left: 0; z-index: 9999;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             }}
             #telas-wrapper {{
-                width: 100%; height: calc(100vh - 40px); position: absolute; top: 40px; left: 0;
+                width: 100%; height: calc(100vh - 45px); position: absolute; top: 45px; left: 0;
             }}
             .iframe-container {{
                 width: 100%; height: 100%; 
@@ -146,11 +138,13 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             .botoes-grupo {{
-                display: flex; gap: 10px; align-items: center;
+                display: flex; gap: 8px; align-items: center;
             }}
             .btn-controle {{
-                background: #ffffff; color: #0d5c58; border: none; padding: 4px 12px;
+                background: #ffffff; color: #0d5c58; border: none; 
+                height: 28px; padding: 0 12px;
                 border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700;
+                display: inline-flex; align-items: center; justify-content: center;
                 transition: background 0.2s;
             }}
             .btn-controle:hover {{
@@ -159,14 +153,15 @@ else:
         </style>
     </head>
     <body>
-        <!-- Barra de controle fixa no topo -->
+        <!-- Barra de controle unificada no topo -->
         <div id="barra-status">
             <span id="info-texto">Carregando painéis...</span>
             
             <div class="botoes-grupo">
                 <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
                 <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
-                <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0; font-weight: 500;">Próxima em {tempo}s</span>
+                <button class="btn-controle" onclick="voltarConfig()">⚙️ Alterar Links</button>
+                <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0; font-weight: 500; min-width: 95px;">Próxima em {tempo}s</span>
             </div>
         </div>
 
@@ -223,7 +218,7 @@ else:
                         item.container.classList.remove('ativo');
                     }}
                 }});
-                infoTexto.innerText = "🟢 Painel " + (indiceAtual + 1) + " de " + links.length + " | 💡 Pressione F11 para Tela Cheia";
+                infoTexto.innerText = "🟢 Painel " + (indiceAtual + 1) + " de " + links.length + " | 💡 F11 Tela Cheia";
             }}
 
             function atualizarPainelAtual() {{
@@ -250,6 +245,11 @@ else:
                 indiceAtual = (indiceAtual + direcao + links.length) % links.length;
                 atualizarExibicao();
                 reiniciarTemporizador();
+            }}
+
+            function voltarConfig() {{
+                // Força o recarregamento da página do Streamlit no contexto pai para voltar à tela 1
+                window.parent.location.reload();
             }}
 
             atualizarExibicao();
