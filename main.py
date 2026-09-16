@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para remover margens e rodapés excedentes do Streamlit
+# CSS Customizado para otimizar o espaço da página
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -18,14 +18,13 @@ st.markdown("""
         footer {visibility: hidden !important;}
         
         .block-container {
-            padding-top: 10px !important;
+            padding-top: 5px !important;
             padding-bottom: 0px !important;
             padding-left: 10px !important;
             padding-right: 10px !important;
             max-width: 100% !important;
-            overflow: hidden !important;
         }
-        .stApp { background-color: #f8fafc !important; overflow: hidden !important; }
+        .stApp { background-color: #f8fafc !important; }
         
         h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
@@ -118,7 +117,7 @@ else:
 
     links_json = json.dumps(links)
 
-    # HTML/JS ajustado para preencher perfeitamente a altura sem sobras
+    # HTML/JS com ajuste de altura ideal para o conteúdo do G4Flex aparecer inteiro
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -248,5 +247,5 @@ else:
     </html>
     """
     
-    # Altura dinâmica calculada para preencher a tela inteira com folga zero
-    components.html(html_painel, height=890, scrolling=False)
+    # Aumentado para 940 pixels para acomodar perfeitamente o painel interno completo
+    components.html(html_painel, height=940, scrolling=False)
