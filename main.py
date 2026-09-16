@@ -1,18 +1,16 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import json
-import base64
-import urllib.request
 
 # Configuração da página em modo wide
 st.set_page_config(
-    page_title="Painel de Monitoramento - Grupo S&S",
+    page_title="Painel de Monitoramento",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado com identidade visual corporativa e contraste perfeito
+# CSS Customizado com o contraste perfeito no botão e design limpo
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -20,17 +18,17 @@ st.markdown("""
         footer {visibility: hidden !important;}
         
         .block-container {
-            padding-top: 5px !important;
+            padding-top: 20px !important;
             padding-bottom: 0px !important;
-            padding-left: 10px !important;
-            padding-right: 10px !important;
+            padding-left: 20px !important;
+            padding-right: 20px !important;
             max-width: 100% !important;
         }
         .stApp { background-color: #f8fafc !important; }
         
         h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
-        /* Botão principal com fundo verde petróleo e texto branco nítido */
+        /* Botão principal com fundo verde petróleo e texto branco visível */
         .stButton button[kind="primary"] {
             background-color: #0d5c58 !important;
             color: #ffffff !important;
@@ -52,21 +50,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Função robusta para carregar a logo oficial incorporada sem falhas
-@st.cache_data
-def obter_logo_base64():
-    url = "https://i.ibb.co/3ykc5K32/Grupo-SS.png"
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as resposta:
-            return base64.b64encode(resposta.read()).decode()
-    except:
-        return ""
-
-logo_b64 = obter_logo_base64()
-tag_logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-height: 75px; width: auto; object-fit: contain;">' if logo_b64 else '<h1 style="color: #0d5c58;">Grupo S&S</h1>'
-tag_logo_mini = f'<img src="data:image/png;base64,{logo_b64}" style="max-height: 38px; width: auto; object-fit: contain;">' if logo_b64 else '<span style="color: #0d5c58; font-weight: bold;">Grupo S&S</span>'
-
 # Inicializa o estado da sessão e memórias persistentes
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
@@ -80,18 +63,9 @@ if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Exibe a logo oficial real incorporada com segurança máxima
-        st.markdown(f"""
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px;">
-                {tag_logo_html}
-            </div>
-            <hr style="border: none; border-top: 1px solid #cbd5e1; margin-bottom: 25px;">
-        """, unsafe_allow_html=True)
-        
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 14px; margin-top: -10px;'>Insira os links dos painéis que deseja rotacionar na tela de suporte.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 14px; margin-top: -5px;'>Insira os links dos painéis que deseja rotacionar na tela de suporte.</p>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
@@ -127,16 +101,9 @@ else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
-    # Barra superior limpa com a logo oficial da S&S
-    col_logo, col_info, col_full, col_btn = st.columns([2.2, 3, 1.1, 1.2])
+    # Barra superior limpa
+    col_info, col_full, col_btn = st.columns([4, 1.2, 1.5])
     
-    with col_logo:
-        st.markdown(f"""
-            <div style="display: flex; align-items: center; margin-top: 5px;">
-                {tag_logo_mini}
-            </div>
-        """, unsafe_allow_html=True)
-        
     with col_info:
         st.markdown(f"<p style='margin-top: 10px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | <b>{tempo}s</b></p>", unsafe_allow_html=True)
         
