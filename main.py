@@ -61,16 +61,10 @@ if not st.session_state.iniciado:
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Cabeçalho visual idêntico ao site corporativo com o selo e nome Grupo S&S
+        # Exibe a logo oficial exata utilizando a imagem fornecida com alta fidelidade
         st.markdown("""
-            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px;">
-                <div style="width: 55px; height: 55px; border: 3px solid #0d5c58; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e6f2f2;">
-                    <span style="font-size: 24px; font-weight: bold; color: #0d5c58;">S&S</span>
-                </div>
-                <div>
-                    <h1 style="margin: 0; font-size: 28px; color: #0d5c58; font-weight: 800; letter-spacing: -0.5px;">Grupo S&S</h1>
-                    <p style="margin: 0; font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Soluções para Gestão Municipal</p>
-                </div>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px;">
+                <img src="https://i.ibb.co/3ykc5K32/Grupo-SS.png" style="max-height: 75px; width: auto; object-fit: contain;">
             </div>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin-bottom: 25px;">
         """, unsafe_allow_html=True)
@@ -112,16 +106,13 @@ else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
-    # Barra superior limpa com a marca corporativa
-    col_logo, col_info, col_full, col_btn = st.columns([2, 3, 1.2, 1.2])
+    # Barra superior limpa com a logo corporativa exata
+    col_logo, col_info, col_full, col_btn = st.columns([2.2, 3, 1.1, 1.2])
     
     with col_logo:
         st.markdown("""
-            <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-                <div style="width: 32px; height: 32px; border: 2px solid #0d5c58; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e6f2f2;">
-                    <span style="font-size: 13px; font-weight: bold; color: #0d5c58;">S&S</span>
-                </div>
-                <span style="font-weight: 700; color: #0d5c58; font-size: 16px;">Grupo S&S</span>
+            <div style="display: flex; align-items: center; margin-top: 5px;">
+                <img src="https://i.ibb.co/3ykc5K32/Grupo-SS.png" style="max-height: 38px; width: auto; object-fit: contain;">
             </div>
         """, unsafe_allow_html=True)
         
