@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import json
 
 # Configuração da página em modo wide
 st.set_page_config(
@@ -28,9 +29,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicializa o estado da sessão
+# Inicializa o estado da sessão e memórias persistentes
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
+if "links_salvos" not in st.session_state:
+    st.session_state.links_salvos = "https://exemplo.com/painel-1\nhttps://exemplo.com/painel-2"
+if "tempo_salvo" not in st.session_state:
+    st.session_state.tempo_salvo = 35
 
 # --- TELA DE CONFIGURAÇÃO (Tema Claro) ---
 if not st.session_state.iniciado:
@@ -41,9 +46,10 @@ if not st.session_state.iniciado:
         st.markdown("## 📊 Configurar Painel de Monitoramento")
         st.markdown("Insira os links que deseja rotacionar na tela de suporte.")
         
+        # O campo de texto agora puxa direto de `st.session_state.links_salvos`
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
-            value="https://exemplo.com/painel-1\nhttps://exemplo.com/painel-2",
+            value=st.session_state.links_salvos,
             height=160
         )
         
@@ -51,7 +57,7 @@ if not st.session_state.iniciado:
             "Tempo de exibição de cada tela (segundos):",
             min_value=5,
             max_value=300,
-            value=30,
+            value=st.session_state.tempo_salvo,
             step=5
         )
         
@@ -63,6 +69,9 @@ if not st.session_state.iniciado:
             if not lista_links:
                 st.error("Por favor, insira pelo menos um link válido.")
             else:
+                # Salva os valores permanentemente na sessão antes de mudar de tela
+                st.session_state.links_salvos = links_texto
+                st.session_state.tempo_salvo = tempo_segundos
                 st.session_state.links = lista_links
                 st.session_state.tempo = tempo_segundos
                 st.session_state.iniciado = True
@@ -84,14 +93,13 @@ else:
 
     with col_btn:
         if st.button("⚙️ Alterar Links", use_container_width=True):
+            # Apenas muda o estado para voltar à tela de config (os links já estão salvos em st.session_state.links_salvos)
             st.session_state.iniciado = False
             st.rerun()
 
-    # Passamos a lista de links em formato Python para o JavaScript gerenciar a rotação real
-    import json
     links_json = json.dumps(links)
 
-    # HTML/JS inteligente que alterna os links dinamicamente sem atualizar o app inteiro
+    # HTML/JS inteligente que alterna os links dinamicamente
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -130,21 +138,15 @@ else:
             function carregarProximaTela() {{
                 if (links.length === 0) return;
                 
-                // Define o link atual
                 iframe.src = links[indiceAtual];
                 infoTexto.innerText = "Exibindo painel " + (indiceAtual + 1) + " de " + links.length + " (" + links[indiceAtual] + ")";
                 
-                // Prepara o próximo índice para a próxima rodada
                 indiceAtual = (indiceAtual + 1) % links.length;
             }}
 
-            // Executa imediatamente a primeira tela
             carregarProximaTela();
-
-            // Configura a troca automática de link baseada no tempo configurado
             setInterval(carregarProximaTela, tempoSegundos * 1000);
 
-            // Contador regressivo visual opcional por segundo
             let tempoRestante = tempoSegundos;
             setInterval(function() {{
                 tempoRestante--;
@@ -156,5 +158,4 @@ else:
     </html>
     """
     
-    # Renderiza o componente preenchendo a tela
     components.html(html_painel, height=830, scrolling=False)
