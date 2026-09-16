@@ -1,5 +1,6 @@
 import streamlit as st
-import time
+import streamlit.components.v1 as components
+import json
 
 # Configuração da página em modo wide
 st.set_page_config(
@@ -9,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para ocupar 100% da tela em modo tela cheia (F11) sem margens
+# CSS Customizado para ocupar 100% da tela limpa sem margens e sem barras extras
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -51,15 +52,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicializa o estado da sessão
+# Inicializa o estado da sessão e memórias persistentes
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 if "links_salvos" not in st.session_state:
     st.session_state.links_salvos = "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\nhttps://ssinformatica.g4flex.com.br:9090/admin/report/chat/performance"
 if "tempo_salvo" not in st.session_state:
     st.session_state.tempo_salvo = 20
-if "indice_atual" not in st.session_state:
-    st.session_state.indice_atual = 0
 
 # --- TELA DE CONFIGURAÇÃO ---
 if not st.session_state.iniciado:
@@ -97,7 +96,6 @@ if not st.session_state.iniciado:
                 st.session_state.tempo_salvo = tempo_segundos
                 st.session_state.links = lista_links
                 st.session_state.tempo = tempo_segundos
-                st.session_state.indice_atual = 0
                 st.session_state.iniciado = True
                 st.rerun()
 
@@ -105,40 +103,155 @@ if not st.session_state.iniciado:
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
-    indice = st.session_state.indice_atual
     
-    link_atual = links[indice]
-
-    # Barra superior integrada
-    col_info, col_full, col_btn1, col_btn2, col_btn3 = st.columns([3, 1, 0.9, 0.9, 1.1])
+    # Barra de topo extremamente compacta para liberar espaço total
+    col_info, col_full, col_btn = st.columns([4, 1.2, 1.2])
     
     with col_info:
-        st.markdown(f"<p style='margin: 0px 0px 5px 10px; font-size: 12px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel {indice + 1} de {len(links)} | <b>{tempo}s</b></p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='margin: 0px 0px 3px 10px; font-size: 12px; font-weight: 600; color: #0d5c58 !important;'>🟢 Painel Ativo ({len(links)} telas) | <b>{tempo}s</b></p>", unsafe_allow_html=True)
         
     with col_full:
-        st.markdown("<p style='margin: 0px 0px 5px 0px; font-size: 11px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
+        st.markdown("<p style='margin: 0px 0px 3px 0px; font-size: 11px;'>💡 <b>F11</b> Tela Cheia</p>", unsafe_allow_html=True)
 
-    with col_btn1:
-        if st.button("⬅️ Ant", use_container_width=True):
-            st.session_state.indice_atual = (indice - 1) % len(links)
-            st.rerun()
-
-    with col_btn2:
-        if st.button("Prox ➡️", use_container_width=True):
-            st.session_state.indice_atual = (indice + 1) % len(links)
-            st.rerun()
-
-    with col_btn3:
+    with col_btn:
+        st.markdown("<div style='margin-top: -5px;'>", unsafe_allow_html=True)
         if st.button("⚙️ Alterar Links", use_container_width=True):
             st.session_state.iniciado = False
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # Exibe o iframe com a altura total preenchendo a tela limpa sem sobras
-    st.markdown(f"""
-        <iframe src="{link_atual}" style="width: 100%; height: calc(100vh - 40px); border: none; display: block;"></iframe>
-    """, unsafe_allow_html=True)
+    links_json = json.dumps(links)
 
-    # Pausa e avança automaticamente para o próximo link respeitando o tempo configurado
-    time.sleep(tempo)
-    st.session_state.indice_atual = (indice + 1) % len(links)
-    st.rerun()
+    # HTML/JS estruturado para manter os iframes vivos em segundo plano na memória do navegador
+    html_painel = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body, html {{
+                width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }}
+            #telas-wrapper {{
+                width: 100%; height: calc(100vh - 35px); position: relative;
+            }}
+            .iframe-container {{
+                width: 100%; height: 100%; display: none; background: #ffffff; position: absolute; top: 0; left: 0;
+            }}
+            .iframe-container.ativo {{
+                display: block;
+            }}
+            iframe {{
+                width: 100%; height: 100%; border: none; display: block;
+            }}
+            #barra-status {{
+                width: 100%; height: 35px; background: #0d5c58; color: #ffffff;
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 0 15px; font-size: 11px; font-weight: 500;
+                position: fixed; bottom: 0; left: 0; z-index: 9999;
+                box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+            }}
+            .botoes-grupo {{
+                display: flex; gap: 6px; align-items: center;
+            }}
+            .btn-controle {{
+                background: #ffffff; color: #0d5c58; border: none; padding: 2px 8px;
+                border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 700;
+                transition: background 0.2s;
+            }}
+            .btn-controle:hover {{
+                background: #e2e8f0;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="telas-wrapper"></div>
+        
+        <div id="barra-status">
+            <span id="info-texto">Carregando painéis...</span>
+            
+            <div class="botoes-grupo">
+                <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
+                <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
+                <span id="contador-tempo" style="margin-left: 6px; color: #e2e8f0;">Próxima em {tempo}s</span>
+            </div>
+        </div>
+
+        <script>
+            const links = {links_json};
+            const tempoSegundos = {tempo};
+            let indiceAtual = 0;
+            let wrappers = [];
+            let temporizador;
+
+            const wrapperDiv = document.getElementById('telas-wrapper');
+            const infoTexto = document.getElementById('info-texto');
+            const contadorTempo = document.getElementById('contador-tempo');
+
+            // Cria todos os iframes de uma vez e mantém todos ativos em background
+            links.forEach((link, index) => {{
+                const container = document.createElement('div');
+                container.className = 'iframe-container' + (index === 0 ? ' ativo' : '');
+                
+                const iframe = document.createElement('iframe');
+                iframe.src = link;
+                
+                container.appendChild(iframe);
+                wrapperDiv.appendChild(container);
+                wrappers.push(container);
+            }});
+
+            function atualizarExibicao() {{
+                if (links.length === 0) return;
+
+                wrappers.forEach((w, i) => {{
+                    if (i === indiceAtual) {{
+                        w.classList.add('ativo');
+                    }} else {{
+                        w.classList.remove('ativo');
+                    }}
+                }});
+
+                infoTexto.innerText = "Painel " + (indiceAtual + 1) + " de " + links.length + " (" + links[indiceAtual] + ")";
+            }}
+
+            function irParaProxima() {{
+                indiceAtual = (indiceAtual + 1) % links.length;
+                atualizarExibicao();
+                reiniciarTemporizador();
+            }}
+
+            function mudarTela(direcao) {{
+                indiceAtual = (indiceAtual + direcao + links.length) % links.length;
+                atualizarExibicao();
+                reiniciarTemporizador();
+            }}
+
+            if(links.length > 0) {{
+                atualizarExibicao();
+            }}
+
+            function reiniciarTemporizador() {{
+                clearInterval(temporizador);
+                let tempoRestante = tempoSegundos;
+                contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+
+                temporizador = setInterval(function() {{
+                    tempoRestante--;
+                    if (tempoRestante < 0) {{
+                        irParaProxima();
+                    }} else {{
+                        contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                    }}
+                }}, 1000);
+            }}
+
+            reiniciarTemporizador();
+        </script>
+    </body>
+    </html>
+    """
+    
+    # Renderiza o componente em tela cheia fluida
+    components.html(html_painel, height=1050, scrolling=False)
