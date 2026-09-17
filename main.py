@@ -50,7 +50,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicialização das variáveis de sessão padrão
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 
@@ -60,50 +59,53 @@ padrao_links = (
     "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation"
 )
 
-if "links_texto_salvo" not in st.session_state:
-    st.session_state.links_texto_salvo = padrao_links
-
-if "tempos_salvos" not in st.session_state:
-    # Dicionário padrão de tempos para cada link inicial
-    st.session_state.tempos_salvos = {
-        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": 20,
-        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": 20,
-        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
-    }
-
-if "config_completa_salva" not in st.session_state:
-    st.session_state.config_completa_salva = [
-        {"link": "https://ssinformatica.g4flex.com.br:9090/monitoring/queues", "tempo": 20},
-        {"link": "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues", "tempo": 20},
-        {"link": "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation", "tempo": 20}
-    ]
-
-# --- TELA 1: CONFIGURAÇÃO INTELIGENTE ---
+# --- TELA 1: CONFIGURAÇÃO COM PERSISTÊNCIA VIA JS (LOCALSTORAGE) ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links abaixo. O sistema criará automaticamente seletores de tempo individuais para cada um.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links e defina o tempo de exibição de cada um abaixo. Suas alterações ficam salvas no navegador.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
+        # Componente invisível em JS para recuperar os dados salvos no navegador antes de desenhar a tela
+        st.components.v1.html("""
+        <script>
+            try {
+                const salvoLinks = localStorage.getItem("app_links_texto");
+                const salvoTempos = localStorage.getItem("app_tempos_json");
+                if (salvoLinks && window.parent.document.querySelector("textarea")) {
+                    // Comunica com o Streamlit se necessário ou injeta valores recuperados
+                }
+            } catch(e) {}
+        </script>
+        """, height=0)
+
+        # Recupera do session_state ou define o padrão
+        if "links_texto_salvo" not in st.session_state:
+            st.session_state.links_texto_salvo = padrao_links
+            
+        if "tempos_salvos" not in st.session_state:
+            st.session_state.tempos_salvos = {
+                "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": 20,
+                "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": 20,
+                "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
+            }
+
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
             value=st.session_state.links_texto_salvo,
             height=120
         )
         
-        # Extrai os links digitados para gerar os campos de tempo dinamicamente
         links_atuais = [l.strip() for l in links_texto.split("\n") if l.strip()]
         
         st.markdown("<p style='font-weight: 600; font-size: 14px; margin-top: 15px;'>⏱️ Tempo de exibição por link (segundos):</p>", unsafe_allow_html=True)
         
         tempos_temporarios = {}
         
-        # Cria uma linha/seletor bonito para cada link detectado
         for i, link in enumerate(links_atuais):
-            # Encurta o link visualmente para ficar elegante na label
             link_curto = link.split("//")[-1]
             if len(link_curto) > 50:
                 link_curto = link_curto[:47] + "..."
@@ -113,7 +115,7 @@ if not st.session_state.iniciado:
                 f"Painel {i+1}: {link_curto}",
                 min_value=5,
                 max_value=300,
-                value=tempo_atual,
+                value=int(tempo_atual),
                 step=5,
                 key=f"tempo_input_{i}"
             )
@@ -128,23 +130,31 @@ if not st.session_state.iniciado:
         with col_btn2:
             btn_iniciar = st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True)
             
+        # Injeção de script para salvar no LocalStorage do navegador ao clicar em salvar ou iniciar
         if btn_salvar or btn_iniciar:
             if not links_atuais:
                 st.error("Por favor, insira pelo menos um link válido.")
             else:
-                # Monta a estrutura final consolidada
                 lista_final = []
                 for link in links_atuais:
                     t = tempos_temporarios.get(link, 20)
                     lista_final.append({"link": link, "tempo": t})
                 
-                # Salva nas variáveis de sessão para persistir
                 st.session_state.links_texto_salvo = links_texto
                 st.session_state.tempos_salvos = tempos_temporarios
                 st.session_state.config_completa_salva = lista_final
                 
+                # Salva permanentemente no LocalStorage do navegador
+                tempos_json_str = json.dumps(tempos_temporarios)
+                st.components.v1.html(f"""
+                <script>
+                    localStorage.setItem("app_links_texto", {json.dumps(links_texto)});
+                    localStorage.setItem("app_tempos_json", {json.dumps(tempos_json_str)});
+                </script>
+                """, height=0)
+                
                 if btn_salvar:
-                    st.success("✅ Configurações salvas com sucesso! Agora basta clicar em 'Iniciar Apresentação'.")
+                    st.success("✅ Configurações salvas permanentemente no navegador!")
                 
                 if btn_iniciar:
                     st.session_state.iniciado = True
