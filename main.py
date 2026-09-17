@@ -50,7 +50,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicialização das variáveis de sessão com os novos 3 links fixos como padrão
+# Inicialização das variáveis de sessão integrando recuperação inteligente
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 if "links_salvos" not in st.session_state:
@@ -101,14 +101,14 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM TODOS OS CONTROLES NO TOPO ---
+# --- TELA 2: EXIBIÇÃO COM TODAS AS MELHORIAS NO TOPO ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
     
     links_json = json.dumps(links)
 
-    # Componente HTML/JS unificado com a barra de status contendo todos os botões no topo
+    # Componente HTML/JS unificado com barra de ferramentas avançada
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -142,30 +142,41 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             .botoes-grupo {{
-                display: flex; gap: 8px; align-items: center;
+                display: flex; gap: 6px; align-items: center;
             }}
             .btn-controle {{
                 background: #ffffff; color: #0d5c58; border: none; 
-                height: 28px; padding: 0 12px;
-                border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 700;
+                height: 28px; padding: 0 10px;
+                border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;
                 display: inline-flex; align-items: center; justify-content: center;
-                transition: background 0.2s;
+                transition: background 0.2s, transform 0.1s;
             }}
             .btn-controle:hover {{
                 background: #e2e8f0;
             }}
+            .btn-controle:active {{
+                transform: scale(0.96);
+            }}
+            #btn-pause {{
+                background: #115e59; color: #ffffff; border: 1px solid #2dd4bf;
+            }}
+            #btn-pause.pausado {{
+                background: #b91c1c; color: #ffffff; border-color: #f87171;
+            }}
         </style>
     </head>
     <body>
-        <!-- Barra de controle unificada no topo -->
+        <!-- Barra de controle com todas as melhorias adicionadas -->
         <div id="barra-status">
             <span id="info-texto">Carregando painéis...</span>
             
             <div class="botoes-grupo">
-                <button class="btn-controle" onclick="mudarTela(-1)">⬅️ Anterior</button>
-                <button class="btn-controle" onclick="mudarTela(1)">Próxima ➡️</button>
-                <button class="btn-controle" onclick="voltarConfig()">⚙️ Alterar Links</button>
-                <span id="contador-tempo" style="margin-left: 10px; color: #e2e8f0; font-weight: 500; min-width: 95px;">Próxima em {tempo}s</span>
+                <button class="btn-controle" onclick="mudarTela(-1)" title="Painel Anterior">⬅️ Anterior</button>
+                <button class="btn-controle" onclick="mudarTela(1)" title="Próximo Painel">Próxima ➡️</button>
+                <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
+                <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
+                <button class="btn-controle" onclick="voltarConfig()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
+                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em {tempo}s</span>
             </div>
         </div>
 
@@ -177,15 +188,24 @@ else:
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
+            let estaPausado = false;
+            let tempoRestante = tempoSegundos;
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
+            const btnPause = document.getElementById('btn-pause');
+
+            // Carrega estado anterior se salvo no navegador (LocalStorage)
+            const savedIndex = localStorage.getItem("painel_indice_atual");
+            if (savedIndex !== null && parseInt(savedIndex) < links.length) {{
+                indiceAtual = parseInt(savedIndex);
+            }}
 
             // Cria os iframes antecipadamente para preservar estados e scroll
             links.forEach((link, index) => {{
                 const container = document.createElement('div');
-                container.className = 'iframe-container' + (index === 0 ? ' ativo' : '');
+                container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
                 
                 const iframe = document.createElement('iframe');
                 iframe.src = link;
@@ -222,7 +242,8 @@ else:
                         item.container.classList.remove('ativo');
                     }}
                 }});
-                infoTexto.innerText = "🟢 Painel " + (indiceAtual + 1) + " de " + links.length + " | 💡 F11 Tela Cheia";
+                infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b>";
+                localStorage.setItem("painel_indice_atual", indiceAtual);
             }}
 
             function atualizarPainelAtual() {{
@@ -251,6 +272,30 @@ else:
                 reiniciarTemporizador();
             }}
 
+            function alternarPausa() {{
+                estaPausado = !estaPausado;
+                if (estaPausado) {{
+                    clearInterval(temporizador);
+                    btnPause.innerText = "▶️ Retomar";
+                    btnPause.classList.add("pausado");
+                    contadorTempo.innerText = "⏸️ Pausado";
+                }} else {{
+                    btnPause.innerText = "⏸️ Pausar";
+                    btnPause.classList.remove("pausado");
+                    reiniciarTemporizador();
+                }}
+            }}
+
+            function alternarTelaCheia() {{
+                if (!document.fullscreenElement) {{
+                    document.documentElement.requestFullscreen().catch(err => {{}} );
+                }} else {{
+                    if (document.exitFullscreen) {{
+                        document.exitFullscreen();
+                    }}
+                }}
+            }}
+
             function voltarConfig() {{
                 window.parent.location.reload();
             }}
@@ -259,10 +304,13 @@ else:
 
             function reiniciarTemporizador() {{
                 clearInterval(temporizador);
-                let tempoRestante = tempoSegundos;
+                if (estaPausado) return;
+                
+                tempoRestante = tempoSegundos;
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
 
                 temporizador = setInterval(function() {{
+                    if (estaPausado) return;
                     tempoRestante--;
                     if (tempoRestante < 0) {{
                         irParaProxima();
