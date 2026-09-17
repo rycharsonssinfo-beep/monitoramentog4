@@ -50,11 +50,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicialização das variáveis de sessão
+# Inicialização das variáveis de sessão com os novos 3 links fixos como padrão
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 if "links_salvos" not in st.session_state:
-    st.session_state.links_salvos = "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\nhttps://ssinformatica.g4flex.com.br:9090/admin/report/chat/performance"
+    st.session_state.links_salvos = (
+        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues\n"
+        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\n"
+        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation"
+    )
 if "tempo_salvo" not in st.session_state:
     st.session_state.tempo_salvo = 20
 
@@ -97,7 +101,7 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM TODOS OS CONTROLE NO TOPO ---
+# --- TELA 2: EXIBIÇÃO COM TODOS OS CONTROLES NO TOPO ---
 else:
     links = st.session_state.links
     tempo = st.session_state.tempo
@@ -248,7 +252,6 @@ else:
             }}
 
             function voltarConfig() {{
-                // Força o recarregamento da página do Streamlit no contexto pai para voltar à tela 1
                 window.parent.location.reload();
             }}
 
@@ -275,5 +278,4 @@ else:
     </html>
     """
     
-    # Renderiza o componente fluído preenchendo a tela logo abaixo da barra superior
     st.components.v1.html(html_painel, height=930, scrolling=False)
