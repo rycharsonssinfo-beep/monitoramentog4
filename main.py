@@ -127,7 +127,7 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM PRESERVAÇÃO DE POSIÇÃO E ESTADO ---
+# --- TELA 2: EXIBIÇÃO COM PRESERVAÇÃO NATIVA DE POSIÇÃO ---
 else:
     telas = st.session_state.config_completa_salva
     
@@ -158,15 +158,17 @@ else:
             }}
             #telas-wrapper {{
                 width: 100%; height: calc(100vh - 45px); position: absolute; top: 45px; left: 0;
+                overflow: hidden;
             }}
             .iframe-container {{
                 width: 100%; height: 100%; 
-                display: none;
-                position: absolute; top: 0; left: 0;
+                position: absolute; top: 0; left: -99999px; /* Mantém vivo fora da tela */
+                visibility: hidden;
                 background: #ffffff;
             }}
             .iframe-container.ativo {{
-                display: block;
+                left: 0;
+                visibility: visible;
             }}
             iframe {{
                 width: 100%; height: 100%; border: none; display: block;
@@ -245,25 +247,6 @@ else:
                 
                 const iframe = document.createElement('iframe');
                 iframe.src = link;
-                
-                const scrollKey = "scroll_pos_" + link;
-                
-                iframe.onload = function() {{
-                    try {{
-                        const savedScroll = sessionStorage.getItem(scrollKey);
-                        if (savedScroll) {{
-                            const pos = JSON.parse(savedScroll);
-                            iframe.contentWindow.scrollTo(pos.x, pos.y);
-                        }}
-                        
-                        iframe.contentWindow.addEventListener('scroll', function() {{
-                            sessionStorage.setItem(scrollKey, JSON.stringify({{
-                                x: iframe.contentWindow.scrollX,
-                                y: iframe.contentWindow.scrollY
-                            }}));
-                        }});
-                    }} catch (e) {{}}
-                }};
 
                 container.appendChild(iframe);
                 wrapperDiv.appendChild(container);
@@ -280,36 +263,10 @@ else:
                 }}
             }}
 
-            function salvarScrollAtual() {{
-                const itemAtual = iframes[indiceAtual];
-                const scrollKey = "scroll_pos_" + itemAtual.link;
-                try {{
-                    sessionStorage.setItem(scrollKey, JSON.stringify({{
-                        x: itemAtual.iframe.contentWindow.scrollX,
-                        y: itemAtual.iframe.contentWindow.scrollY
-                    }}));
-                }} catch(e) {{}}
-            }}
-
-            function restaurarScrollAtual() {{
-                const itemAtual = iframes[indiceAtual];
-                const scrollKey = "scroll_pos_" + itemAtual.link;
-                try {{
-                    const savedScroll = sessionStorage.getItem(scrollKey);
-                    if (savedScroll) {{
-                        const pos = JSON.parse(savedScroll);
-                        itemAtual.iframe.contentWindow.scrollTo(pos.x, pos.y);
-                    }}
-                }} catch(e) {{}}
-            }}
-
             function atualizarExibicao() {{
-                salvarScrollAtual();
-                
                 iframes.forEach((item, i) => {{
                     if (i === indiceAtual) {{
                         item.container.classList.add('ativo');
-                        setTimeout(restaurarScrollAtual, 50); // Garante que restaura após exibir
                     }} else {{
                         item.container.classList.remove('ativo');
                     }}
@@ -330,7 +287,6 @@ else:
             }}
 
             function irParaProxima() {{
-                salvarScrollAtual();
                 indiceAtual = (indiceAtual + 1) % links.length;
                 atualizarExibicao();
                 gerenciarAtualizacaoPainelAtual();
@@ -338,7 +294,6 @@ else:
             }}
 
             function mudarTela(direcao) {{
-                salvarScrollAtual();
                 indiceAtual = (indiceAtual + direcao + links.length) % links.length;
                 atualizarExibicao();
                 gerenciarAtualizacaoPainelAtual();
