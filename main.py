@@ -43,72 +43,97 @@ st.markdown("""
             background-color: #094744 !important;
         }
         
-        .stTextArea textarea, .stNumberInput input {
+        .stTextArea textarea {
             border-color: #cbd5e1 !important;
             border-radius: 8px !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Inicialização das variáveis de sessão integrando recuperação inteligente
+# Inicialização das variáveis de sessão com suporte a salvamento persistente no navegador via query/session
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
-if "links_salvos" not in st.session_state:
-    st.session_state.links_salvos = (
-        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues\n"
-        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\n"
-        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation"
-    )
-if "tempo_salvo" not in st.session_state:
-    st.session_state.tempo_salvo = 20
 
-# --- TELA 1: CONFIGURAÇÃO ---
+# Padrão inicial com os 3 links e tempo padrão de 20 segundos para cada caso não especificado
+padrao_links_tempos = (
+    "https://ssinformatica.g4flex.com.br:9090/monitoring/queues | 20\n"
+    "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues | 20\n"
+    "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation | 20"
+)
+
+if "config_texto_salva" not in st.session_state:
+    st.session_state.config_texto_salva = padrao_links_tempos
+
+# --- TELA 1: CONFIGURAÇÃO COM SUPORTE A TEMPO POR LINK E SALVAMENTO ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 14px; margin-top: -5px;'>Insira os links dos painéis que deseja rotacionar na tela de suporte.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira o link seguido de <b>| [segundos]</b> para definir tempos diferentes por tela. Exemplo: <code>https://site.com | 15</code></p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
-        links_texto = st.text_area(
-            "Links das páginas (um por linha):",
-            value=st.session_state.links_salvos,
-            height=150
-        )
-        
-        tempo_segundos = st.number_input(
-            "Tempo de exibição de cada tela (segundos):",
-            min_value=5,
-            max_value=300,
-            value=st.session_state.tempo_salvo,
-            step=5
+        config_texto = st.text_area(
+            "Links e Tempos (um por linha):",
+            value=st.session_state.config_texto_salva,
+            height=180
         )
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        if st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True):
-            lista_links = [l.strip() for l in links_texto.split("\n") if l.strip()]
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            btn_salvar = st.button("💾 Salvar Configuração", use_container_width=True)
             
-            if not lista_links:
-                st.error("Por favor, insira pelo menos um link válido.")
-            else:
-                st.session_state.links_salvos = links_texto
-                st.session_state.tempo_salvo = tempo_segundos
-                st.session_state.links = lista_links
-                st.session_state.tempo = tempo_segundos
-                st.session_state.iniciado = True
-                st.rerun()
+        with col_btn2:
+            btn_iniciar = st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True)
+            
+        if btn_salvar:
+            st.session_state.config_texto_salva = config_texto
+            st.success("✅ Configurações salvas com sucesso!")
+            
+        if btn_iniciar or btn_salvar:
+            if btn_iniciar:
+                linhas = [l.strip() for l in config_texto.split("\n") if l.strip()]
+                lista_dados = []
+                
+                for linha in linhas:
+                    if "|" in linha:
+                        partes = linha.split("|")
+                        link = partes[0].strip()
+                        try:
+                            tempo = int(partes[1].strip())
+                        except ValueError:
+                            tempo = 20 # Padrão caso o usuário digite errado
+                    else:
+                        link = linha.strip()
+                        tempo = 20
+                    
+                    if link:
+                        lista_dados.append({"link": link, "tempo": tempo})
+                
+                if not lista_dados:
+                    st.error("Por favor, insira pelo menos um link válido.")
+                else:
+                    st.session_state.config_texto_salva = config_texto
+                    st.session_state.telas_configuradas = lista_dados
+                    st.session_state.iniciado = True
+                    st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM TODAS AS MELHORIAS NO TOPO ---
+# --- TELA 2: EXIBIÇÃO COM TEMPOS INDIVIDUAIS E TODAS AS MELHORIAS ---
 else:
-    links = st.session_state.links
-    tempo = st.session_state.tempo
+    telas = st.session_state.telas_configuradas
     
-    links_json = json.dumps(links)
+    # Prepara listas para o JavaScript
+    links_lista = [t["link"] for t in telas]
+    tempos_lista = [t["tempo"] for t in telas]
+    
+    links_json = json.dumps(links_lista)
+    tempos_json = json.dumps(tempos_lista)
 
-    # Componente HTML/JS unificado com barra de ferramentas avançada
+    # Componente HTML/JS avançado com suporte a temporizadores individuais por tela
     html_painel = f"""
     <!DOCTYPE html>
     <html>
@@ -166,7 +191,6 @@ else:
         </style>
     </head>
     <body>
-        <!-- Barra de controle com todas as melhorias adicionadas -->
         <div id="barra-status">
             <span id="info-texto">Carregando painéis...</span>
             
@@ -176,7 +200,7 @@ else:
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
                 <button class="btn-controle" onclick="voltarConfig()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
-                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em {tempo}s</span>
+                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
             </div>
         </div>
 
@@ -184,25 +208,23 @@ else:
 
         <script>
             const links = {links_json};
-            const tempoSegundos = {tempo};
+            const tempos = {tempos_json};
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
             let estaPausado = false;
-            let tempoRestante = tempoSegundos;
+            let tempoRestante = 20;
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
             const btnPause = document.getElementById('btn-pause');
 
-            // Carrega estado anterior se salvo no navegador (LocalStorage)
             const savedIndex = localStorage.getItem("painel_indice_atual");
             if (savedIndex !== null && parseInt(savedIndex) < links.length) {{
                 indiceAtual = parseInt(savedIndex);
             }}
 
-            // Cria os iframes antecipadamente para preservar estados e scroll
             links.forEach((link, index) => {{
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
@@ -242,7 +264,7 @@ else:
                         item.container.classList.remove('ativo');
                     }}
                 }});
-                infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b>";
+                infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b> - " + tempos[indiceAtual] + "s";
                 localStorage.setItem("painel_indice_atual", indiceAtual);
             }}
 
@@ -306,7 +328,8 @@ else:
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
-                tempoRestante = tempoSegundos;
+                // Pega o tempo específico configurado para esta tela atual
+                tempoRestante = tempos[indiceAtual];
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
 
                 temporizador = setInterval(function() {{
