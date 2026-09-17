@@ -50,7 +50,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inicialização das variáveis de sessão com os valores padrão salvos
+# Inicialização das variáveis de sessão padrão
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 
@@ -62,32 +62,61 @@ padrao_links = (
 
 if "links_texto_salvo" not in st.session_state:
     st.session_state.links_texto_salvo = padrao_links
-if "tempo_salvo" not in st.session_state:
-    st.session_state.tempo_salvo = 20
 
-# --- TELA 1: CONFIGURAÇÃO LIMPA E PRÁTICA ---
+if "tempos_salvos" not in st.session_state:
+    # Dicionário padrão de tempos para cada link inicial
+    st.session_state.tempos_salvos = {
+        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": 20,
+        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": 20,
+        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
+    }
+
+if "config_completa_salva" not in st.session_state:
+    st.session_state.config_completa_salva = [
+        {"link": "https://ssinformatica.g4flex.com.br:9090/monitoring/queues", "tempo": 20},
+        {"link": "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues", "tempo": 20},
+        {"link": "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation", "tempo": 20}
+    ]
+
+# --- TELA 1: CONFIGURAÇÃO INTELIGENTE ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links dos painéis que deseja rotacionar e defina o tempo de exibição abaixo.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links abaixo. O sistema criará automaticamente seletores de tempo individuais para cada um.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
             value=st.session_state.links_texto_salvo,
-            height=140
+            height=120
         )
         
-        tempo_segundos = st.number_input(
-            "Tempo de exibição de cada tela (segundos):",
-            min_value=5,
-            max_value=300,
-            value=st.session_state.tempo_salvo,
-            step=5
-        )
+        # Extrai os links digitados para gerar os campos de tempo dinamicamente
+        links_atuais = [l.strip() for l in links_texto.split("\n") if l.strip()]
+        
+        st.markdown("<p style='font-weight: 600; font-size: 14px; margin-top: 15px;'>⏱️ Tempo de exibição por link (segundos):</p>", unsafe_allow_html=True)
+        
+        tempos_temporarios = {}
+        
+        # Cria uma linha/seletor bonito para cada link detectado
+        for i, link in enumerate(links_atuais):
+            # Encurta o link visualmente para ficar elegante na label
+            link_curto = link.split("//")[-1]
+            if len(link_curto) > 50:
+                link_curto = link_curto[:47] + "..."
+                
+            tempo_atual = st.session_state.tempos_salvos.get(link, 20)
+            tempos_temporarios[link] = st.number_input(
+                f"Painel {i+1}: {link_curto}",
+                min_value=5,
+                max_value=300,
+                value=tempo_atual,
+                step=5,
+                key=f"tempo_input_{i}"
+            )
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -99,31 +128,37 @@ if not st.session_state.iniciado:
         with col_btn2:
             btn_iniciar = st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True)
             
-        if btn_salvar:
-            st.session_state.links_texto_salvo = links_texto
-            st.session_state.tempo_salvo = tempo_segundos
-            st.success("✅ Configurações salvas com sucesso!")
-            
-        if btn_iniciar or btn_salvar:
-            if btn_iniciar:
-                lista_links = [l.strip() for l in links_texto.split("\n") if l.strip()]
+        if btn_salvar or btn_iniciar:
+            if not links_atuais:
+                st.error("Por favor, insira pelo menos um link válido.")
+            else:
+                # Monta a estrutura final consolidada
+                lista_final = []
+                for link in links_atuais:
+                    t = tempos_temporarios.get(link, 20)
+                    lista_final.append({"link": link, "tempo": t})
                 
-                if not lista_links:
-                    st.error("Por favor, insira pelo menos um link válido.")
-                else:
-                    st.session_state.links_texto_salvo = links_texto
-                    st.session_state.tempo_salvo = tempo_segundos
-                    st.session_state.links = lista_links
-                    st.session_state.tempo = tempo_segundos
+                # Salva nas variáveis de sessão para persistir
+                st.session_state.links_texto_salvo = links_texto
+                st.session_state.tempos_salvos = tempos_temporarios
+                st.session_state.config_completa_salva = lista_final
+                
+                if btn_salvar:
+                    st.success("✅ Configurações salvas com sucesso! Agora basta clicar em 'Iniciar Apresentação'.")
+                
+                if btn_iniciar:
                     st.session_state.iniciado = True
                     st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM TODAS AS MELHORIAS ---
+# --- TELA 2: EXIBIÇÃO COM TEMPOS INDIVIDUAIS E TODAS AS MELHORIAS ---
 else:
-    links = st.session_state.links
-    tempo = st.session_state.tempo
+    telas = st.session_state.config_completa_salva
     
-    links_json = json.dumps(links)
+    links_lista = [t["link"] for t in telas]
+    tempos_lista = [t["tempo"] for t in telas]
+    
+    links_json = json.dumps(links_lista)
+    tempos_json = json.dumps(tempos_lista)
 
     html_painel = f"""
     <!DOCTYPE html>
@@ -191,7 +226,7 @@ else:
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
                 <button class="btn-controle" onclick="voltarConfig()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
-                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em {tempo}s</span>
+                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
             </div>
         </div>
 
@@ -199,12 +234,12 @@ else:
 
         <script>
             const links = {links_json};
-            const tempoSegundos = {tempo};
+            const tempos = {tempos_json};
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
             let estaPausado = false;
-            let tempoRestante = tempoSegundos;
+            let tempoRestante = 20;
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
@@ -255,7 +290,7 @@ else:
                         item.container.classList.remove('ativo');
                     }}
                 }});
-                infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b>";
+                infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b> - " + tempos[indiceAtual] + "s";
                 localStorage.setItem("painel_indice_atual", indiceAtual);
             }}
 
@@ -319,7 +354,7 @@ else:
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
-                tempoRestante = tempoSegundos;
+                tempoRestante = tempos[indiceAtual];
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
 
                 temporizador = setInterval(function() {{
