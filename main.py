@@ -118,7 +118,6 @@ if not st.session_state.iniciado:
                 lista_final = []
                 for link in links_atuais:
                     t = tempos_temporarios.get(link, 20)
-                    # Por padrão, se não definido, o recarregamento vem ativado (True)
                     recarregar = st.session_state.recarregar_salvo.get(link, True)
                     lista_final.append({"link": link, "tempo": t, "recarregar": recarregar})
                 
@@ -128,7 +127,7 @@ if not st.session_state.iniciado:
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM CONTROLE DE RECARREGAMENTO INDIVIDUAL ---
+# --- TELA 2: EXIBIÇÃO COM PRESERVAÇÃO DE POSIÇÃO E ESTADO ---
 else:
     telas = st.session_state.config_completa_salva
     
@@ -281,14 +280,41 @@ else:
                 }}
             }}
 
+            function salvarScrollAtual() {{
+                const itemAtual = iframes[indiceAtual];
+                const scrollKey = "scroll_pos_" + itemAtual.link;
+                try {{
+                    sessionStorage.setItem(scrollKey, JSON.stringify({{
+                        x: itemAtual.iframe.contentWindow.scrollX,
+                        y: itemAtual.iframe.contentWindow.scrollY
+                    }}));
+                }} catch(e) {{}}
+            }}
+
+            function restaurarScrollAtual() {{
+                const itemAtual = iframes[indiceAtual];
+                const scrollKey = "scroll_pos_" + itemAtual.link;
+                try {{
+                    const savedScroll = sessionStorage.getItem(scrollKey);
+                    if (savedScroll) {{
+                        const pos = JSON.parse(savedScroll);
+                        itemAtual.iframe.contentWindow.scrollTo(pos.x, pos.y);
+                    }}
+                }} catch(e) {{}}
+            }}
+
             function atualizarExibicao() {{
+                salvarScrollAtual();
+                
                 iframes.forEach((item, i) => {{
                     if (i === indiceAtual) {{
                         item.container.classList.add('ativo');
+                        setTimeout(restaurarScrollAtual, 50); // Garante que restaura após exibir
                     }} else {{
                         item.container.classList.remove('ativo');
                     }}
                 }});
+                
                 infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b> - " + tempos[indiceAtual] + "s";
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_indice_atual", indiceAtual);
@@ -297,21 +323,14 @@ else:
             function gerenciarAtualizacaoPainelAtual() {{
                 const itemAtual = iframes[indiceAtual];
                 
-                // Se a opção de recarregar estiver ativa para este painel, damos o refresh (F5)
+                // Só recarrega se o botão de atualizar estiver ligado (ON) para este painel
                 if (deveRecarregar[indiceAtual]) {{
-                    const scrollKey = "scroll_pos_" + itemAtual.link;
-                    try {{
-                        sessionStorage.setItem(scrollKey, JSON.stringify({{
-                            x: itemAtual.iframe.contentWindow.scrollX,
-                            y: itemAtual.iframe.contentWindow.scrollY
-                        }}));
-                    }} catch(e) {{}}
-                    
                     itemAtual.iframe.src = itemAtual.link;
                 }}
             }}
 
             function irParaProxima() {{
+                salvarScrollAtual();
                 indiceAtual = (indiceAtual + 1) % links.length;
                 atualizarExibicao();
                 gerenciarAtualizacaoPainelAtual();
@@ -319,6 +338,7 @@ else:
             }}
 
             function mudarTela(direcao) {{
+                salvarScrollAtual();
                 indiceAtual = (indiceAtual + direcao + links.length) % links.length;
                 atualizarExibicao();
                 gerenciarAtualizacaoPainelAtual();
