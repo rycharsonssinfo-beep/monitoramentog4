@@ -69,6 +69,13 @@ if "tempos_salvos" not in st.session_state:
         "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
     }
 
+if "nomes_salvos" not in st.session_state:
+    st.session_state.nomes_salvos = {
+        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": "Fila de Voz / Zoiper",
+        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": "Grade de Filas Chat",
+        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": "Dados Sintéticos de Monitoramento"
+    }
+
 if "recarregar_salvo" not in st.session_state:
     st.session_state.recarregar_salvo = {}
 
@@ -79,7 +86,7 @@ if not st.session_state.iniciado:
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links e defina o tempo de exibição de cada um abaixo.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links, defina os nomes personalizados e o tempo de exibição abaixo.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
         links_texto = st.text_area(
@@ -90,24 +97,39 @@ if not st.session_state.iniciado:
         
         links_atuais = [l.strip() for l in links_texto.split("\n") if l.strip()]
         
-        st.markdown("<p style='font-weight: 600; font-size: 14px; margin-top: 15px;'>⏱️ Tempo de exibição por link (segundos):</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight: 600; font-size: 14px; margin-top: 15px;'>⚙️ Personalização dos Painéis (Nome e Tempo):</p>", unsafe_allow_html=True)
         
         tempos_temporarios = {}
+        nomes_temporarios = {}
+        
+        # Nomes padrão sugeridos com base na ordem
+        nomes_padrao_lista = [
+            "Fila de Voz / Zoiper",
+            "Grade de Filas Chat",
+            "Dados Sintéticos de Monitoramento"
+        ]
         
         for i, link in enumerate(links_atuais):
-            link_curto = link.split("//")[-1]
-            if len(link_curto) > 50:
-                link_curto = link_curto[:47] + "..."
-                
-            tempo_atual = st.session_state.tempos_salvos.get(link, 20)
-            tempos_temporarios[link] = st.number_input(
-                f"Painel {i+1}: {link_curto}",
-                min_value=5,
-                max_value=300,
-                value=int(tempo_atual),
-                step=5,
-                key=f"tempo_input_{i}"
-            )
+            nome_sugerido = nomes_padrao_lista[i] if i < len(nomes_padrao_lista) else f"Painel {i+1}"
+            nome_atual = st.session_state.nomes_salvos.get(link, nome_sugerido)
+            
+            col_a, col_b = st.columns([2, 1])
+            with col_a:
+                nomes_temporarios[link] = st.text_input(
+                    f"Nome do Painel {i+1}",
+                    value=nome_atual,
+                    key=f"nome_input_{i}"
+                )
+            with col_b:
+                tempo_atual = st.session_state.tempos_salvos.get(link, 20)
+                tempos_temporarios[link] = st.number_input(
+                    f"Tempo (s) {i+1}",
+                    min_value=5,
+                    max_value=300,
+                    value=int(tempo_atual),
+                    step=5,
+                    key=f"tempo_input_{i}"
+                )
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -118,25 +140,29 @@ if not st.session_state.iniciado:
                 lista_final = []
                 for link in links_atuais:
                     t = tempos_temporarios.get(link, 20)
+                    n = nomes_temporarios.get(link, "Painel")
                     recarregar = st.session_state.recarregar_salvo.get(link, True)
-                    lista_final.append({"link": link, "tempo": t, "recarregar": recarregar})
+                    lista_final.append({"link": link, "tempo": t, "nome": n, "recarregar": recarregar})
                 
                 st.session_state.links_texto_salvo = links_texto
                 st.session_state.tempos_salvos = tempos_temporarios
+                st.session_state.nomes_salvos = nomes_temporarios
                 st.session_state.config_completa_salva = lista_final
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM PRESERVAÇÃO NATIVA DE POSIÇÃO ---
+# --- TELA 2: EXIBIÇÃO COM NOMES AMIGÁVEIS E BARRA DE PROGRESSO ---
 else:
     telas = st.session_state.config_completa_salva
     
     links_lista = [t["link"] for t in telas]
     tempos_lista = [t["tempo"] for t in telas]
+    nomes_lista = [t["nome"] for t in telas]
     recarregar_lista = [t.get("recarregar", True) for t in telas]
     
     links_json = json.dumps(links_lista)
     tempos_json = json.dumps(tempos_lista)
+    nomes_json = json.dumps(nomes_lista)
     recarregar_json = json.dumps(recarregar_lista)
 
     html_painel = f"""
@@ -156,13 +182,22 @@ else:
                 position: fixed; top: 0; left: 0; z-index: 9999;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             }}
+            #barra-progresso-container {{
+                position: fixed; top: 45px; left: 0; width: 100%; height: 4px;
+                background: #094744; z-index: 9999;
+            }}
+            #barra-progresso {{
+                width: 100%; height: 100%; background: #2dd4bf;
+                transform-origin: left; transform: scaleX(1);
+                transition: transform 1s linear;
+            }}
             #telas-wrapper {{
-                width: 100%; height: calc(100vh - 45px); position: absolute; top: 45px; left: 0;
+                width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
                 overflow: hidden;
             }}
             .iframe-container {{
                 width: 100%; height: 100%; 
-                position: absolute; top: 0; left: -99999px; /* Mantém vivo fora da tela */
+                position: absolute; top: 0; left: -99999px;
                 visibility: hidden;
                 background: #ffffff;
             }}
@@ -218,21 +253,28 @@ else:
             </div>
         </div>
 
+        <div id="barra-progresso-container">
+            <div id="barra-progresso"></div>
+        </div>
+
         <div id="telas-wrapper"></div>
 
         <script>
             const links = {links_json};
             const tempos = {tempos_json};
+            const nomes = {nomes_json};
             let deveRecarregar = {recarregar_json};
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
             let estaPausado = false;
             let tempoRestante = 20;
+            let tempoTotalPainel = 20;
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
+            const barraProgresso = document.getElementById('barra-progresso');
             const btnPause = document.getElementById('btn-pause');
             const btnReloadToggle = document.getElementById('btn-reload-toggle');
 
@@ -263,6 +305,11 @@ else:
                 }}
             }}
 
+            function atualizarBarraProgresso(progresso) {{
+                barraProgresso.style.transition = 'transform 1s linear';
+                barraProgresso.style.transform = 'scaleX(' + progresso + ')';
+            }}
+
             function atualizarExibicao() {{
                 iframes.forEach((item, i) => {{
                     if (i === indiceAtual) {{
@@ -272,15 +319,14 @@ else:
                     }}
                 }});
                 
-                infoTexto.innerHTML = "🟢 Painel <b>(" + (indiceAtual + 1) + "/" + links.length + ")</b> - " + tempos[indiceAtual] + "s";
+                const nomePainel = nomes[indiceAtual] || ("Painel " + (indiceAtual + 1));
+                infoTexto.innerHTML = "🟢 <b>" + nomePainel + "</b> <i>(" + (indiceAtual + 1) + "/" + links.length + ")</i> - " + tempos[indiceAtual] + "s";
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_indice_atual", indiceAtual);
             }}
 
             function gerenciarAtualizacaoPainelAtual() {{
                 const itemAtual = iframes[indiceAtual];
-                
-                // Só recarrega se o botão de atualizar estiver ligado (ON) para este painel
                 if (deveRecarregar[indiceAtual]) {{
                     itemAtual.iframe.src = itemAtual.link;
                 }}
@@ -312,6 +358,7 @@ else:
                     btnPause.innerText = "▶️ Retomar";
                     btnPause.classList.add("pausado");
                     contadorTempo.innerText = "⏸️ Pausado";
+                    barraProgresso.style.transition = 'none'; // congela barra
                 }} else {{
                     btnPause.innerText = "⏸️ Pausar";
                     btnPause.classList.remove("pausado");
@@ -339,8 +386,22 @@ else:
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
-                tempoRestante = tempos[indiceAtual];
+                tempoTotalPainel = tempos[indiceAtual];
+                tempoRestante = tempoTotalPainel;
+                
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                
+                // Reseta a barra para cheia instantaneamente
+                barraProgresso.style.transition = 'none';
+                barraProgresso.style.transform = 'scaleX(1)';
+                
+                // Força reflow e aplica a transição gradual
+                setTimeout(() => {{
+                    if (!estaPausado) {{
+                        barraProgresso.style.transition = 'transform ' + tempoTotalPainel + 's linear';
+                        barraProgresso.style.transform = 'scaleX(0)';
+                    }}
+                }}, 50);
 
                 temporizador = setInterval(function() {{
                     if (estaPausado) return;
