@@ -59,40 +59,26 @@ padrao_links = (
     "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation"
 )
 
-# --- TELA 1: CONFIGURAÇÃO COM PERSISTÊNCIA VIA JS (LOCALSTORAGE) ---
+if "links_texto_salvo" not in st.session_state:
+    st.session_state.links_texto_salvo = padrao_links
+
+if "tempos_salvos" not in st.session_state:
+    st.session_state.tempos_salvos = {
+        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": 20,
+        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": 20,
+        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
+    }
+
+# --- TELA 1: CONFIGURAÇÃO SIMPLIFICADA ---
 if not st.session_state.iniciado:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links e defina o tempo de exibição de cada um abaixo. Suas alterações ficam salvas no navegador.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links e defina o tempo de exibição de cada um abaixo.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Componente invisível em JS para recuperar os dados salvos no navegador antes de desenhar a tela
-        st.components.v1.html("""
-        <script>
-            try {
-                const salvoLinks = localStorage.getItem("app_links_texto");
-                const salvoTempos = localStorage.getItem("app_tempos_json");
-                if (salvoLinks && window.parent.document.querySelector("textarea")) {
-                    // Comunica com o Streamlit se necessário ou injeta valores recuperados
-                }
-            } catch(e) {}
-        </script>
-        """, height=0)
-
-        # Recupera do session_state ou define o padrão
-        if "links_texto_salvo" not in st.session_state:
-            st.session_state.links_texto_salvo = padrao_links
-            
-        if "tempos_salvos" not in st.session_state:
-            st.session_state.tempos_salvos = {
-                "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": 20,
-                "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": 20,
-                "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
-            }
-
         links_texto = st.text_area(
             "Links das páginas (um por linha):",
             value=st.session_state.links_texto_salvo,
@@ -122,16 +108,7 @@ if not st.session_state.iniciado:
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        col_btn1, col_btn2 = st.columns(2)
-        
-        with col_btn1:
-            btn_salvar = st.button("💾 Salvar Configuração", use_container_width=True)
-            
-        with col_btn2:
-            btn_iniciar = st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True)
-            
-        # Injeção de script para salvar no LocalStorage do navegador ao clicar em salvar ou iniciar
-        if btn_salvar or btn_iniciar:
+        if st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True):
             if not links_atuais:
                 st.error("Por favor, insira pelo menos um link válido.")
             else:
@@ -143,22 +120,8 @@ if not st.session_state.iniciado:
                 st.session_state.links_texto_salvo = links_texto
                 st.session_state.tempos_salvos = tempos_temporarios
                 st.session_state.config_completa_salva = lista_final
-                
-                # Salva permanentemente no LocalStorage do navegador
-                tempos_json_str = json.dumps(tempos_temporarios)
-                st.components.v1.html(f"""
-                <script>
-                    localStorage.setItem("app_links_texto", {json.dumps(links_texto)});
-                    localStorage.setItem("app_tempos_json", {json.dumps(tempos_json_str)});
-                </script>
-                """, height=0)
-                
-                if btn_salvar:
-                    st.success("✅ Configurações salvas permanentemente no navegador!")
-                
-                if btn_iniciar:
-                    st.session_state.iniciado = True
-                    st.rerun()
+                st.session_state.iniciado = True
+                st.rerun()
 
 # --- TELA 2: EXIBIÇÃO COM TEMPOS INDIVIDUAIS E TODAS AS MELHORIAS ---
 else:
