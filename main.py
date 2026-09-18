@@ -170,7 +170,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO HÍBRIDO ---
+# --- TELA 2: EXIBIÇÃO TRADICIONAL EM ROTAÇÃO DE TELA CHEIA ---
 else:
     telas = st.session_state.paineis_config
     
@@ -214,7 +214,7 @@ else:
             }
             #telas-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                overflow: hidden;
+                overflow: hidden; background: #ffffff;
             }
             .iframe-container {
                 width: 100%; height: 100%; 
@@ -229,53 +229,6 @@ else:
             .iframe-container iframe {
                 width: 100%; height: 100%; border: none; display: block;
             }
-            
-            /* Mosaico Híbrido com proporção 1fr (Esquerda) e 2fr (Direita) */
-            #mosaico-wrapper {
-                width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: 1fr 2fr;
-                gap: 8px; padding: 8px; background: #e2e8f0; overflow: hidden; z-index: 999;
-            }
-            #mosaico-wrapper.ativo {
-                display: grid;
-            }
-            .mosaico-card {
-                background: #ffffff; border-radius: 6px; overflow: hidden;
-                display: flex; flex-direction: column; border: 1px solid #cbd5e1;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.08); height: 100%; width: 100%;
-            }
-            .mosaico-header {
-                background: #0d5c58; color: #ffffff; padding: 6px 10px;
-                font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
-                flex-shrink: 0; height: 32px;
-            }
-            .mosaico-body {
-                flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
-            }
-            
-            /* Escalas ajustadas com precisão para encaixar perfeitamente */
-            #iframe-esq-container iframe {
-                width: 1920px;
-                height: 1080px;
-                border: none;
-                transform: scale(0.36);
-                transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
-
-            #iframe-dir-container iframe {
-                width: 1920px;
-                height: 1080px;
-                border: none;
-                transform: scale(0.73);
-                transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
-
             .botoes-grupo {
                 display: flex; gap: 6px; align-items: center;
             }
@@ -306,12 +259,6 @@ else:
             #btn-reload-toggle.desativado {
                 background: #7f1d1d; color: #fca5a5; border-color: #f87171;
             }
-            #btn-mosaico {
-                background: #0f766e; color: #ffffff; border: 1px solid #2dd4bf;
-            }
-            #btn-mosaico.ativo {
-                background: #b91c1c; color: #ffffff; border-color: #f87171;
-            }
         </style>
     </head>
     <body>
@@ -323,7 +270,6 @@ else:
                 <button class="btn-controle" onclick="mudarTela(1)" title="Próximo Painel">Próxima ➡️</button>
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 nesta tela">🔄 Atualizar: ON</button>
-                <button class="btn-controle" id="btn-mosaico" onclick="alternarMosaico()" title="Exibir modo híbrido ou individual">🪟 Mosaico</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
                 <button class="btn-controle" onclick="irParaAjustes()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
                 <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
@@ -335,7 +281,6 @@ else:
         </div>
 
         <div id="telas-wrapper"></div>
-        <div id="mosaico-wrapper"></div>
 
         <script>
             const links = """ + links_json + """;
@@ -346,7 +291,6 @@ else:
             let iframes = [];
             let temporizador;
             let estaPausado = false;
-            let modoMosaicoAtivo = false;
             let tempoRestante = 20;
             let tempoTotalPainel = 20;
             const intervaloLimpezaMs = """ + str(intervalo_limpeza_ms) + """;
@@ -355,32 +299,16 @@ else:
             let deveRecarregar = savedRecarregar ? JSON.parse(savedRecarregar) : [...deveRecarregarPadrao];
 
             const wrapperDiv = document.getElementById('telas-wrapper');
-            const mosaicoDiv = document.getElementById('mosaico-wrapper');
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
             const barraProgresso = document.getElementById('barra-progresso');
             const btnPause = document.getElementById('btn-pause');
             const btnReloadToggle = document.getElementById('btn-reload-toggle');
-            const btnMosaico = document.getElementById('btn-mosaico');
-            const barraProgressoContainer = document.getElementById('barra-progresso-container');
 
             const savedIndex = localStorage.getItem("painel_indice_atual");
             if (savedIndex !== null && parseInt(savedIndex) < links.length) {
                 indiceAtual = parseInt(savedIndex);
             }
-
-            let indiceDadosSinteticos = nomes.findIndex(n => n.toLowerCase().includes("dados sintéticos") || n.toLowerCase().includes("sintéticos"));
-            if (indiceDadosSinteticos === -1) indiceDadosSinteticos = links.length > 2 ? 2 : 0;
-
-            let indicesEsquerda = [];
-            nomes.forEach((n, idx) => {
-                if (idx !== indiceDadosSinteticos) {
-                    indicesEsquerda.push(idx);
-                }
-            });
-            if (indicesEsquerda.length === 0) indicesEsquerda = [0];
-
-            let indiceEsqAtual = 0;
 
             links.forEach((link, index) => {
                 const container = document.createElement('div');
@@ -391,46 +319,6 @@ else:
                 wrapperDiv.appendChild(container);
                 iframes.push({ container: container, iframe: iframe, link: link });
             });
-
-            const cardEsq = document.createElement('div');
-            cardEsq.className = 'mosaico-card';
-            
-            const headerEsq = document.createElement('div');
-            headerEsq.className = 'mosaico-header';
-            headerEsq.id = 'mosaico-header-esq';
-            headerEsq.innerHTML = '🟢 ' + (nomes[indicesEsquerda[0]] || 'Painel');
-            
-            const bodyEsq = document.createElement('div');
-            bodyEsq.className = 'mosaico-body';
-            bodyEsq.id = 'iframe-esq-container';
-            
-            const iframeEsq = document.createElement('iframe');
-            iframeEsq.id = 'iframe-esq-ativo';
-            iframeEsq.src = links[indicesEsquerda[0]];
-            bodyEsq.appendChild(iframeEsq);
-            
-            cardEsq.appendChild(headerEsq);
-            cardEsq.appendChild(bodyEsq);
-            mosaicoDiv.appendChild(cardEsq);
-
-            const cardDir = document.createElement('div');
-            cardDir.className = 'mosaico-card';
-            
-            const headerDir = document.createElement('div');
-            headerDir.className = 'mosaico-header';
-            headerDir.innerHTML = '🟢 ' + (nomes[indiceDadosSinteticos] || 'Dados Sintéticos de Monitoramento');
-            
-            const bodyDir = document.createElement('div');
-            bodyDir.className = 'mosaico-body';
-            bodyDir.id = 'iframe-dir-container';
-            
-            const iframeDir = document.createElement('iframe');
-            iframeDir.src = links[indiceDadosSinteticos];
-            bodyDir.appendChild(iframeDir);
-            
-            cardDir.appendChild(headerDir);
-            cardDir.appendChild(bodyDir);
-            mosaicoDiv.appendChild(cardDir);
 
             if (intervaloLimpezaMs > 0) {
                 setTimeout(function() {
@@ -447,25 +335,16 @@ else:
             }
 
             function atualizarBotaoRecarregarUI() {
-                if (modoMosaicoAtivo) {
-                    btnReloadToggle.style.display = "none";
-                    contadorTempo.style.display = "none";
+                if (deveRecarregar[indiceAtual]) {
+                    btnReloadToggle.innerText = "🔄 Atualizar: ON";
+                    btnReloadToggle.classList.remove("desativado");
                 } else {
-                    btnReloadToggle.style.display = "inline-flex";
-                    contadorTempo.style.display = "inline-block";
-                    if (deveRecarregar[indiceAtual]) {
-                        btnReloadToggle.innerText = "🔄 Atualizar: ON";
-                        btnReloadToggle.classList.remove("desativado");
-                    } else {
-                        btnReloadToggle.innerText = "🔒 Atualizar: OFF";
-                        btnReloadToggle.classList.add("desativado");
-                    }
+                    btnReloadToggle.innerText = "🔒 Atualizar: OFF";
+                    btnReloadToggle.classList.add("desativado");
                 }
             }
 
             function atualizarExibicao() {
-                if (modoMosaicoAtivo) return;
-                
                 iframes.forEach((item, i) => {
                     if (i === indiceAtual) {
                         item.container.classList.add('ativo');
@@ -481,7 +360,6 @@ else:
             }
 
             function gerenciarAtualizacaoPainelAtual() {
-                if (modoMosaicoAtivo) return;
                 const itemAtual = iframes[indiceAtual];
                 if (deveRecarregar[indiceAtual]) {
                     itemAtual.iframe.src = itemAtual.link;
@@ -489,62 +367,23 @@ else:
             }
 
             function irParaProxima() {
-                if (modoMosaicoAtivo) {
-                    indiceEsqAtual = (indiceEsqAtual + 1) % indicesEsquerda.length;
-                    let realIdx = indicesEsquerda[indiceEsqAtual];
-                    iframeEsq.src = links[realIdx];
-                    headerEsq.innerHTML = '🟢 ' + (nomes[realIdx] || 'Painel');
-                    reiniciarTemporizador();
-                } else {
-                    indiceAtual = (indiceAtual + 1) % links.length;
-                    atualizarExibicao();
-                    gerenciarAtualizacaoPainelAtual();
-                    reiniciarTemporizador();
-                }
+                indiceAtual = (indiceAtual + 1) % links.length;
+                atualizarExibicao();
+                gerenciarAtualizacaoPainelAtual();
+                reiniciarTemporizador();
             }
 
             function mudarTela(direcao) {
-                if (modoMosaicoAtivo) {
-                    indiceEsqAtual = (indiceEsqAtual + direcao + indicesEsquerda.length) % indicesEsquerda.length;
-                    let realIdx = indicesEsquerda[indiceEsqAtual];
-                    iframeEsq.src = links[realIdx];
-                    headerEsq.innerHTML = '🟢 ' + (nomes[realIdx] || 'Painel');
-                    reiniciarTemporizador();
-                } else {
-                    indiceAtual = (indiceAtual + direcao + links.length) % links.length;
-                    atualizarExibicao();
-                    gerenciarAtualizacaoPainelAtual();
-                    reiniciarTemporizador();
-                }
+                indiceAtual = (indiceAtual + direcao + links.length) % links.length;
+                atualizarExibicao();
+                gerenciarAtualizacaoPainelAtual();
+                reiniciarTemporizador();
             }
 
             function alternarRecarregamento() {
-                if (modoMosaicoAtivo) return;
                 deveRecarregar[indiceAtual] = !deveRecarregar[indiceAtual];
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_recarregar_estados", JSON.stringify(deveRecarregar));
-            }
-
-            function alternarMosaico() {
-                modoMosaicoAtivo = !modoMosaicoAtivo;
-                if (modoMosaicoAtivo) {
-                    wrapperDiv.style.display = 'none';
-                    mosaicoDiv.classList.add('ativo');
-                    barraProgressoContainer.style.display = 'block';
-                    btnMosaico.innerText = "📊 Individual";
-                    btnMosaico.classList.add("ativo");
-                    infoTexto.innerHTML = "🪟 <b>Modo Mosaico Híbrido</b> (Esquerda: Filas em rotação | Direita: Dados Sintéticos Fixo)";
-                    atualizarBotaoRecarregarUI();
-                    reiniciarTemporizador();
-                } else {
-                    wrapperDiv.style.display = 'block';
-                    mosaicoDiv.classList.remove('ativo');
-                    barraProgressoContainer.style.display = 'block';
-                    btnMosaico.innerText = "🪟 Mosaico";
-                    btnMosaico.classList.remove("ativo");
-                    atualizarExibicao();
-                    reiniciarTemporizador();
-                }
             }
 
             function alternarPausa() {
@@ -578,13 +417,7 @@ else:
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
-                if (modoMosaicoAtivo) {
-                    let realIdx = indicesEsquerda[indiceEsqAtual];
-                    tempoTotalPainel = tempos[realIdx] || 20;
-                } else {
-                    tempoTotalPainel = tempos[indiceAtual];
-                }
-                
+                tempoTotalPainel = tempos[indiceAtual];
                 tempoRestante = tempoTotalPainel;
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
                 
