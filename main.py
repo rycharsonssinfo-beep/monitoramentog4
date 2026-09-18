@@ -204,15 +204,6 @@ if not st.session_state.iniciado:
 
 # --- TELA 2: EXIBIÇÃO COM RECURSOS AVANÇADOS ---
 else:
-    # Botão de Ajustes flutuante em cima da tela (fora do iframe do painel) para garantir funcionamento 100% nativo
-    col_vazia1, col_ajuste = st.columns([10, 1.2])
-    with col_ajuste:
-        if st.button("⚙️ Ajustes", use_container_width=True, key="btn_voltar_config_topo"):
-            st.session_state.iniciado = False
-            if "iniciado" in st.query_params:
-                del st.query_params["iniciado"]
-            st.rerun()
-
     telas = st.session_state.paineis_config
     
     links_lista = [t["link"] for t in telas]
@@ -278,10 +269,12 @@ else:
                 height: 28px; padding: 0 10px;
                 border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;
                 display: inline-flex; align-items: center; justify-content: center;
+                text-decoration: none;
                 transition: background 0.2s, transform 0.1s;
             }}
             .btn-controle:hover {{
                 background: #e2e8f0;
+                color: #0d5c58;
             }}
             .btn-controle:active {{
                 transform: scale(0.96);
@@ -310,6 +303,7 @@ else:
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 (Atualização) nesta tela">🔄 Atualizar: ON</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
+                <a href="./" target="_top" class="btn-controle" title="Alterar Links e Configurações">⚙️ Ajustes</a>
                 <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
             </div>
         </div>
@@ -478,4 +472,4 @@ else:
     </html>
     """
     
-    st.components.v1.html(html_painel, height=880, scrolling=False)
+    st.components.v1.html(html_painel, height=930, scrolling=False)
