@@ -1,4 +1,5 @@
 import streamlit as st
+import json
 
 # Configuração da página em modo wide
 st.set_page_config(
@@ -8,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para limpar a interface e estilizar os elementos
+# CSS Customizado para limpar a tela e estilizar os elementos
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -21,8 +22,10 @@ st.markdown("""
             padding-left: 0px !important;
             padding-right: 0px !important;
             max-width: 100% !important;
+            height: 100vh !important;
+            overflow: hidden !important;
         }
-        .stApp { background-color: #f8fafc !important; }
+        .stApp { background-color: #f8fafc !important; overflow: hidden !important; }
         
         h2, p, span, label { color: #0d5c58 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         
@@ -54,17 +57,22 @@ st.markdown("""
         .stButton button:not([kind="primary"]) p {
             color: #b91c1c !important;
         }
+        
+        .stTextInput input, .stNumberInput input {
+            border-color: #cbd5e1 !important;
+            border-radius: 8px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# Gerenciamento de estado da tela atual
+# Verificação automática baseada na URL para manter o estado
 if "iniciado" not in st.session_state:
     if st.query_params.get("iniciado") == "true":
         st.session_state.iniciado = True
     else:
         st.session_state.iniciado = False
 
-# Inicialização da lista de painéis
+# Inicialização da lista de painéis estruturada por dicionários no session_state
 if "paineis_config" not in st.session_state:
     st.session_state.paineis_config = [
         {
@@ -168,87 +176,281 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM BARRA SUPERIOR NATIVA DO STREAMLIT ---
+# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML ---
 else:
-    # Barra de controle superior estilizada em colunas do Streamlit
-    st.markdown("""
-        <style>
-            .barra-topo {
-                background-color: #0d5c58;
-                padding: 8px 15px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                color: white;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                font-size: 13px;
-                font-weight: 600;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-                border-radius: 0px;
-                margin-bottom: 0px;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
     telas = st.session_state.paineis_config
     
-    # Gerenciamento de estado de índice atual na sessão
-    if "indice_painel_ativo" not in st.session_state:
-        st.session_state.indice_painel_ativo = 0
-
-    if st.session_state.indice_painel_ativo >= len(telas):
-        st.session_state.indice_painel_ativo = 0
-
-    painel_atual = telas[st.session_state.indice_painel_ativo]
+    links_lista = [t["link"] for t in telas]
+    tempos_lista = [t["tempo"] for t in telas]
+    nomes_lista = [t["nome"] for t in telas]
+    recarregar_lista = [t.get("recarregar", True) for t in telas]
     
-    # Criando o layout da barra de ferramentas diretamente no Streamlit
-    c_info, c_botoes = st.columns([3, 4])
+    links_json = json.dumps(links_lista)
+    tempos_json = json.dumps(tempos_lista)
+    nomes_json = json.dumps(nomes_lista)
+    recarregar_json = json.dumps(recarregar_lista)
     
-    with c_info:
-        st.markdown(f"""
-            <div style="background-color: #0d5c58; padding: 10px 15px; color: white; border-radius: 6px; font-weight: 600; font-size: 13px; display: flex; align-items: center; height: 38px;">
-                🟢 &nbsp;<b>{painel_atual['nome']}</b> &nbsp;<i>({st.session_state.indice_painel_ativo + 1}/{len(telas)})</i>
+    intervalo_limpeza_ms = int(st.session_state.horas_reload_geral) * 3600 * 1000
+
+    html_painel = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body, html {{
+                width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }}
+            #barra-status {{
+                width: 100%; height: 45px; background: #0d5c58; color: #ffffff;
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 0 20px; font-size: 13px; font-weight: 600;
+                position: fixed; top: 0; left: 0; z-index: 9999;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            }}
+            #barra-progresso-container {{
+                position: fixed; top: 45px; left: 0; width: 100%; height: 4px;
+                background: #094744; z-index: 9999;
+            }}
+            #barra-progresso {{
+                width: 100%; height: 100%; background: #2dd4bf;
+                transform-origin: left; transform: scaleX(1);
+                transition: transform 1s linear;
+            }}
+            #telas-wrapper {{
+                width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
+                overflow: hidden;
+            }}
+            .iframe-container {{
+                width: 100%; height: 100%; 
+                position: absolute; top: 0; left: -99999px;
+                visibility: hidden;
+                background: #ffffff;
+            }}
+            .iframe-container.ativo {{
+                left: 0;
+                visibility: visible;
+            }}
+            iframe {{
+                width: 100%; height: 100%; border: none; display: block;
+            }}
+            .botoes-grupo {{
+                display: flex; gap: 6px; align-items: center;
+            }}
+            .btn-controle {{
+                background: #ffffff; color: #0d5c58; border: none; 
+                height: 28px; padding: 0 10px;
+                border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;
+                display: inline-flex; align-items: center; justify-content: center;
+                text-decoration: none;
+                transition: background 0.2s, transform 0.1s;
+            }}
+            .btn-controle:hover {{
+                background: #e2e8f0;
+                color: #0d5c58;
+            }}
+            .btn-controle:active {{
+                transform: scale(0.96);
+            }}
+            #btn-pause {{
+                background: #115e59; color: #ffffff; border: 1px solid #2dd4bf;
+            }}
+            #btn-pause.pausado {{
+                background: #b91c1c; color: #ffffff; border-color: #f87171;
+            }}
+            #btn-reload-toggle {{
+                background: #0f766e; color: #ffffff; border: 1px solid #2dd4bf;
+            }}
+            #btn-reload-toggle.desativado {{
+                background: #7f1d1d; color: #fca5a5; border-color: #f87171;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="barra-status">
+            <span id="info-texto">Carregando painéis...</span>
+            
+            <div class="botoes-grupo">
+                <button class="btn-controle" onclick="mudarTela(-1)" title="Painel Anterior">⬅️ Anterior</button>
+                <button class="btn-controle" onclick="mudarTela(1)" title="Próximo Painel">Próxima ➡️</button>
+                <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
+                <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 (Atualização) nesta tela">🔄 Atualizar: ON</button>
+                <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
+                <button class="btn-controle" onclick="irParaAjustes()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
+                <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
             </div>
-        """, unsafe_allow_html=True)
-        
-    with c_botoes:
-        # Colocando os botões lado a lado perfeitamente integrados
-        b1, b2, b3, b4, b5 = st.columns(5)
-        with b1:
-            if st.button("⬅️ Ant.", use_container_width=True):
-                st.session_state.indice_painel_ativo = (st.session_state.indice_painel_ativo - 1) % len(telas)
-                st.rerun()
-        with b2:
-            if st.button("Próx. ➡️", use_container_width=True):
-                st.session_state.indice_painel_ativo = (st.session_state.indice_painel_ativo + 1) % len(telas)
-                st.rerun()
-        with b3:
-            # O Botão de Ajustes agora é um botão padrão do Streamlit totalmente funcional
-            if st.button("⚙️ Ajustes", type="primary", use_container_width=True, help="Alterar Links e Configurações"):
-                st.session_state.iniciado = False
-                st.query_params["iniciado"] = "false"
-                st.rerun()
-        with b4:
-            # Botão de recarga manual ou controle de estado
-            if st.button("🔄 Atualizar", use_container_width=True):
-                st.rerun()
-        with b5:
-            # Recarregamento automático por tempo integrado via st.empty() ou meta refresh controlado
-            pass
+        </div>
 
-    # Exibição do iframe com o link atual e temporizador de rotação automática
-    tempo_atual = int(painel_atual['tempo'])
-    link_atual = painel_atual['link']
+        <div id="barra-progresso-container">
+            <div id="barra-progresso"></div>
+        </div>
 
-    # Injeta um script leve apenas para fazer o refresh automático após X segundos para o próximo painel
-    script_rotacao = f"""
+        <div id="telas-wrapper"></div>
+
         <script>
-            setTimeout(function() {{
-                // Simula clique no botão próximo ou avança via query param/streamlit reload
-                window.location.reload();
-            }}, {tempo_atual * 1000});
-        </script>
-    """
+            const links = {links_json};
+            const tempos = {tempos_json};
+            const nomes = {nomes_json};
+            let deveRecarregar = {recarregar_json};
+            let indiceAtual = 0;
+            let iframes = [];
+            let temporizador;
+            let estaPausado = false;
+            let tempoRestante = 20;
+            let tempoTotalPainel = 20;
+            const intervaloLimpezaMs = {intervalo_limpeza_ms};
 
-    st.components.v1.iframe(link_atual, height=880, scrolling=True)
-    st.markdown(script_rotacao, unsafe_allow_html=True)
+            const wrapperDiv = document.getElementById('telas-wrapper');
+            const infoTexto = document.getElementById('info-texto');
+            const contadorTempo = document.getElementById('contador-tempo');
+            const barraProgresso = document.getElementById('barra-progresso');
+            const btnPause = document.getElementById('btn-pause');
+            const btnReloadToggle = document.getElementById('btn-reload-toggle');
+
+            const savedIndex = localStorage.getItem("painel_indice_atual");
+            if (savedIndex !== null && parseInt(savedIndex) < links.length) {{
+                indiceAtual = parseInt(savedIndex);
+            }}
+
+            links.forEach((link, index) => {{
+                const container = document.createElement('div');
+                container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
+                
+                const iframe = document.createElement('iframe');
+                iframe.src = link;
+
+                container.appendChild(iframe);
+                wrapperDiv.appendChild(container);
+                iframes.push({{ container: container, iframe: iframe, link: link }});
+            }});
+
+            if (intervaloLimpezaMs > 0) {{
+                setTimeout(function() {{
+                    window.parent.location.reload();
+                }}, intervaloLimpezaMs);
+            }}
+
+            function irParaAjustes() {{
+                try {{
+                    window.parent.location.href = "./?iniciado=false";
+                }} catch(e) {{
+                    window.location.href = "./?iniciado=false";
+                }}
+            }}
+
+            function atualizarBotaoRecarregarUI() {{
+                if (deveRecarregar[indiceAtual]) {{
+                    btnReloadToggle.innerText = "🔄 Atualizar: ON";
+                    btnReloadToggle.classList.remove("desativado");
+                }} else {{
+                    btnReloadToggle.innerText = "🔒 Atualizar: OFF";
+                    btnReloadToggle.classList.add("desativado");
+                }}
+            }}
+
+            function atualizarExibicao() {{
+                iframes.forEach((item, i) => {{
+                    if (i === indiceAtual) {{
+                        item.container.classList.add('ativo');
+                    }} else {{
+                        item.container.classList.remove('ativo');
+                    }}
+                }});
+                
+                const nomePainel = nomes[indiceAtual] || ("Painel " + (indiceAtual + 1));
+                infoTexto.innerHTML = "🟢 <b>" + nomePainel + "</b> <i>(" + (indiceAtual + 1) + "/" + links.length + ")</i> - " + tempos[indiceAtual] + "s";
+                atualizarBotaoRecarregarUI();
+                localStorage.setItem("painel_indice_atual", indiceAtual);
+            }}
+
+            function gerenciarAtualizacaoPainelAtual() {{
+                const itemAtual = iframes[indiceAtual];
+                if (deveRecarregar[indiceAtual]) {{
+                    itemAtual.iframe.src = itemAtual.link;
+                }}
+            }}
+
+            function irParaProxima() {{
+                indiceAtual = (indiceAtual + 1) % links.length;
+                atualizarExibicao();
+                gerenciarAtualizacaoPainelAtual();
+                reiniciarTemporizador();
+            }}
+
+            function mudarTela(direcao) {{
+                indiceAtual = (indiceAtual + direcao + links.length) % links.length;
+                atualizarExibicao();
+                gerenciarAtualizacaoPainelAtual();
+                reiniciarTemporizador();
+            }}
+
+            function alternarRecarregamento() {{
+                deveRecarregar[indiceAtual] = !deveRecarregar[indiceAtual];
+                atualizarBotaoRecarregarUI();
+            }}
+
+            function alternarPausa() {{
+                estaPausado = !estaPausado;
+                if (estaPausado) {{
+                    clearInterval(temporizador);
+                    btnPause.innerText = "▶️ Retomar";
+                    btnPause.classList.add("pausado");
+                    contadorTempo.innerText = "⏸️ Pausado";
+                    barraProgresso.style.transition = 'none';
+                }} else {{
+                    btnPause.innerText = "⏸️ Pausar";
+                    btnPause.classList.remove("pausado");
+                    reiniciarTemporizador();
+                }}
+            }}
+
+            function alternarTelaCheia() {{
+                if (!document.fullscreenElement) {{
+                    document.documentElement.requestFullscreen().catch(err => {{}} );
+                }} else {{
+                    if (document.exitFullscreen) {{
+                        document.exitFullscreen();
+                    }}
+                }}
+            }}
+
+            atualizarExibicao();
+
+            function reiniciarTemporizador() {{
+                clearInterval(temporizador);
+                if (estaPausado) return;
+                
+                tempoTotalPainel = tempos[indiceAtual];
+                tempoRestante = tempoTotalPainel;
+                
+                contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                
+                barraProgresso.style.transition = 'none';
+                barraProgresso.style.transform = 'scaleX(1)';
+                
+                setTimeout(() => {{
+                    if (!estaPausado) {{
+                        barraProgresso.style.transition = 'transform ' + tempoTotalPainel + 's linear';
+                        barraProgresso.style.transform = 'scaleX(0)';
+                    }}
+                }}, 50);
+
+                temporizador = setInterval(function() {{
+                    if (estaPausado) return;
+                    tempoRestante--;
+                    if (tempoRestante < 0) {{
+                        irParaProxima();
+                    }} else {{
+                        contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                    }}
+                }}, 1000);
+            }}
+
+            reiniciarTemporizador();
+        </script>
+    </body>
+    </html>
+    """
+    
+    st.components.v1.html(html_painel, height=930, scrolling=False)
