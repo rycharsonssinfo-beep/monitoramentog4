@@ -253,12 +253,12 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }
             
-            /* Escalas ajustadas precisamente para preencher exatamente o espaço de cada coluna */
+            /* Escalas perfeitamente ajustadas para preencher sem cortar nenhuma lateral ou rodapé */
             #iframe-esq-container iframe {
                 width: 1920px;
                 height: 1080px;
                 border: none;
-                transform: scale(0.50);
+                transform: scale(0.44);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
@@ -269,7 +269,7 @@ else:
                 width: 1920px;
                 height: 1080px;
                 border: none;
-                transform: scale(0.93);
+                transform: scale(0.91);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
