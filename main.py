@@ -186,75 +186,74 @@ else:
     
     intervalo_limpeza_ms = int(st.session_state.horas_reload_geral) * 3600 * 1000
 
-    html_painel = f"""
+    # Usando string comum (sem f-string) para evitar conflitos com as chaves do JS
+    html_painel = """
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body, html {{
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body, html {
                 width: 100%; height: 100vh; overflow: hidden; background: #ffffff;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            }}
-            #barra-status {{
+            }
+            #barra-status {
                 width: 100%; height: 45px; background: #0d5c58; color: #ffffff;
                 display: flex; justify-content: space-between; align-items: center;
                 padding: 0 20px; font-size: 13px; font-weight: 600;
                 position: fixed; top: 0; left: 0; z-index: 9999;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            }}
-            #barra-progresso-container {{
+            }
+            #barra-progresso-container {
                 position: fixed; top: 45px; left: 0; width: 100%; height: 4px;
                 background: #094744; z-index: 9999;
-            }}
-            #barra-progresso {{
+            }
+            #barra-progresso {
                 width: 100%; height: 100%; background: #2dd4bf;
                 transform-origin: left; transform: scaleX(1);
                 transition: transform 1s linear;
-            }}
-            #telas-wrapper {{
+            }
+            #telas-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
                 overflow: hidden;
-            }}
-            .iframe-container {{
+            }
+            .iframe-container {
                 width: 100%; height: 100%; 
                 position: absolute; top: 0; left: -99999px;
                 visibility: hidden;
                 background: #ffffff;
-            }}
-            .iframe-container.ativo {{
+            }
+            .iframe-container.ativo {
                 left: 0;
                 visibility: visible;
-            }}
-            .iframe-container iframe {{
+            }
+            .iframe-container iframe {
                 width: 100%; height: 100%; border: none; display: block;
-            }}
+            }
             
-            /* Mosaico Híbrido: 1 coluna esquerda (alternada), 2 colunas direita (Dados Sintéticos fixo) */
-            #mosaico-wrapper {{
+            #mosaico-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
                 display: none; grid-template-columns: 1fr 2fr;
                 gap: 8px; padding: 8px; background: #e2e8f0; overflow: hidden; z-index: 999;
-            }}
-            #mosaico-wrapper.ativo {{
+            }
+            #mosaico-wrapper.ativo {
                 display: grid;
-            }}
-            .mosaico-card {{
+            }
+            .mosaico-card {
                 background: #ffffff; border-radius: 6px; overflow: hidden;
                 display: flex; flex-direction: column; border: 1px solid #cbd5e1;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.08); height: 100%; width: 100%;
-            }}
-            .mosaico-header {{
+            }
+            .mosaico-header {
                 background: #0d5c58; color: #ffffff; padding: 6px 10px;
                 font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
                 flex-shrink: 0; height: 32px;
-            }}
-            .mosaico-body {{
+            }
+            .mosaico-body {
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
-            }}
+            }
             
-            /* Ajustes de escala específicos para o Mosaico Híbrido */
-            #iframe-esq-container iframe {{
+            #iframe-esq-container iframe {
                 width: 1380px;
                 height: 870px;
                 border: none;
@@ -263,9 +262,9 @@ else:
                 position: absolute;
                 top: 0;
                 left: 0;
-            }}
+            }
 
-            #iframe-dir-container iframe {{
+            #iframe-dir-container iframe {
                 width: 1380px;
                 height: 870px;
                 border: none;
@@ -274,44 +273,44 @@ else:
                 position: absolute;
                 top: 0;
                 left: 0;
-            }}
+            }
 
-            .botoes-grupo {{
+            .botoes-grupo {
                 display: flex; gap: 6px; align-items: center;
-            }}
-            .btn-controle {{
+            }
+            .btn-controle {
                 background: #ffffff; color: #0d5c58; border: none; 
                 height: 28px; padding: 0 10px;
                 border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;
                 display: inline-flex; align-items: center; justify-content: center;
                 text-decoration: none;
                 transition: background 0.2s, transform 0.1s;
-            }}
-            .btn-controle:hover {{
+            }
+            .btn-controle:hover {
                 background: #e2e8f0;
                 color: #0d5c58;
-            }}
-            .btn-controle:active {{
+            }
+            .btn-controle:active {
                 transform: scale(0.96);
-            }}
-            #btn-pause {{
+            }
+            #btn-pause {
                 background: #115e59; color: #ffffff; border: 1px solid #2dd4bf;
-            }}
-            #btn-pause.pausado {{
+            }
+            #btn-pause.pausado {
                 background: #b91c1c; color: #ffffff; border-color: #f87171;
-            }}
-            #btn-reload-toggle {{
+            }
+            #btn-reload-toggle {
                 background: #0f766e; color: #ffffff; border: 1px solid #2dd4bf;
-            }}
-            #btn-reload-toggle.desativado {{
+            }
+            #btn-reload-toggle.desativado {
                 background: #7f1d1d; color: #fca5a5; border-color: #f87171;
-            }}
-            #btn-mosaico {{
+            }
+            #btn-mosaico {
                 background: #0f766e; color: #ffffff; border: 1px solid #2dd4bf;
-            }}
-            #btn-mosaico.ativo {{
+            }
+            #btn-mosaico.ativo {
                 background: #b91c1c; color: #ffffff; border-color: #f87171;
-            }}
+            }
         </style>
     </head>
     <body>
@@ -338,10 +337,10 @@ else:
         <div id="mosaico-wrapper"></div>
 
         <script>
-            const links = {links_json};
-            const tempos = {tempos_json};
-            const nomes = {nomes_json};
-            let deveRecarregarPadrao = {recarregar_json};
+            const links = """ + links_json + """;
+            const tempos = """ + tempos_json + """;
+            const nomes = """ + nomes_json + """;
+            let deveRecarregarPadrao = """ + recarregar_json + """;
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
@@ -349,7 +348,7 @@ else:
             let modoMosaicoAtivo = false;
             let tempoRestante = 20;
             let tempoTotalPainel = 20;
-            const intervaloLimpezaMs = {intervalo_limpeza_ms};
+            const intervaloLimpezaMs = """ + str(intervalo_limpeza_ms) + """;
 
             let savedRecarregar = localStorage.getItem("painel_recarregar_estados");
             let deveRecarregar = savedRecarregar ? JSON.parse(savedRecarregar) : [...deveRecarregarPadrao];
@@ -365,44 +364,40 @@ else:
             const barraProgressoContainer = document.getElementById('barra-progresso-container');
 
             const savedIndex = localStorage.getItem("painel_indice_atual");
-            if (savedIndex !== null && parseInt(savedIndex) < links.length) {{
+            if (savedIndex !== null && parseInt(savedIndex) < links.length) {
                 indiceAtual = parseInt(savedIndex);
-            }}
+            }
 
-            // Identificar índices baseado no nome padrão ou posição
             let indiceDadosSinteticos = nomes.findIndex(n => n.toLowerCase().includes("dados sintéticos") || n.toLowerCase().includes("sintéticos"));
             if (indiceDadosSinteticos === -1) indiceDadosSinteticos = links.length > 2 ? 2 : 0;
 
             let indicesEsquerda = [];
-            nomes.forEach((n, idx) => {{
-                if (idx !== indiceDadosSinteticos) {{
+            nomes.forEach((n, idx) => {
+                if (idx !== indiceDadosSinteticos) {
                     indicesEsquerda.push(idx);
-                }}
-            }});
+                }
+            });
             if (indicesEsquerda.length === 0) indicesEsquerda = [0];
 
             let indiceEsqAtual = 0;
 
-            // Criar iframes individuais de tela cheia
-            links.forEach((link, index) => {{
+            links.forEach((link, index) => {
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
                 const iframe = document.createElement('iframe');
                 iframe.src = link;
                 container.appendChild(iframe);
                 wrapperDiv.appendChild(container);
-                iframes.push({{ container: container, iframe: iframe, link: link }});
-            }});
+                iframes.push({ container: container, iframe: iframe, link: link });
+            });
 
-            // Montar Estrutura Fixa do Mosaico Híbrido
-            // 1. Quadrado esquerdo (alterna entre as filas)
             const cardEsq = document.createElement('div');
             cardEsq.className = 'mosaico-card';
             
             const headerEsq = document.createElement('div');
             headerEsq.className = 'mosaico-header';
             headerEsq.id = 'mosaico-header-esq';
-            headerEsq.innerHTML = `🟢 ${nomes[indicesEsquerda[0]] || 'Painel'}`;
+            headerEsq.innerHTML = '🟢 ' + (nomes[indicesEsquerda[0]] || 'Painel');
             
             const bodyEsq = document.createElement('div');
             bodyEsq.className = 'mosaico-body';
@@ -417,13 +412,12 @@ else:
             cardEsq.appendChild(bodyEsq);
             mosaicoDiv.appendChild(cardEsq);
 
-            // 2. Quadrado direito (Fixo em Dados Sintéticos de Monitoramento)
             const cardDir = document.createElement('div');
             cardDir.className = 'mosaico-card';
             
             const headerDir = document.createElement('div');
             headerDir.className = 'mosaico-header';
-            headerDir.innerHTML = `🟢 ${nomes[indiceDadosSinteticos] || 'Dados Sintéticos de Monitoramento'}`;
+            headerDir.innerHTML = '🟢 ' + (nomes[indiceDadosSinteticos] || 'Dados Sintéticos de Monitoramento');
             
             const bodyDir = document.createElement('div');
             bodyDir.className = 'mosaico-body';
@@ -437,104 +431,102 @@ else:
             cardDir.appendChild(bodyDir);
             mosaicoDiv.appendChild(cardDir);
 
-
-            if (intervaloLimpezaMs > 0) {{
-                setTimeout(function() {{
+            if (intervaloLimpezaMs > 0) {
+                setTimeout(function() {
                     window.parent.location.reload();
-                }}, intervaloLimpezaMs);
-            }}
+                }, intervaloLimpezaMs);
+            }
 
-            function irParaAjustes() {{
-                try {{
+            function irParaAjustes() {
+                try {
                     window.parent.location.href = "./?iniciado=false";
-                }} catch(e) {{
+                } catch(e) {
                     window.location.href = "./?iniciado=false";
-                }}
-            }}
+                }
+            }
 
-            function atualizarBotaoRecarregarUI() {{
-                if (modoMosaicoAtivo) {{
+            function atualizarBotaoRecarregarUI() {
+                if (modoMosaicoAtivo) {
                     btnReloadToggle.style.display = "none";
                     contadorTempo.style.display = "none";
-                }} else {{
+                } else {
                     btnReloadToggle.style.display = "inline-flex";
                     contadorTempo.style.display = "inline-block";
-                    if (deveRecarregar[indiceAtual]) {{
+                    if (deveRecarregar[indiceAtual]) {
                         btnReloadToggle.innerText = "🔄 Atualizar: ON";
                         btnReloadToggle.classList.remove("desativado");
-                    }} else {{
+                    } else {
                         btnReloadToggle.innerText = "🔒 Atualizar: OFF";
                         btnReloadToggle.classList.add("desativado");
-                    }}
-                }}
-            }}
+                    }
+                }
+            }
 
-            function atualizarExibicao() {{
+            function atualizarExibicao() {
                 if (modoMosaicoAtivo) return;
                 
-                iframes.forEach((item, i) => {{
-                    if (i === indiceAtual) {{
+                iframes.forEach((item, i) => {
+                    if (i === indiceAtual) {
                         item.container.classList.add('ativo');
-                    }} else {{
+                    } else {
                         item.container.classList.remove('ativo');
-                    }}
-                }});
+                    }
+                });
                 
                 const nomePainel = nomes[indiceAtual] || ("Painel " + (indiceAtual + 1));
                 infoTexto.innerHTML = "🟢 <b>" + nomePainel + "</b> <i>(" + (indiceAtual + 1) + "/" + links.length + ")</i> - " + tempos[indiceAtual] + "s";
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_indice_atual", indiceAtual);
-            }}
+            }
 
-            function gerenciarAtualizacaoPainelAtual() {{
+            function gerenciarAtualizacaoPainelAtual() {
                 if (modoMosaicoAtivo) return;
                 const itemAtual = iframes[indiceAtual];
-                if (deveRecarregar[indiceAtual]) {{
+                if (deveRecarregar[indiceAtual]) {
                     itemAtual.iframe.src = itemAtual.link;
-                }}
-            }}
+                }
+            }
 
-            function irParaProxima() {{
-                if (modoMosaicoAtivo) {{
-                    // No mosaico, avança o painel esquerdo rotativo
+            function irParaProxima() {
+                if (modoMosaicoAtivo) {
                     indiceEsqAtual = (indiceEsqAtual + 1) % indicesEsquerda.length;
                     let realIdx = indicesEsquerda[indiceEsqAtual];
                     iframeEsq.src = links[realIdx];
-                    headerEsq.innerHTML = `🟢 ${nomes[realIdx] || 'Painel'}`;
+                    headerEsq.innerHTML = '🟢 ' + (nomes[realIdx] || 'Painel');
                     reiniciarTemporizador();
-                }} else {{
+                } else {
                     indiceAtual = (indiceAtual + 1) % links.length;
                     atualizarExibicao();
                     gerenciarAtualizacaoPainelAtual();
                     reiniciarTemporizador();
-                }}
-            }}
+                }
+            }
 
-            function mudarTela(direcao) {{
-                if (modoMosaicoAtivo) {{
+            function mudarTela(direcao) {
+                if (modoMosaicoAtivo) {
                     indiceEsqAtual = (indiceEsqAtual + direcao + indicesEsquerda.length) % indicesEsquerda.length;
                     let realIdx = indicesEsquerda[indiceEsqAtual];
                     iframeEsq.src = links[realIdx];
-                    headerEsq.innerHTML = `🟢 ${nomes[realIdx] || 'Painel'}`;
+                    headerEsq.innerHTML = '🟢 ' + (nomes[realIdx] || 'Painel');
                     reiniciarTemporizador();
-                }} else {{
+                } else {
                     indiceAtual = (indiceAtual + direcao + links.length) % links.length;
                     atualizarExibicao();
                     gerenciarAtualizacaoPainelAtual();
                     reiniciarTemporizador();
-                }}
-            }}
+                }
+            }
 
-            function alternarRecarregamento() {{
+            function alternarRecarregamento() {
                 if (modoMosaicoAtivo) return;
                 deveRecarregar[indiceAtual] = !deveRecarregar[indiceAtual];
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_recarregar_estados", JSON.stringify(deveRecarregar));
-            }}
+            }
 
-            function alternarMosaico() {{
+            function alternarMosaico() {
                 modoMosaicoAtivo = !modoMosaicoAtivo;
-                if (modoMosaicoAtivo) {{
+                if (modoMosaicoAtivo) {
                     wrapperDiv.style.display = 'none';
                     mosaicoDiv.classList.add('ativo');
                     barraProgressoContainer.style.display = 'block';
@@ -543,7 +535,7 @@ else:
                     infoTexto.innerHTML = "🪟 <b>Modo Mosaico Híbrido</b> (Esquerda: Filas em rotação | Direita: Dados Sintéticos Fixo)";
                     atualizarBotaoRecarregarUI();
                     reiniciarTemporizador();
-                }} else {{
+                } else {
                     wrapperDiv.style.display = 'block';
                     mosaicoDiv.classList.remove('ativo');
                     barraProgressoContainer.style.display = 'block';
@@ -551,47 +543,46 @@ else:
                     btnMosaico.classList.remove("ativo");
                     atualizarExibicao();
                     reiniciarTemporizador();
-                }}
-            }}
+                }
+            }
 
-            function alternarPausa() {{
+            function alternarPausa() {
                 estaPausado = !estaPausado;
-                if (estaPausado) {{
+                if (estaPausado) {
                     clearInterval(temporizador);
                     btnPause.innerText = "▶️ Retomar";
                     btnPause.classList.add("pausado");
                     contadorTempo.innerText = "⏸️ Pausado";
                     barraProgresso.style.transition = 'none';
-                }} else {{
+                } else {
                     btnPause.innerText = "⏸️ Pausar";
                     btnPause.classList.remove("pausado");
                     reiniciarTemporizador();
-                }}
-            }}
+                }
+            }
 
-            function alternarTelaCheia() {{
-                if (!document.fullscreenElement) {{
-                    document.documentElement.requestFullscreen().catch(err => {{}} );
-                }} else {{
-                    if (document.exitFullscreen) {{
+            function alternarTelaCheia() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => { } );
+                } else {
+                    if (document.exitFullscreen) {
                         document.exitFullscreen();
-                    }}
-                }}
-            }}
+                    }
+                }
+            }
 
             atualizarExibicao();
 
-            function reiniciarTemporizador() {{
+            function reiniciarTemporizador() {
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
-                // Se estiver no mosaico, pega o tempo do painel esquerdo atual
-                if (modoMosaicoAtivo) {{
+                if (modoMosaicoAtivo) {
                     let realIdx = indicesEsquerda[indiceEsqAtual];
                     tempoTotalPainel = tempos[realIdx] || 20;
-                }} else {{
+                } else {
                     tempoTotalPainel = tempos[indiceAtual];
-                }}
+                }
                 
                 tempoRestante = tempoTotalPainel;
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
@@ -599,23 +590,23 @@ else:
                 barraProgresso.style.transition = 'none';
                 barraProgresso.style.transform = 'scaleX(1)';
                 
-                setTimeout(() => {{
-                    if (!estaPausado) {{
+                setTimeout(() => {
+                    if (!estaPausado) {
                         barraProgresso.style.transition = 'transform ' + tempoTotalPainel + 's linear';
                         barraProgresso.style.transform = 'scaleX(0)';
-                    }}
-                }}, 50);
+                    }
+                }, 50);
 
-                temporizador = setInterval(function() {{
+                temporizador = setInterval(function() {
                     if (estaPausado) return;
                     tempoRestante--;
-                    if (tempoRestante < 0) {{
+                    if (tempoRestante < 0) {
                         irParaProxima();
-                    }} else {{
+                    } else {
                         contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
-                    }}
-                }}, 1000);
-            }}
+                    }
+                }, 1000);
+            }
 
             reiniciarTemporizador();
         </script>
