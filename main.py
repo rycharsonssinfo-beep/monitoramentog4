@@ -176,7 +176,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML ---
+# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML E MODO MOSAICO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -235,6 +235,32 @@ else:
             iframe {{
                 width: 100%; height: 100%; border: none; display: block;
             }}
+            
+            /* Estilos do Modo Mosaico (Grid) */
+            #mosaico-wrapper {{
+                width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
+                display: none; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+                gap: 6px; padding: 6px; background: #e2e8f0; overflow-y: auto; z-index: 999;
+            }}
+            #mosaico-wrapper.ativo {{
+                display: grid;
+            }}
+            .mosaico-card {{
+                background: #ffffff; border-radius: 6px; overflow: hidden;
+                display: flex; flex-direction: column; border: 1px solid #cbd5e1;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05); height: 400px;
+            }}
+            .mosaico-header {{
+                background: #0d5c58; color: #ffffff; padding: 6px 10px;
+                font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
+            }}
+            .mosaico-body {{
+                flex: 1; width: 100%; position: relative;
+            }}
+            .mosaico-body iframe {{
+                width: 100%; height: 100%; border: none;
+            }}
+
             .botoes-grupo {{
                 display: flex; gap: 6px; align-items: center;
             }}
@@ -265,6 +291,12 @@ else:
             #btn-reload-toggle.desativado {{
                 background: #7f1d1d; color: #fca5a5; border-color: #f87171;
             }}
+            #btn-mosaico {{
+                background: #0f766e; color: #ffffff; border: 1px solid #2dd4bf;
+            }}
+            #btn-mosaico.ativo {{
+                background: #b91c1c; color: #ffffff; border-color: #f87171;
+            }}
         </style>
     </head>
     <body>
@@ -276,6 +308,7 @@ else:
                 <button class="btn-controle" onclick="mudarTela(1)" title="Próximo Painel">Próxima ➡️</button>
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 (Atualização) nesta tela">🔄 Atualizar: ON</button>
+                <button class="btn-controle" id="btn-mosaico" onclick="alternarMosaico()" title="Exibir todas as telas juntas em Mosaico">🪟 Mosaico</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
                 <button class="btn-controle" onclick="irParaAjustes()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
                 <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
@@ -287,6 +320,7 @@ else:
         </div>
 
         <div id="telas-wrapper"></div>
+        <div id="mosaico-wrapper"></div>
 
         <script>
             const links = {links_json};
@@ -297,36 +331,57 @@ else:
             let iframes = [];
             let temporizador;
             let estaPausado = false;
+            let modoMosaicoAtivo = false;
             let tempoRestante = 20;
             let tempoTotalPainel = 20;
             const intervaloLimpezaMs = {intervalo_limpeza_ms};
 
-            // Recupera estado de recarregamento salvo ou usa o padrão do Python
             let savedRecarregar = localStorage.getItem("painel_recarregar_estados");
             let deveRecarregar = savedRecarregar ? JSON.parse(savedRecarregar) : [...deveRecarregarPadrao];
 
             const wrapperDiv = document.getElementById('telas-wrapper');
+            const mosaicoDiv = document.getElementById('mosaico-wrapper');
             const infoTexto = document.getElementById('info-texto');
             const contadorTempo = document.getElementById('contador-tempo');
             const barraProgresso = document.getElementById('barra-progresso');
             const btnPause = document.getElementById('btn-pause');
             const btnReloadToggle = document.getElementById('btn-reload-toggle');
+            const btnMosaico = document.getElementById('btn-mosaico');
+            const barraProgressoContainer = document.getElementById('barra-progresso-container');
 
             const savedIndex = localStorage.getItem("painel_indice_atual");
             if (savedIndex !== null && parseInt(savedIndex) < links.length) {{
                 indiceAtual = parseInt(savedIndex);
             }}
 
+            // Criação das telas normais e do mosaico
             links.forEach((link, index) => {{
+                // Wrapper normal individual
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
-                
                 const iframe = document.createElement('iframe');
                 iframe.src = link;
-
                 container.appendChild(iframe);
                 wrapperDiv.appendChild(container);
                 iframes.push({{ container: container, iframe: iframe, link: link }});
+
+                // Card do Mosaico
+                const card = document.createElement('div');
+                card.className = 'mosaico-card';
+                
+                const header = document.createElement('div');
+                header.className = 'mosaico-header';
+                header.innerHTML = `<span>🟢 ${{nomes[index] || ('Painel ' + (index+1))}}</span>`;
+                
+                const body = document.createElement('div');
+                body.className = 'mosaico-body';
+                const iframeMos = document.createElement('iframe');
+                iframeMos.src = link;
+                body.appendChild(iframeMos);
+                
+                card.appendChild(header);
+                card.appendChild(body);
+                mosaicoDiv.appendChild(card);
             }});
 
             if (intervaloLimpezaMs > 0) {{
@@ -344,16 +399,25 @@ else:
             }}
 
             function atualizarBotaoRecarregarUI() {{
-                if (deveRecarregar[indiceAtual]) {{
-                    btnReloadToggle.innerText = "🔄 Atualizar: ON";
-                    btnReloadToggle.classList.remove("desativado");
+                if (modoMosaicoAtivo) {{
+                    btnReloadToggle.style.display = "none";
+                    contadorTempo.style.display = "none";
                 }} else {{
-                    btnReloadToggle.innerText = "🔒 Atualizar: OFF";
-                    btnReloadToggle.classList.add("desativado");
+                    btnReloadToggle.style.display = "inline-flex";
+                    contadorTempo.style.display = "inline-block";
+                    if (deveRecarregar[indiceAtual]) {{
+                        btnReloadToggle.innerText = "🔄 Atualizar: ON";
+                        btnReloadToggle.classList.remove("desativado");
+                    }} else {{
+                        btnReloadToggle.innerText = "🔒 Atualizar: OFF";
+                        btnReloadToggle.classList.add("desativado");
+                    }}
                 }}
             }}
 
             function atualizarExibicao() {{
+                if (modoMosaicoAtivo) return;
+                
                 iframes.forEach((item, i) => {{
                     if (i === indiceAtual) {{
                         item.container.classList.add('ativo');
@@ -369,6 +433,7 @@ else:
             }}
 
             function gerenciarAtualizacaoPainelAtual() {{
+                if (modoMosaicoAtivo) return;
                 const itemAtual = iframes[indiceAtual];
                 if (deveRecarregar[indiceAtual]) {{
                     itemAtual.iframe.src = itemAtual.link;
@@ -376,6 +441,7 @@ else:
             }}
 
             function irParaProxima() {{
+                if (modoMosaicoAtivo) alternarMosaico();
                 indiceAtual = (indiceAtual + 1) % links.length;
                 atualizarExibicao();
                 gerenciarAtualizacaoPainelAtual();
@@ -383,6 +449,7 @@ else:
             }}
 
             function mudarTela(direcao) {{
+                if (modoMosaicoAtivo) alternarMosaico();
                 indiceAtual = (indiceAtual + direcao + links.length) % links.length;
                 atualizarExibicao();
                 gerenciarAtualizacaoPainelAtual();
@@ -390,12 +457,36 @@ else:
             }}
 
             function alternarRecarregamento() {{
+                if (modoMosaicoAtivo) return;
                 deveRecarregar[indiceAtual] = !deveRecarregar[indiceAtual];
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_recarregar_estados", JSON.stringify(deveRecarregar));
             }}
 
+            function alternarMosaico() {{
+                modoMosaicoAtivo = !modoMosaicoAtivo;
+                if (modoMosaicoAtivo) {{
+                    clearInterval(temporizador);
+                    wrapperDiv.style.display = 'none';
+                    mosaicoDiv.classList.add('ativo');
+                    barraProgressoContainer.style.display = 'none';
+                    btnMosaico.innerText = "📊 Individual";
+                    btnMosaico.classList.add("ativo");
+                    infoTexto.innerHTML = "🪟 <b>Modo Mosaico Ativo</b> (" + links.length + " painéis simultâneos)";
+                    atualizarBotaoRecarregarUI();
+                }} else {{
+                    wrapperDiv.style.display = 'block';
+                    mosaicoDiv.classList.remove('ativo');
+                    barraProgressoContainer.style.display = 'block';
+                    btnMosaico.innerText = "🪟 Mosaico";
+                    btnMosaico.classList.remove("ativo");
+                    atualizarExibicao();
+                    reiniciarTemporizador();
+                }}
+            }}
+
             function alternarPausa() {{
+                if (modoMosaicoAtivo) return;
                 estaPausado = !estaPausado;
                 if (estaPausado) {{
                     clearInterval(temporizador);
@@ -423,6 +514,7 @@ else:
             atualizarExibicao();
 
             function reiniciarTemporizador() {{
+                if (modoMosaicoAtivo) return;
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
@@ -435,14 +527,14 @@ else:
                 barraProgresso.style.transform = 'scaleX(1)';
                 
                 setTimeout(() => {{
-                    if (!estaPausado) {{
+                    if (!estaPausado && !modoMosaicoAtivo) {{
                         barraProgresso.style.transition = 'transform ' + tempoTotalPainel + 's linear';
                         barraProgresso.style.transform = 'scaleX(0)';
                     }}
                 }}, 50);
 
                 temporizador = setInterval(function() {{
-                    if (estaPausado) return;
+                    if (estaPausado || modoMosaicoAtivo) return;
                     tempoRestante--;
                     if (tempoRestante < 0) {{
                         irParaProxima();
