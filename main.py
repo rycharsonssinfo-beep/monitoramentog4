@@ -176,7 +176,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO ORIGINAL COM MODO MOSAICO EM LINHA HORIZONTAL PROPORCIONAL ---
+# --- TELA 2: EXIBIÇÃO COM MODO MOSAICO COM ESCALA PROPORCIONAL DE TELA INTEIRA ---
 else:
     telas = st.session_state.paineis_config
     
@@ -236,30 +236,33 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             
-            /* Modo Mosaico Horizontal: Mantém a largura ideal dos painéis inteiros lado a lado com scroll horizontal fluido */
+            /* Mosaico com Grade Perfeita e Ajuste de Escala */
             #mosaico-wrapper {{
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-auto-flow: column; grid-auto-columns: minmax(650px, 1fr);
-                gap: 12px; padding: 10px; background: #e2e8f0; overflow-x: auto; overflow-y: hidden; z-index: 999;
+                display: none; grid-template-columns: repeat(3, 1fr);
+                gap: 6px; padding: 6px; background: #e2e8f0; overflow: hidden; z-index: 999;
             }}
             #mosaico-wrapper.ativo {{
                 display: grid;
             }}
             .mosaico-card {{
-                background: #ffffff; border-radius: 6px; overflow: hidden;
+                background: #ffffff; border-radius: 4px; overflow: hidden;
                 display: flex; flex-direction: column; border: 1px solid #cbd5e1;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.08); height: 100%;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 100%; width: 100%;
             }}
             .mosaico-header {{
-                background: #0d5c58; color: #ffffff; padding: 6px 12px;
-                font-size: 12px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
-                flex-shrink: 0;
+                background: #0d5c58; color: #ffffff; padding: 4px 8px;
+                font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
+                flex-shrink: 0; height: 28px;
             }}
             .mosaico-body {{
-                flex: 1; width: 100%; height: 100%; position: relative; overflow: auto;
+                flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }}
+            /* Truque de escala para forçar o site inteiro a caber de forma proporcional no espaço reduzido */
             .mosaico-body iframe {{
-                width: 100%; height: 100%; border: none; display: block; min-height: 600px;
+                width: 142.8%; height: 142.8%; border: none; display: block;
+                transform: scale(0.7);
+                transform-origin: 0 0;
             }}
 
             .botoes-grupo {{
@@ -470,7 +473,7 @@ else:
                     barraProgressoContainer.style.display = 'none';
                     btnMosaico.innerText = "📊 Individual";
                     btnMosaico.classList.add("ativo");
-                    infoTexto.innerHTML = "🪟 <b>Modo Mosaico Horizontal Ativo</b> (" + links.length + " painéis inteiros)";
+                    infoTexto.innerHTML = "🪟 <b>Modo Mosaico Proporcional Ativo</b> (" + links.length + " painéis)";
                     atualizarBotaoRecarregarUI();
                 }} else {{
                     wrapperDiv.style.display = 'block';
