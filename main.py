@@ -43,7 +43,7 @@ st.markdown("""
             background-color: #094744 !important;
         }
         
-        .stTextArea textarea, .stNumberInput input {
+        .stTextInput input, .stNumberInput input {
             border-color: #cbd5e1 !important;
             border-radius: 8px !important;
         }
@@ -53,107 +53,135 @@ st.markdown("""
 if "iniciado" not in st.session_state:
     st.session_state.iniciado = False
 
-padrao_links = (
-    "https://ssinformatica.g4flex.com.br:9090/monitoring/queues\n"
-    "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues\n"
-    "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation"
-)
+# Inicialização da lista de painéis estruturada por dicionários no session_state
+if "paineis_config" not in st.session_state:
+    st.session_state.paineis_config = [
+        {
+            "link": "https://ssinformatica.g4flex.com.br:9090/monitoring/queues",
+            "nome": "Fila de Voz / Zoiper",
+            "tempo": 20,
+            "recarregar": True
+        },
+        {
+            "link": "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues",
+            "nome": "Grade de Filas Chat",
+            "tempo": 20,
+            "recarregar": True
+        },
+        {
+            "link": "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation",
+            "nome": "Dados Sintéticos de Monitoramento",
+            "tempo": 20,
+            "recarregar": True
+        }
+    ]
 
-if "links_texto_salvo" not in st.session_state:
-    st.session_state.links_texto_salvo = padrao_links
+if "horas_reload_geral" not in st.session_state:
+    st.session_state.horas_reload_geral = 0 # 0 significa desativado por padrão
 
-if "tempos_salvos" not in st.session_state:
-    st.session_state.tempos_salvos = {
-        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": 20,
-        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": 20,
-        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": 20
-    }
+# Funções de reordenação dinâmica (Subir / Descer)
+def mover_painel(index, direcao):
+    novo_index = index + direcao
+    if 0 <= novo_index < len(st.session_state.paineis_config):
+        item = st.session_state.paineis_config.pop(index)
+        st.session_state.paineis_config.insert(novo_index, item)
 
-if "nomes_salvos" not in st.session_state:
-    st.session_state.nomes_salvos = {
-        "https://ssinformatica.g4flex.com.br:9090/monitoring/queues": "Fila de Voz / Zoiper",
-        "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues": "Grade de Filas Chat",
-        "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation": "Dados Sintéticos de Monitoramento"
-    }
+def adicionar_painel():
+    st.session_state.paineis_config.append({
+        "link": "",
+        "nome": f"Novo Painel {len(st.session_state.paineis_config) + 1}",
+        "tempo": 20,
+        "recarregar": True
+    })
 
-if "recarregar_salvo" not in st.session_state:
-    st.session_state.recarregar_salvo = {}
+def remover_painel(index):
+    if len(st.session_state.paineis_config) > 1:
+        st.session_state.paineis_config.pop(index)
+    else:
+        st.warning("O painel deve conter pelo menos uma tela configurada.")
+
 
 # --- TELA 1: CONFIGURAÇÃO ---
 if not st.session_state.iniciado:
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 2.5, 1])
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Insira os links, defina os nomes personalizados e o tempo de exibição abaixo.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Gerencie os links, nomes, tempos, ordem de exibição e prevenção de memória.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
+
+        st.markdown("<p style='font-weight: 600; font-size: 14px;'>📋 Lista de Painéis e Ordem de Exibição:</p>", unsafe_allow_html=True)
         
-        links_texto = st.text_area(
-            "Links das páginas (um por linha):",
-            value=st.session_state.links_texto_salvo,
-            height=120
+        # Iterar sobre os painéis para exibir os controles dinâmicos de linha e ordem
+        for i, painel in enumerate(st.session_state.paineis_config):
+            with st.container():
+                cols = st.columns([2.2, 1.2, 0.6, 0.5, 0.5, 0.5])
+                
+                with cols[0]:
+                    st.session_state.paineis_config[i]["nome"] = st.text_input(
+                        f"Nome {i+1}",
+                        value=painel["nome"],
+                        key=f"nome_{i}",
+                        label_visibility="collapsed"
+                    )
+                with cols[1]:
+                    st.session_state.paineis_config[i]["link"] = st.text_input(
+                        f"Link {i+1}",
+                        value=painel["link"],
+                        key=f"link_{i}",
+                        label_visibility="collapsed"
+                    )
+                with cols[2]:
+                    st.session_state.paineis_config[i]["tempo"] = st.number_input(
+                        f"Tempo {i+1}",
+                        min_value=5,
+                        max_value=300,
+                        value=int(painel["tempo"]),
+                        step=5,
+                        key=f"tempo_{i}",
+                        label_visibility="collapsed"
+                    )
+                with cols[3]:
+                    if st.button("⬆️", key=f"subir_{i}", help="Mover para cima", use_container_width=True):
+                        mover_painel(i, -1)
+                        st.rerun()
+                with cols[4]:
+                    if st.button("⬇️", key=f"descer_{i}", help="Mover para baixo", use_container_width=True):
+                        mover_painel(i, 1)
+                        st.rerun()
+                with cols[5]:
+                    if st.button("🗑️", key=f"del_{i}", help="Remover painel", use_container_width=True):
+                        remover_painel(i)
+                        st.rerun()
+
+        if st.button("➕ Adicionar Novo Painel", use_container_width=True):
+            adicionar_painel()
+            st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight: 600; font-size: 14px;'>🧹 Otimização de Performance (Prevenção de Memory Leak):</p>", unsafe_allow_html=True)
+        
+        st.session_state.horas_reload_geral = st.selectbox(
+            "Recarregamento periódico total da aplicação (Limpeza de Cache / RAM em longos períodos):",
+            options=[0, 2, 4, 6, 8, 12, 24],
+            format_func=lambda x: "Desativado (Rodar direto)" if x == 0 else f"A cada {x} horas",
+            key="select_reload_geral"
         )
-        
-        links_atuais = [l.strip() for l in links_texto.split("\n") if l.strip()]
-        
-        st.markdown("<p style='font-weight: 600; font-size: 14px; margin-top: 15px;'>⚙️ Personalização dos Painéis (Nome e Tempo):</p>", unsafe_allow_html=True)
-        
-        tempos_temporarios = {}
-        nomes_temporarios = {}
-        
-        # Nomes padrão sugeridos com base na ordem
-        nomes_padrao_lista = [
-            "Fila de Voz / Zoiper",
-            "Grade de Filas Chat",
-            "Dados Sintéticos de Monitoramento"
-        ]
-        
-        for i, link in enumerate(links_atuais):
-            nome_sugerido = nomes_padrao_lista[i] if i < len(nomes_padrao_lista) else f"Painel {i+1}"
-            nome_atual = st.session_state.nomes_salvos.get(link, nome_sugerido)
-            
-            col_a, col_b = st.columns([2, 1])
-            with col_a:
-                nomes_temporarios[link] = st.text_input(
-                    f"Nome do Painel {i+1}",
-                    value=nome_atual,
-                    key=f"nome_input_{i}"
-                )
-            with col_b:
-                tempo_atual = st.session_state.tempos_salvos.get(link, 20)
-                tempos_temporarios[link] = st.number_input(
-                    f"Tempo (s) {i+1}",
-                    min_value=5,
-                    max_value=300,
-                    value=int(tempo_atual),
-                    step=5,
-                    key=f"tempo_input_{i}"
-                )
         
         st.markdown("<br>", unsafe_allow_html=True)
         
         if st.button("🚀 Iniciar Apresentação", type="primary", use_container_width=True):
-            if not links_atuais:
-                st.error("Por favor, insira pelo menos um link válido.")
+            links_validos = [p["link"].strip() for p in st.session_state.paineis_config if p["link"].strip()]
+            if not links_validos:
+                st.error("Por favor, preencha pelo menos um link válido.")
             else:
-                lista_final = []
-                for link in links_atuais:
-                    t = tempos_temporarios.get(link, 20)
-                    n = nomes_temporarios.get(link, "Painel")
-                    recarregar = st.session_state.recarregar_salvo.get(link, True)
-                    lista_final.append({"link": link, "tempo": t, "nome": n, "recarregar": recarregar})
-                
-                st.session_state.links_texto_salvo = links_texto
-                st.session_state.tempos_salvos = tempos_temporarios
-                st.session_state.nomes_salvos = nomes_temporarios
-                st.session_state.config_completa_salva = lista_final
                 st.session_state.iniciado = True
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO COM NOMES AMIGÁVEIS E BARRA DE PROGRESSO ---
+# --- TELA 2: EXIBIÇÃO COM RECURSOS AVANÇADOS ---
 else:
-    telas = st.session_state.config_completa_salva
+    telas = st.session_state.paineis_config
     
     links_lista = [t["link"] for t in telas]
     tempos_lista = [t["tempo"] for t in telas]
@@ -164,6 +192,9 @@ else:
     tempos_json = json.dumps(tempos_lista)
     nomes_json = json.dumps(nomes_lista)
     recarregar_json = json.dumps(recarregar_lista)
+    
+    # Conversão das horas de prevenção de memory leak para milissegundos no JS (0 = desativado)
+    intervalo_limpeza_ms = int(st.session_state.horas_reload_geral) * 3600 * 1000
 
     html_painel = f"""
     <!DOCTYPE html>
@@ -270,6 +301,7 @@ else:
             let estaPausado = false;
             let tempoRestante = 20;
             let tempoTotalPainel = 20;
+            const intervaloLimpezaMs = {intervalo_limpeza_ms};
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
@@ -295,6 +327,13 @@ else:
                 iframes.push({{ container: container, iframe: iframe, link: link }});
             }});
 
+            // Mecanismo de limpeza periódica de memória (Memory Leak prevention)
+            if (intervaloLimpezaMs > 0) {{
+                setTimeout(function() {{
+                    window.parent.location.reload();
+                }}, intervaloLimpezaMs);
+            }}
+
             function atualizarBotaoRecarregarUI() {{
                 if (deveRecarregar[indiceAtual]) {{
                     btnReloadToggle.innerText = "🔄 Atualizar: ON";
@@ -303,11 +342,6 @@ else:
                     btnReloadToggle.innerText = "🔒 Atualizar: OFF";
                     btnReloadToggle.classList.add("desativado");
                 }}
-            }}
-
-            function atualizarBarraProgresso(progresso) {{
-                barraProgresso.style.transition = 'transform 1s linear';
-                barraProgresso.style.transform = 'scaleX(' + progresso + ')';
             }}
 
             function atualizarExibicao() {{
@@ -358,7 +392,7 @@ else:
                     btnPause.innerText = "▶️ Retomar";
                     btnPause.classList.add("pausado");
                     contadorTempo.innerText = "⏸️ Pausado";
-                    barraProgresso.style.transition = 'none'; // congela barra
+                    barraProgresso.style.transition = 'none';
                 }} else {{
                     btnPause.innerText = "⏸️ Pausar";
                     btnPause.classList.remove("pausado");
@@ -391,11 +425,9 @@ else:
                 
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
                 
-                // Reseta a barra para cheia instantaneamente
                 barraProgresso.style.transition = 'none';
                 barraProgresso.style.transform = 'scaleX(1)';
                 
-                // Força reflow e aplica a transição gradual
                 setTimeout(() => {{
                     if (!estaPausado) {{
                         barraProgresso.style.transition = 'transform ' + tempoTotalPainel + 's linear';
