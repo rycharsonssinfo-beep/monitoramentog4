@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para limpar a tela e ajustar o layout
+# CSS Customizado para limpar a tela, estilizar os botões de ação e ajustar o layout
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -41,6 +41,24 @@ st.markdown("""
         }
         .stButton button[kind="primary"]:hover {
             background-color: #094744 !important;
+        }
+        
+        /* Estilização refinada para os botões secundários da grade (Subir, Descer, Lixeira) */
+        .stButton button:not([kind="primary"]) {
+            background-color: #ffffff !important;
+            color: #0d5c58 !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease-in-out;
+        }
+        .stButton button:not([kind="primary"]):hover {
+            background-color: #f1f5f9 !important;
+            border-color: #0d5c58 !important;
+            color: #094744 !important;
+        }
+        .stButton button:not([kind="primary"]) p {
+            color: #0d5c58 !important;
         }
         
         .stTextInput input, .stNumberInput input {
@@ -164,8 +182,8 @@ if not st.session_state.iniciado:
         
         st.session_state.horas_reload_geral = st.selectbox(
             "Recarregamento periódico total da aplicação (Limpeza de Cache / RAM em longos períodos):",
-            options=[0, 2, 4, 6, 8, 12, 24],
-            format_func=lambda x: "Desativado (Rodar direto)" if x == 0 else f"A cada {x} horas",
+            options=[0, 1, 2, 4, 6, 8, 12, 24],
+            format_func=lambda x: "Desativado (Rodar direto)" if x == 0 else ("A cada 1 hora" if x == 1 else f"A cada {x} horas"),
             key="select_reload_geral"
         )
         
@@ -441,7 +459,7 @@ else:
                     if (tempoRestante < 0) {{
                         irParaProxima();
                     }} else {{
-                        contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
+                        contadorTempo.innerText = "Próxima em " + tempoRestano = "Próxima em " + tempoRestante + "s";
                     }}
                 }}, 1000);
             }}
