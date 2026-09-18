@@ -170,7 +170,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO PROPORCIONAL CORRIGIDO ---
+# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO AJUSTADO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -230,7 +230,6 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             
-            /* Mosaico com Grade Perfeita e Ajuste de Escala Exato */
             #mosaico-wrapper {{
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
                 display: none; grid-template-columns: repeat(3, 1fr);
@@ -253,12 +252,12 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }}
             
-            /* Correção de Escala: Força o conteúdo a renderizar amplo e aplica zoom limpo */
+            /* Ajuste refinado de escala para o Mosaico exibir todo o conteúdo sem cortes */
             .mosaico-body iframe {{
-                width: 1600px;
-                height: 900px;
+                width: 1920px;
+                height: 1080px;
                 border: none;
-                transform: scale(0.48);
+                transform: scale(0.42);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
