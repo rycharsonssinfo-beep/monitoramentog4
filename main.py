@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para limpar a tela e estilizar os elementos
+# CSS Customizado para limpar a tela e otimizar o layout
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -36,12 +36,8 @@ st.markdown("""
             font-weight: 600;
             border: none;
         }
-        .stButton button[kind="primary"] p {
-            color: #ffffff !important;
-        }
-        .stButton button[kind="primary"]:hover {
-            background-color: #094744 !important;
-        }
+        .stButton button[kind="primary"] p { color: #ffffff !important; }
+        .stButton button[kind="primary"]:hover { background-color: #094744 !important; }
         
         .stButton button:not([kind="primary"]) {
             background-color: #ffffff !important;
@@ -54,9 +50,7 @@ st.markdown("""
             background-color: #fef2f2 !important;
             border-color: #b91c1c !important;
         }
-        .stButton button:not([kind="primary"]) p {
-            color: #b91c1c !important;
-        }
+        .stButton button:not([kind="primary"]) p { color: #b91c1c !important; }
         
         .stTextInput input, .stNumberInput input {
             border-color: #cbd5e1 !important;
@@ -159,7 +153,7 @@ if not st.session_state.iniciado:
         st.markdown("<p style='font-weight: 600; font-size: 14px;'>🧹 Otimização de Performance (Prevenção de Memory Leak):</p>", unsafe_allow_html=True)
         
         st.session_state.horas_reload_geral = st.selectbox(
-            "Recarregamento periódico total da aplicação (Limpeza de Cache / RAM em longos períodos):",
+            "Recarregamento periódico total da aplicação:",
             options=[0, 1, 2, 4, 6, 8, 12, 24],
             format_func=lambda x: "Desativado (Rodar direto)" if x == 0 else ("A cada 1 hora" if x == 1 else f"A cada {x} horas"),
             key="select_reload_geral"
@@ -176,7 +170,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO AUTOMÁTICA (VERSÃO ORIGINAL) ---
+# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO PROPORCIONAL CORRIGIDO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -232,15 +226,15 @@ else:
                 left: 0;
                 visibility: visible;
             }}
-            iframe {{
+            .iframe-container iframe {{
                 width: 100%; height: 100%; border: none; display: block;
             }}
             
-            /* Modo Mosaico Original (Grid Tela Cheia) */
+            /* Mosaico com Grade Perfeita e Ajuste de Escala Exato */
             #mosaico-wrapper {{
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-                gap: 8px; padding: 8px; background: #e2e8f0; overflow-y: auto; z-index: 999;
+                display: none; grid-template-columns: repeat(3, 1fr);
+                gap: 8px; padding: 8px; background: #e2e8f0; overflow: hidden; z-index: 999;
             }}
             #mosaico-wrapper.ativo {{
                 display: grid;
@@ -248,18 +242,27 @@ else:
             .mosaico-card {{
                 background: #ffffff; border-radius: 6px; overflow: hidden;
                 display: flex; flex-direction: column; border: 1px solid #cbd5e1;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.08); height: 450px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.08); height: 100%; width: 100%;
             }}
             .mosaico-header {{
-                background: #0d5c58; color: #ffffff; padding: 8px 12px;
-                font-size: 12px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
-                flex-shrink: 0;
+                background: #0d5c58; color: #ffffff; padding: 6px 10px;
+                font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
+                flex-shrink: 0; height: 32px;
             }}
             .mosaico-body {{
-                flex: 1; width: 100%; height: 100%; position: relative;
+                flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }}
+            
+            /* Correção de Escala: Força o conteúdo a renderizar amplo e aplica zoom limpo */
             .mosaico-body iframe {{
-                width: 100%; height: 100%; border: none; display: block;
+                width: 1600px;
+                height: 900px;
+                border: none;
+                transform: scale(0.48);
+                transform-origin: top left;
+                position: absolute;
+                top: 0;
+                left: 0;
             }}
 
             .botoes-grupo {{
@@ -308,7 +311,7 @@ else:
                 <button class="btn-controle" onclick="mudarTela(-1)" title="Painel Anterior">⬅️ Anterior</button>
                 <button class="btn-controle" onclick="mudarTela(1)" title="Próximo Painel">Próxima ➡️</button>
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
-                <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 (Atualização) nesta tela">🔄 Atualizar: ON</button>
+                <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 nesta tela">🔄 Atualizar: ON</button>
                 <button class="btn-controle" id="btn-mosaico" onclick="alternarMosaico()" title="Exibir todas as telas juntas em Mosaico">🪟 Mosaico</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
                 <button class="btn-controle" onclick="irParaAjustes()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
