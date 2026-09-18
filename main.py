@@ -230,7 +230,7 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }
             
-            /* Mosaico Híbrido: Esquerda 1 parte, Direita 2 partes */
+            /* Mosaico Híbrido: Proporção 1fr (Esquerda) e 2fr (Direita) */
             #mosaico-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
                 display: none; grid-template-columns: 1fr 2fr;
@@ -253,24 +253,12 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }
             
-            /* Zoom e escala para encaixar perfeitamente os conteúdos do G4Flex */
-            #iframe-esq-container iframe {
-                width: 1400px;
-                height: 900px;
+            /* Preenchimento total e fluido de 100% em ambos os blocos do mosaico */
+            .mosaico-body iframe {
+                width: 100%;
+                height: 100%;
                 border: none;
-                transform: scale(0.44);
-                transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
-
-            #iframe-dir-container iframe {
-                width: 1400px;
-                height: 900px;
-                border: none;
-                transform: scale(0.66);
-                transform-origin: top left;
+                display: block;
                 position: absolute;
                 top: 0;
                 left: 0;
