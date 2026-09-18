@@ -230,7 +230,7 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }
             
-            /* Mosaico Híbrido: Proporção 1fr (Esquerda) e 2fr (Direita) */
+            /* Mosaico Híbrido com proporção 1fr (Esquerda) e 2fr (Direita) */
             #mosaico-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
                 display: none; grid-template-columns: 1fr 2fr;
@@ -253,12 +253,24 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }
             
-            /* Preenchimento total e fluido de 100% em ambos os blocos do mosaico */
-            .mosaico-body iframe {
-                width: 100%;
-                height: 100%;
+            /* Ajustes finos de escala para enquadrar perfeitamente sem cortes nas laterais */
+            #iframe-esq-container iframe {
+                width: 1920px;
+                height: 1080px;
                 border: none;
-                display: block;
+                transform: scale(0.31);
+                transform-origin: top left;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            #iframe-dir-container iframe {
+                width: 1920px;
+                height: 1080px;
+                border: none;
+                transform: scale(0.64);
+                transform-origin: top left;
                 position: absolute;
                 top: 0;
                 left: 0;
