@@ -176,7 +176,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML E MODO MOSAICO CORRIGIDO ---
+# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML E MODO MOSAICO CORRIGIDO PARA TELA INTEIRA ---
 else:
     telas = st.session_state.paineis_config
     
@@ -236,28 +236,28 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             
-            /* Estilos Otimizados do Modo Mosaico (Grid Flexível Proporcional) */
+            /* Modo Mosaico Ajustado: Ocupa exatamente a tela inteira sem overflow e distribui os cartões */
             #mosaico-wrapper {{
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-                grid-auto-rows: minmax(0, 1fr);
-                gap: 8px; padding: 8px; background: #e2e8f0; overflow: auto; z-index: 999;
+                display: none; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+                grid-template-rows: repeat(auto-fit, minmax(0, 1fr));
+                gap: 6px; padding: 6px; background: #e2e8f0; overflow: hidden; z-index: 999;
             }}
             #mosaico-wrapper.ativo {{
                 display: grid;
             }}
             .mosaico-card {{
-                background: #ffffff; border-radius: 6px; overflow: hidden;
+                background: #ffffff; border-radius: 4px; overflow: hidden;
                 display: flex; flex-direction: column; border: 1px solid #cbd5e1;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05); min-height: 450px; height: 100%;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 100%; min-height: 0;
             }}
             .mosaico-header {{
-                background: #0d5c58; color: #ffffff; padding: 6px 10px;
+                background: #0d5c58; color: #ffffff; padding: 4px 8px;
                 font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
                 flex-shrink: 0;
             }}
             .mosaico-body {{
-                flex: 1; width: 100%; position: relative; min-height: 0;
+                flex: 1; width: 100%; height: 100%; position: relative; min-height: 0; overflow: hidden;
             }}
             .mosaico-body iframe {{
                 width: 100%; height: 100%; border: none; display: block;
