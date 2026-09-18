@@ -68,8 +68,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Verificação automática baseada na URL para manter o estado após o reload de limpeza
 if "iniciado" not in st.session_state:
-    st.session_state.iniciado = False
+    if st.query_params.get("iniciado") == "true":
+        st.session_state.iniciado = True
+    else:
+        st.session_state.iniciado = False
 
 # Inicialização da lista de painéis estruturada por dicionários no session_state
 if "paineis_config" not in st.session_state:
@@ -128,7 +132,7 @@ if not st.session_state.iniciado:
 
         st.markdown("<p style='font-weight: 600; font-size: 14px;'>📋 Lista de Painéis e Ordem de Exibição:</p>", unsafe_allow_html=True)
         
-        # Legendas descritivas atualizadas informando explicitamente onde ficam os links e os segundos
+        # Legendas descritivas informando onde ficam os links e os segundos
         col_leg1, col_leg2, col_leg3, col_leg4 = st.columns([2.2, 2.5, 0.8, 0.5])
         with col_leg1:
             st.markdown("<p style='font-size: 12px; font-weight: 600; color: #0d5c58 !important; margin-bottom: 2px;'>Nome do Painel</p>", unsafe_allow_html=True)
@@ -195,6 +199,7 @@ if not st.session_state.iniciado:
                 st.error("Por favor, preencha pelo menos um link válido.")
             else:
                 st.session_state.iniciado = True
+                st.query_params["iniciado"] = "true"
                 st.rerun()
 
 # --- TELA 2: EXIBIÇÃO COM RECURSOS AVANÇADOS ---
@@ -344,6 +349,7 @@ else:
                 iframes.push({{ container: container, iframe: iframe, link: link }});
             }});
 
+            // Mecanismo de limpeza periódica de memória (recarrega mantendo o estado via URL)
             if (intervaloLimpezaMs > 0) {{
                 setTimeout(function() {{
                     window.parent.location.reload();
@@ -427,7 +433,8 @@ else:
             }}
 
             function voltarConfig() {{
-                window.parent.location.reload();
+                // Remove o parâmetro da URL ao voluntariamente voltar aos ajustes
+                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname;
             }}
 
             atualizarExibicao();
