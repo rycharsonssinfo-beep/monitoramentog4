@@ -176,7 +176,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML E MODO MOSAICO ---
+# --- TELA 2: EXIBIÇÃO ORIGINAL COM BARRA SUPERIOR EM HTML E MODO MOSAICO CORRIGIDO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -236,11 +236,12 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             
-            /* Estilos do Modo Mosaico (Grid) */
+            /* Estilos Otimizados do Modo Mosaico (Grid Flexível Proporcional) */
             #mosaico-wrapper {{
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-                gap: 6px; padding: 6px; background: #e2e8f0; overflow-y: auto; z-index: 999;
+                display: none; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                grid-auto-rows: minmax(0, 1fr);
+                gap: 8px; padding: 8px; background: #e2e8f0; overflow: auto; z-index: 999;
             }}
             #mosaico-wrapper.ativo {{
                 display: grid;
@@ -248,17 +249,18 @@ else:
             .mosaico-card {{
                 background: #ffffff; border-radius: 6px; overflow: hidden;
                 display: flex; flex-direction: column; border: 1px solid #cbd5e1;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05); height: 400px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05); min-height: 450px; height: 100%;
             }}
             .mosaico-header {{
                 background: #0d5c58; color: #ffffff; padding: 6px 10px;
                 font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
+                flex-shrink: 0;
             }}
             .mosaico-body {{
-                flex: 1; width: 100%; position: relative;
+                flex: 1; width: 100%; position: relative; min-height: 0;
             }}
             .mosaico-body iframe {{
-                width: 100%; height: 100%; border: none;
+                width: 100%; height: 100%; border: none; display: block;
             }}
 
             .botoes-grupo {{
@@ -354,9 +356,7 @@ else:
                 indiceAtual = parseInt(savedIndex);
             }}
 
-            // Criação das telas normais e do mosaico
             links.forEach((link, index) => {{
-                // Wrapper normal individual
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
                 const iframe = document.createElement('iframe');
@@ -365,7 +365,6 @@ else:
                 wrapperDiv.appendChild(container);
                 iframes.push({{ container: container, iframe: iframe, link: link }});
 
-                // Card do Mosaico
                 const card = document.createElement('div');
                 card.className = 'mosaico-card';
                 
