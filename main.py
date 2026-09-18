@@ -253,12 +253,12 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }
             
-            /* Escalas otimizadas com base fluida para abranger todo o painel nativo sem cortes verticais ou horizontais */
+            /* Escalas ajustadas com margem total de segurança para evitar qualquer corte */
             #iframe-esq-container iframe {
                 width: 1920px;
                 height: 1080px;
                 border: none;
-                transform: scale(0.39);
+                transform: scale(0.33);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
@@ -269,7 +269,7 @@ else:
                 width: 1920px;
                 height: 1080px;
                 border: none;
-                transform: scale(0.81);
+                transform: scale(0.73);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
