@@ -43,7 +43,7 @@ st.markdown("""
             background-color: #094744 !important;
         }
         
-        /* Estilização refinada para o botão da lixeira */
+        /* Estilização refinada para o botão da lixeira e ajustes */
         .stButton button:not([kind="primary"]) {
             background-color: #ffffff !important;
             color: #b91c1c !important;
@@ -204,6 +204,15 @@ if not st.session_state.iniciado:
 
 # --- TELA 2: EXIBIÇÃO COM RECURSOS AVANÇADOS ---
 else:
+    # Barra nativa do Streamlit no topo contendo exclusivamente o botão de Ajustes para garantir funcionamento total
+    col_topo_vazio, col_btn_ajustes = st.columns([10, 1.2])
+    with col_btn_ajustes:
+        if st.button("⚙️ Ajustes", use_container_width=True, help="Voltar para a tela de configuração"):
+            st.session_state.iniciado = False
+            if "iniciado" in st.query_params:
+                del st.query_params["iniciado"]
+            st.rerun()
+
     telas = st.session_state.paineis_config
     
     links_lista = [t["link"] for t in telas]
@@ -301,7 +310,6 @@ else:
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 (Atualização) nesta tela">🔄 Atualizar: ON</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
-                <button class="btn-controle" onclick="voltarConfig()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
                 <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
             </div>
         </div>
@@ -432,11 +440,6 @@ else:
                 }}
             }}
 
-            function voltarConfig() {{
-                // Limpa os parâmetros e força o redirecionamento correto para a página principal no escopo pai
-                window.parent.location.search = '';
-            }}
-
             atualizarExibicao();
 
             function reiniciarTemporizador() {{
@@ -475,4 +478,4 @@ else:
     </html>
     """
     
-    st.components.v1.html(html_painel, height=930, scrolling=False)
+    st.components.v1.html(html_painel, height=890, scrolling=False)
