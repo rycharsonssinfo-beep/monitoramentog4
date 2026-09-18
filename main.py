@@ -433,8 +433,8 @@ else:
             }}
 
             function voltarConfig() {{
-                // Remove o parâmetro da URL ao voluntariamente voltar aos ajustes
-                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname;
+                // Limpa os parâmetros e força o redirecionamento correto para a página principal no escopo pai
+                window.parent.location.search = '';
             }}
 
             atualizarExibicao();
