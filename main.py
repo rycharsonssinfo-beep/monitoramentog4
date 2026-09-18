@@ -170,7 +170,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO AJUSTADO E PROPORÇÃO EXATA ---
+# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO REAJUSTADO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -252,12 +252,12 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }}
             
-            /* Ajuste perfeito de escala proporcional para preencher totalmente o card sem sobras */
+            /* Ajuste ideal expandido para ocupar todo o espaço do cartão perfeitamente */
             .mosaico-body iframe {{
-                width: 1500px;
-                height: 950px;
+                width: 1380px;
+                height: 870px;
                 border: none;
-                transform: scale(0.44);
+                transform: scale(0.48);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
@@ -371,7 +371,7 @@ else:
                 
                 const header = document.createElement('div');
                 header.className = 'mosaico-header';
-                header.innerHTML = `<span>🟢 ${{nomes[index] || ('Painel ' + (index+1))}}</span>`;
+                header.innerHTML = `🟢 ${{nomes[index] || ('Painel ' + (index+1))}}`;
                 
                 const body = document.createElement('div');
                 body.className = 'mosaico-body';
