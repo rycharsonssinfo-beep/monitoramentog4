@@ -170,7 +170,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO REAJUSTADO ---
+# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO HÍBRIDO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -230,9 +230,10 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }}
             
+            /* Mosaico Híbrido: 1 coluna esquerda (alternada), 2 colunas direita (Dados Sintéticos fixo) */
             #mosaico-wrapper {{
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: repeat(3, 1fr);
+                display: none; grid-template-columns: 1fr 2fr;
                 gap: 8px; padding: 8px; background: #e2e8f0; overflow: hidden; z-index: 999;
             }}
             #mosaico-wrapper.ativo {{
@@ -252,12 +253,23 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }}
             
-            /* Ajuste ideal expandido para ocupar todo o espaço do cartão perfeitamente */
-            .mosaico-body iframe {{
+            /* Ajustes de escala específicos para o Mosaico Híbrido */
+            #iframe-esq-container iframe {{
                 width: 1380px;
                 height: 870px;
                 border: none;
                 transform: scale(0.48);
+                transform-origin: top left;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }}
+
+            #iframe-dir-container iframe {{
+                width: 1380px;
+                height: 870px;
+                border: none;
+                transform: scale(0.70);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
@@ -311,7 +323,7 @@ else:
                 <button class="btn-controle" onclick="mudarTela(1)" title="Próximo Painel">Próxima ➡️</button>
                 <button class="btn-controle" id="btn-pause" onclick="alternarPausa()" title="Pausar/Retomar Rotação">⏸️ Pausar</button>
                 <button class="btn-controle" id="btn-reload-toggle" onclick="alternarRecarregamento()" title="Ativar/Desativar F5 nesta tela">🔄 Atualizar: ON</button>
-                <button class="btn-controle" id="btn-mosaico" onclick="alternarMosaico()" title="Exibir todas as telas juntas em Mosaico">🪟 Mosaico</button>
+                <button class="btn-controle" id="btn-mosaico" onclick="alternarMosaico()" title="Exibir modo híbrido ou individual">🪟 Mosaico</button>
                 <button class="btn-controle" onclick="alternarTelaCheia()" title="Tela Cheia">📺 Tela Cheia</button>
                 <button class="btn-controle" onclick="irParaAjustes()" title="Alterar Links e Configurações">⚙️ Ajustes</button>
                 <span id="contador-tempo" style="margin-left: 8px; color: #e2e8f0; font-weight: 500; min-width: 90px; font-size: 12px;">Próxima em --s</span>
@@ -357,6 +369,21 @@ else:
                 indiceAtual = parseInt(savedIndex);
             }}
 
+            // Identificar índices baseado no nome padrão ou posição
+            let indiceDadosSinteticos = nomes.findIndex(n => n.toLowerCase().includes("dados sintéticos") || n.toLowerCase().includes("sintéticos"));
+            if (indiceDadosSinteticos === -1) indiceDadosSinteticos = links.length > 2 ? 2 : 0;
+
+            let indicesEsquerda = [];
+            nomes.forEach((n, idx) => {{
+                if (idx !== indiceDadosSinteticos) {{
+                    indicesEsquerda.push(idx);
+                }}
+            }});
+            if (indicesEsquerda.length === 0) indicesEsquerda = [0];
+
+            let indiceEsqAtual = 0;
+
+            // Criar iframes individuais de tela cheia
             links.forEach((link, index) => {{
                 const container = document.createElement('div');
                 container.className = 'iframe-container' + (index === indiceAtual ? ' ativo' : '');
@@ -365,24 +392,51 @@ else:
                 container.appendChild(iframe);
                 wrapperDiv.appendChild(container);
                 iframes.push({{ container: container, iframe: iframe, link: link }});
-
-                const card = document.createElement('div');
-                card.className = 'mosaico-card';
-                
-                const header = document.createElement('div');
-                header.className = 'mosaico-header';
-                header.innerHTML = `🟢 ${{nomes[index] || ('Painel ' + (index+1))}}`;
-                
-                const body = document.createElement('div');
-                body.className = 'mosaico-body';
-                const iframeMos = document.createElement('iframe');
-                iframeMos.src = link;
-                body.appendChild(iframeMos);
-                
-                card.appendChild(header);
-                card.appendChild(body);
-                mosaicoDiv.appendChild(card);
             }});
+
+            // Montar Estrutura Fixa do Mosaico Híbrido
+            // 1. Quadrado esquerdo (alterna entre as filas)
+            const cardEsq = document.createElement('div');
+            cardEsq.className = 'mosaico-card';
+            
+            const headerEsq = document.createElement('div');
+            headerEsq.className = 'mosaico-header';
+            headerEsq.id = 'mosaico-header-esq';
+            headerEsq.innerHTML = `🟢 ${nomes[indicesEsquerda[0]] || 'Painel'}`;
+            
+            const bodyEsq = document.createElement('div');
+            bodyEsq.className = 'mosaico-body';
+            bodyEsq.id = 'iframe-esq-container';
+            
+            const iframeEsq = document.createElement('iframe');
+            iframeEsq.id = 'iframe-esq-ativo';
+            iframeEsq.src = links[indicesEsquerda[0]];
+            bodyEsq.appendChild(iframeEsq);
+            
+            cardEsq.appendChild(headerEsq);
+            cardEsq.appendChild(bodyEsq);
+            mosaicoDiv.appendChild(cardEsq);
+
+            // 2. Quadrado direito (Fixo em Dados Sintéticos de Monitoramento)
+            const cardDir = document.createElement('div');
+            cardDir.className = 'mosaico-card';
+            
+            const headerDir = document.createElement('div');
+            headerDir.className = 'mosaico-header';
+            headerDir.innerHTML = `🟢 ${nomes[indiceDadosSinteticos] || 'Dados Sintéticos de Monitoramento'}`;
+            
+            const bodyDir = document.createElement('div');
+            bodyDir.className = 'mosaico-body';
+            bodyDir.id = 'iframe-dir-container';
+            
+            const iframeDir = document.createElement('iframe');
+            iframeDir.src = links[indiceDadosSinteticos];
+            bodyDir.appendChild(iframeDir);
+            
+            cardDir.appendChild(headerDir);
+            cardDir.appendChild(bodyDir);
+            mosaicoDiv.appendChild(cardDir);
+
 
             if (intervaloLimpezaMs > 0) {{
                 setTimeout(function() {{
@@ -441,19 +495,34 @@ else:
             }}
 
             function irParaProxima() {{
-                if (modoMosaicoAtivo) alternarMosaico();
-                indiceAtual = (indiceAtual + 1) % links.length;
-                atualizarExibicao();
-                gerenciarAtualizacaoPainelAtual();
-                reiniciarTemporizador();
+                if (modoMosaicoAtivo) {{
+                    // No mosaico, avança o painel esquerdo rotativo
+                    indiceEsqAtual = (indiceEsqAtual + 1) % indicesEsquerda.length;
+                    let realIdx = indicesEsquerda[indiceEsqAtual];
+                    iframeEsq.src = links[realIdx];
+                    headerEsq.innerHTML = `🟢 ${nomes[realIdx] || 'Painel'}`;
+                    reiniciarTemporizador();
+                }} else {{
+                    indiceAtual = (indiceAtual + 1) % links.length;
+                    atualizarExibicao();
+                    gerenciarAtualizacaoPainelAtual();
+                    reiniciarTemporizador();
+                }}
             }}
 
             function mudarTela(direcao) {{
-                if (modoMosaicoAtivo) alternarMosaico();
-                indiceAtual = (indiceAtual + direcao + links.length) % links.length;
-                atualizarExibicao();
-                gerenciarAtualizacaoPainelAtual();
-                reiniciarTemporizador();
+                if (modoMosaicoAtivo) {{
+                    indiceEsqAtual = (indiceEsqAtual + direcao + indicesEsquerda.length) % indicesEsquerda.length;
+                    let realIdx = indicesEsquerda[indiceEsqAtual];
+                    iframeEsq.src = links[realIdx];
+                    headerEsq.innerHTML = `🟢 ${nomes[realIdx] || 'Painel'}`;
+                    reiniciarTemporizador();
+                }} else {{
+                    indiceAtual = (indiceAtual + direcao + links.length) % links.length;
+                    atualizarExibicao();
+                    gerenciarAtualizacaoPainelAtual();
+                    reiniciarTemporizador();
+                }}
             }}
 
             function alternarRecarregamento() {{
@@ -466,14 +535,14 @@ else:
             function alternarMosaico() {{
                 modoMosaicoAtivo = !modoMosaicoAtivo;
                 if (modoMosaicoAtivo) {{
-                    clearInterval(temporizador);
                     wrapperDiv.style.display = 'none';
                     mosaicoDiv.classList.add('ativo');
-                    barraProgressoContainer.style.display = 'none';
+                    barraProgressoContainer.style.display = 'block';
                     btnMosaico.innerText = "📊 Individual";
                     btnMosaico.classList.add("ativo");
-                    infoTexto.innerHTML = "🪟 <b>Modo Mosaico Ativo</b> (" + links.length + " painéis simultâneos)";
+                    infoTexto.innerHTML = "🪟 <b>Modo Mosaico Híbrido</b> (Esquerda: Filas em rotação | Direita: Dados Sintéticos Fixo)";
                     atualizarBotaoRecarregarUI();
+                    reiniciarTemporizador();
                 }} else {{
                     wrapperDiv.style.display = 'block';
                     mosaicoDiv.classList.remove('ativo');
@@ -486,7 +555,6 @@ else:
             }}
 
             function alternarPausa() {{
-                if (modoMosaicoAtivo) return;
                 estaPausado = !estaPausado;
                 if (estaPausado) {{
                     clearInterval(temporizador);
@@ -514,27 +582,32 @@ else:
             atualizarExibicao();
 
             function reiniciarTemporizador() {{
-                if (modoMosaicoAtivo) return;
                 clearInterval(temporizador);
                 if (estaPausado) return;
                 
-                tempoTotalPainel = tempos[indiceAtual];
-                tempoRestante = tempoTotalPainel;
+                // Se estiver no mosaico, pega o tempo do painel esquerdo atual
+                if (modoMosaicoAtivo) {{
+                    let realIdx = indicesEsquerda[indiceEsqAtual];
+                    tempoTotalPainel = tempos[realIdx] || 20;
+                }} else {{
+                    tempoTotalPainel = tempos[indiceAtual];
+                }}
                 
+                tempoRestante = tempoTotalPainel;
                 contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
                 
                 barraProgresso.style.transition = 'none';
                 barraProgresso.style.transform = 'scaleX(1)';
                 
                 setTimeout(() => {{
-                    if (!estaPausado && !modoMosaicoAtivo) {{
+                    if (!estaPausado) {{
                         barraProgresso.style.transition = 'transform ' + tempoTotalPainel + 's linear';
                         barraProgresso.style.transform = 'scaleX(0)';
                     }}
                 }}, 50);
 
                 temporizador = setInterval(function() {{
-                    if (estaPausado || modoMosaicoAtivo) return;
+                    if (estaPausado) return;
                     tempoRestante--;
                     if (tempoRestante < 0) {{
                         irParaProxima();
