@@ -230,9 +230,10 @@ else:
                 width: 100%; height: 100%; border: none; display: block;
             }
             
+            /* Mosaico Híbrido: Esquerda 1 parte, Direita 2 partes */
             #mosaico-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: 1fr 1fr;
+                display: none; grid-template-columns: 1fr 2fr;
                 gap: 8px; padding: 8px; background: #e2e8f0; overflow: hidden; z-index: 999;
             }
             #mosaico-wrapper.ativo {
@@ -252,11 +253,27 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }
             
-            .mosaico-body iframe {
-                width: 100%;
-                height: 100%;
+            /* Zoom e escala para encaixar perfeitamente os conteúdos do G4Flex */
+            #iframe-esq-container iframe {
+                width: 1400px;
+                height: 900px;
                 border: none;
-                display: block;
+                transform: scale(0.44);
+                transform-origin: top left;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            #iframe-dir-container iframe {
+                width: 1400px;
+                height: 900px;
+                border: none;
+                transform: scale(0.66);
+                transform-origin: top left;
+                position: absolute;
+                top: 0;
+                left: 0;
             }
 
             .botoes-grupo {
