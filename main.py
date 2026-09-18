@@ -186,7 +186,6 @@ else:
     
     intervalo_limpeza_ms = int(st.session_state.horas_reload_geral) * 3600 * 1000
 
-    # Usando string comum (sem f-string) para evitar conflitos com as chaves do JS
     html_painel = """
     <!DOCTYPE html>
     <html>
@@ -233,7 +232,7 @@ else:
             
             #mosaico-wrapper {
                 width: 100%; height: calc(100vh - 49px); position: absolute; top: 49px; left: 0;
-                display: none; grid-template-columns: 1fr 2fr;
+                display: none; grid-template-columns: 1fr 1fr;
                 gap: 8px; padding: 8px; background: #e2e8f0; overflow: hidden; z-index: 999;
             }
             #mosaico-wrapper.ativo {
@@ -253,26 +252,11 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }
             
-            #iframe-esq-container iframe {
-                width: 1380px;
-                height: 870px;
+            .mosaico-body iframe {
+                width: 100%;
+                height: 100%;
                 border: none;
-                transform: scale(0.48);
-                transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
-
-            #iframe-dir-container iframe {
-                width: 1380px;
-                height: 870px;
-                border: none;
-                transform: scale(0.70);
-                transform-origin: top left;
-                position: absolute;
-                top: 0;
-                left: 0;
+                display: block;
             }
 
             .botoes-grupo {
