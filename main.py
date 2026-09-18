@@ -118,20 +118,24 @@ if not st.session_state.iniciado:
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("### 📊 Configuração do Painel de Monitoramento")
+        
+        # Inserção da Imagem Oficial do Grupo S&S
+        st.image("https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png", width=280)
+        
+        st.markdown("### Configuração do Painel de Monitoramento")
         st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Gerencie os nomes, links, tempos de exibição e prevenção de memória.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
-        st.markdown("<p style='font-weight: 600; font-size: 14px;'>📋 Lista de Painéis:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight: 600; font-size: 14px;'>📋 Lista de Painéis e Ordem de Exibição:</p>", unsafe_allow_html=True)
         
-        # Cabeçalhos/Legendas descritivas para as colunas
+        # Legendas descritivas atualizadas informando explicitamente onde ficam os links e os segundos
         col_leg1, col_leg2, col_leg3, col_leg4 = st.columns([2.2, 2.5, 0.8, 0.5])
         with col_leg1:
-            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #64748b !important; margin-bottom: 2px;'>Nome do Painel</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #0d5c58 !important; margin-bottom: 2px;'>Nome do Painel</p>", unsafe_allow_html=True)
         with col_leg2:
-            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #64748b !important; margin-bottom: 2px;'>Link da Página (URL)</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #0d5c58 !important; margin-bottom: 2px;'>🔗 Links (URL da Página)</p>", unsafe_allow_html=True)
         with col_leg3:
-            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #64748b !important; margin-bottom: 2px;'>Tempo (Segundos)</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #0d5c58 !important; margin-bottom: 2px;'>⏱️ Segundos</p>", unsafe_allow_html=True)
         with col_leg4:
             st.markdown("", unsafe_allow_html=True)
 
