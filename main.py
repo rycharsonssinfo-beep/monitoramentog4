@@ -170,7 +170,7 @@ if not st.session_state.iniciado:
                 st.query_params["iniciado"] = "true"
                 st.rerun()
 
-# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO AJUSTADO ---
+# --- TELA 2: EXIBIÇÃO EM ROTAÇÃO COM MOSAICO PERFEITAMENTE PREENCHIDO ---
 else:
     telas = st.session_state.paineis_config
     
@@ -252,12 +252,12 @@ else:
                 flex: 1; width: 100%; position: relative; overflow: hidden; background: #fff;
             }}
             
-            /* Ajuste refinado de escala para o Mosaico exibir todo o conteúdo sem cortes */
+            /* Correção definitiva para preencher 100% da altura do card sem espaços em branco */
             .mosaico-body iframe {{
-                width: 1920px;
-                height: 1080px;
+                width: 1600px;
+                height: 1200px;
                 border: none;
-                transform: scale(0.42);
+                transform: scale(0.38);
                 transform-origin: top left;
                 position: absolute;
                 top: 0;
