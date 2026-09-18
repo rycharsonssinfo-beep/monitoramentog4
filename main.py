@@ -322,7 +322,16 @@ else:
 
             if (intervaloLimpezaMs > 0) {
                 setTimeout(function() {
-                    window.parent.location.reload();
+                    // Força a permanência do parâmetro 'iniciado=true' na URL ao limpar o cache/dar reload geral
+                    try {
+                        let url = new URL(window.parent.location.href);
+                        url.searchParams.set("iniciado", "true");
+                        window.parent.location.href = url.toString();
+                    } catch(e) {
+                        let url = new URL(window.location.href);
+                        url.searchParams.set("iniciado", "true");
+                        window.location.href = url.toString();
+                    }
                 }, intervaloLimpezaMs);
             }
 
