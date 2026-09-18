@@ -292,7 +292,7 @@ else:
             const links = {links_json};
             const tempos = {tempos_json};
             const nomes = {nomes_json};
-            let deveRecarregar = {recarregar_json};
+            let deveRecarregarPadrao = {recarregar_json};
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
@@ -300,6 +300,10 @@ else:
             let tempoRestante = 20;
             let tempoTotalPainel = 20;
             const intervaloLimpezaMs = {intervalo_limpeza_ms};
+
+            // Recupera estado de recarregamento salvo ou usa o padrão do Python
+            let savedRecarregar = localStorage.getItem("painel_recarregar_estados");
+            let deveRecarregar = savedRecarregar ? JSON.parse(savedRecarregar) : [...deveRecarregarPadrao];
 
             const wrapperDiv = document.getElementById('telas-wrapper');
             const infoTexto = document.getElementById('info-texto');
@@ -388,6 +392,7 @@ else:
             function alternarRecarregamento() {{
                 deveRecarregar[indiceAtual] = !deveRecarregar[indiceAtual];
                 atualizarBotaoRecarregarUI();
+                localStorage.setItem("painel_recarregar_estados", JSON.stringify(deveRecarregar));
             }}
 
             function alternarPausa() {{
