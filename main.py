@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS Customizado para limpar a tela, estilizar os botões de ação e ajustar o layout
+# CSS Customizado para limpar a tela, estilizar os botões e ajustar o layout
 st.markdown("""
     <style>
         header {visibility: hidden !important;}
@@ -43,22 +43,22 @@ st.markdown("""
             background-color: #094744 !important;
         }
         
-        /* Estilização refinada para os botões secundários da grade (Subir, Descer, Lixeira) */
+        /* Estilização refinada para o botão da lixeira */
         .stButton button:not([kind="primary"]) {
             background-color: #ffffff !important;
-            color: #0d5c58 !important;
+            color: #b91c1c !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 6px !important;
             font-weight: 600 !important;
             transition: all 0.2s ease-in-out;
         }
         .stButton button:not([kind="primary"]):hover {
-            background-color: #f1f5f9 !important;
-            border-color: #0d5c58 !important;
-            color: #094744 !important;
+            background-color: #fef2f2 !important;
+            border-color: #b91c1c !important;
+            color: #991b1b !important;
         }
         .stButton button:not([kind="primary"]) p {
-            color: #0d5c58 !important;
+            color: #b91c1c !important;
         }
         
         .stTextInput input, .stNumberInput input {
@@ -97,13 +97,6 @@ if "paineis_config" not in st.session_state:
 if "horas_reload_geral" not in st.session_state:
     st.session_state.horas_reload_geral = 0 # 0 significa desativado por padrão
 
-# Funções de reordenação dinâmica (Subir / Descer)
-def mover_painel(index, direcao):
-    novo_index = index + direcao
-    if 0 <= novo_index < len(st.session_state.paineis_config):
-        item = st.session_state.paineis_config.pop(index)
-        st.session_state.paineis_config.insert(novo_index, item)
-
 def adicionar_painel():
     st.session_state.paineis_config.append({
         "link": "",
@@ -126,15 +119,26 @@ if not st.session_state.iniciado:
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("### 📊 Configuração do Painel de Monitoramento")
-        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Gerencie os links, nomes, tempos, ordem de exibição e prevenção de memória.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748b !important; font-size: 13px; margin-top: -5px;'>Gerencie os nomes, links, tempos de exibição e prevenção de memória.</p>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
-        st.markdown("<p style='font-weight: 600; font-size: 14px;'>📋 Lista de Painéis e Ordem de Exibição:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight: 600; font-size: 14px;'>📋 Lista de Painéis:</p>", unsafe_allow_html=True)
         
-        # Iterar sobre os painéis para exibir os controles dinâmicos de linha e ordem
+        # Cabeçalhos/Legendas descritivas para as colunas
+        col_leg1, col_leg2, col_leg3, col_leg4 = st.columns([2.2, 2.5, 0.8, 0.5])
+        with col_leg1:
+            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #64748b !important; margin-bottom: 2px;'>Nome do Painel</p>", unsafe_allow_html=True)
+        with col_leg2:
+            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #64748b !important; margin-bottom: 2px;'>Link da Página (URL)</p>", unsafe_allow_html=True)
+        with col_leg3:
+            st.markdown("<p style='font-size: 12px; font-weight: 600; color: #64748b !important; margin-bottom: 2px;'>Tempo (Segundos)</p>", unsafe_allow_html=True)
+        with col_leg4:
+            st.markdown("", unsafe_allow_html=True)
+
+        # Iterar sobre os painéis para exibir os campos de entrada e a lixeira
         for i, painel in enumerate(st.session_state.paineis_config):
             with st.container():
-                cols = st.columns([2.2, 1.2, 0.6, 0.5, 0.5, 0.5])
+                cols = st.columns([2.2, 2.5, 0.8, 0.5])
                 
                 with cols[0]:
                     st.session_state.paineis_config[i]["nome"] = st.text_input(
@@ -161,14 +165,6 @@ if not st.session_state.iniciado:
                         label_visibility="collapsed"
                     )
                 with cols[3]:
-                    if st.button("⬆️", key=f"subir_{i}", help="Mover para cima", use_container_width=True):
-                        mover_painel(i, -1)
-                        st.rerun()
-                with cols[4]:
-                    if st.button("⬇️", key=f"descer_{i}", help="Mover para baixo", use_container_width=True):
-                        mover_painel(i, 1)
-                        st.rerun()
-                with cols[5]:
                     if st.button("🗑️", key=f"del_{i}", help="Remover painel", use_container_width=True):
                         remover_painel(i)
                         st.rerun()
@@ -211,7 +207,6 @@ else:
     nomes_json = json.dumps(nomes_lista)
     recarregar_json = json.dumps(recarregar_lista)
     
-    # Conversão das horas de prevenção de memory leak para milissegundos no JS (0 = desativado)
     intervalo_limpeza_ms = int(st.session_state.horas_reload_geral) * 3600 * 1000
 
     html_painel = f"""
@@ -345,7 +340,6 @@ else:
                 iframes.push({{ container: container, iframe: iframe, link: link }});
             }});
 
-            // Mecanismo de limpeza periódica de memória (Memory Leak prevention)
             if (intervaloLimpezaMs > 0) {{
                 setTimeout(function() {{
                     window.parent.location.reload();
@@ -459,7 +453,7 @@ else:
                     if (tempoRestante < 0) {{
                         irParaProxima();
                     }} else {{
-                        contadorTempo.innerText = "Próxima em " + tempoRestano = "Próxima em " + tempoRestante + "s";
+                        contadorTempo.innerText = "Próxima em " + tempoRestante + "s";
                     }}
                 }}, 1000);
             }}
