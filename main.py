@@ -66,7 +66,7 @@ if "iniciado" not in st.session_state:
     else:
         st.session_state.iniciado = False
 
-# Inicialização da lista de 4 painéis padrão atualizada
+# Inicialização da lista de 4 painéis padrão
 if "paineis_config" not in st.session_state:
     st.session_state.paineis_config = [
         {
@@ -296,6 +296,7 @@ else:
             let indiceAtual = 0;
             let iframes = [];
             let temporizador;
+            let temporizadorAutoLoginEAtualizacao;
             let estaPausado = false;
             let tempoRestante = 20;
             let tempoTotalPainel = 20;
@@ -358,6 +359,64 @@ else:
                 }
             }
 
+            // Gerencia o Auto-Login caso caia na tela de login e clica em 'Atualizar' a cada 20s no SIM
+            function gerenciarAutoLoginEAtualizacao() {
+                clearInterval(temporizadorAutoLoginEAtualizacao);
+                const nomeAtual = (nomes[indiceAtual] || "").toLowerCase();
+                const linkAtual = (links[indiceAtual] || "").toLowerCase();
+                
+                if (nomeAtual.includes("sim") || linkAtual.includes("sim-submissions")) {
+                    temporizadorAutoLoginEAtualizacao = setInterval(() => {
+                        if (estaPausado) return;
+                        const itemAtual = iframes[indiceAtual];
+                        try {
+                            let doc = itemAtual.iframe.contentDocument || itemAtual.iframe.contentWindow.document;
+                            
+                            // 1. Verifica se a página atual é a tela de login
+                            let inputUser = doc.querySelector('input#usuario, input[name="usuario"], input[type="email"]');
+                            let inputPass = doc.querySelector('input#senha, input[name="senha"], input[type="password"]');
+                            let btnEntrar = doc.querySelector('button[type="submit"], button');
+                            
+                            if (inputUser && inputPass) {
+                                // Preenche automaticamente os dados de login (ajuste se necessário)
+                                inputUser.value = "rycharson@ssinformatica.net";
+                                inputUser.dispatchEvent(new Event('input', { bubbles: true }));
+                                
+                                inputPass.value = "123456";
+                                inputPass.dispatchEvent(new Event('input', { bubbles: true }));
+                                
+                                // Procura o botão de entrar e clica
+                                let botoes = Array.from(doc.querySelectorAll('button'));
+                                let btnSubmit = botoes.find(b => b.innerText.includes('Entrar') || b.type === 'submit');
+                                if (btnSubmit) {
+                                    btnSubmit.click();
+                                    console.log("Auto-login efetuado com sucesso.");
+                                    
+                                    // Após logar, força o retorno para a URL de submissões após 3 segundos
+                                    setTimeout(() => {
+                                        itemAtual.iframe.src = itemAtual.link;
+                                    }, 3000);
+                                    return;
+                                }
+                            }
+                            
+                            // 2. Se já estiver logado, clica no botão Atualizar do mapa a cada 20s
+                            let btnAtualizar = doc.querySelector('button[title="Recarregar dados do TCE-CE"]');
+                            if (!btnAtualizar) {
+                                let botoes = Array.from(doc.querySelectorAll('button'));
+                                btnAtualizar = botoes.find(b => b.innerText.trim().includes('Atualizar'));
+                            }
+                            
+                            if (btnAtualizar) {
+                                btnAtualizar.click();
+                            }
+                        } catch(e) {
+                            // Bloqueio de CORS caso o navegador impeça leitura do iframe de domínios diferentes
+                        }
+                    }, 20000); // Executa a cada 20 segundos
+                }
+            }
+
             function atualizarExibicao() {
                 iframes.forEach((item, i) => {
                     if (i === indiceAtual) {
@@ -371,6 +430,8 @@ else:
                 infoTexto.innerHTML = "🟢 <b>" + nomePainel + "</b> <i>(" + (indiceAtual + 1) + "/" + links.length + ")</i> - " + tempos[indiceAtual] + "s";
                 atualizarBotaoRecarregarUI();
                 localStorage.setItem("painel_indice_atual", indiceAtual);
+                
+                gerenciarAutoLoginEAtualizacao();
             }
 
             function gerenciarAtualizacaoPainelAtual() {
@@ -404,6 +465,7 @@ else:
                 estaPausado = !estaPausado;
                 if (estaPausado) {
                     clearInterval(temporizador);
+                    clearInterval(temporizadorAutoLoginEAtualizacao);
                     btnPause.innerText = "▶️ Retomar";
                     btnPause.classList.add("pausado");
                     contadorTempo.innerText = "⏸️ Pausado";
@@ -412,6 +474,7 @@ else:
                     btnPause.innerText = "⏸️ Pausar";
                     btnPause.classList.remove("pausado");
                     reiniciarTemporizador();
+                    gerenciarAutoLoginEAtualizacao();
                 }
             }
 
@@ -456,7 +519,7 @@ else:
                 }, 1000);
             }
 
-reiniciarTemporizador();
+            reiniciarTemporizador();
         </script>
     </body>
     </html>
