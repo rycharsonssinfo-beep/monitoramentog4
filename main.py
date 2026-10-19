@@ -66,25 +66,31 @@ if "iniciado" not in st.session_state:
     else:
         st.session_state.iniciado = False
 
-# Inicialização da lista de painéis estruturada por dicionários no session_state
+# Inicialização da lista de 4 painéis padrão atualizada
 if "paineis_config" not in st.session_state:
     st.session_state.paineis_config = [
         {
             "link": "https://ssinformatica.g4flex.com.br:9090/monitoring/queues",
             "nome": "Fila de Voz / Zoiper",
-            "tempo": 20,
+            "tempo": 25,
             "recarregar": True
         },
         {
             "link": "https://ssinformatica.g4flex.com.br:9090/monitoringChat/queues",
             "nome": "Grade de Filas Chat",
-            "tempo": 20,
+            "tempo": 25,
             "recarregar": True
         },
         {
             "link": "https://ssinformatica.g4flex.com.br:9090/admin/monitoring/chat/conversation",
             "nome": "Dados Sintéticos de Monitoramento",
-            "tempo": 20,
+            "tempo": 35,
+            "recarregar": True
+        },
+        {
+            "link": "https://consultatce-dev.ssinformatica.net/sim-submissions",
+            "nome": "Monitoramento SIM",
+            "tempo": 50,
             "recarregar": True
         }
     ]
@@ -322,7 +328,6 @@ else:
 
             if (intervaloLimpezaMs > 0) {
                 setTimeout(function() {
-                    // Força a permanência do parâmetro 'iniciado=true' na URL ao limpar o cache/dar reload geral
                     try {
                         let url = new URL(window.parent.location.href);
                         url.searchParams.set("iniciado", "true");
@@ -451,7 +456,7 @@ else:
                 }, 1000);
             }
 
-            reiniciarTemporizador();
+reiniciarTemporizador();
         </script>
     </body>
     </html>
