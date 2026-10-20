@@ -8,11 +8,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.0
+# Painel de Monitoramento 2.1
 # =========================================================
 
 st.set_page_config(
-    page_title="Painel de Monitoramento 2.0",
+    page_title="Painel de Monitoramento 2.1",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -173,44 +173,58 @@ if "iniciado" not in st.session_state:
     st.session_state.iniciado = query_iniciado
 
 # =========================================================
-# CSS - configuração
+# CSS - configuração | Pacote Visual 2.1
+# Cor principal: Azul-escuro / azul petróleo #0E5285
 # =========================================================
 st.markdown(
     """
     <style>
+        :root {
+            --primary: #0E5285;
+            --primary-dark: #0A3E66;
+            --primary-hover: #0B466F;
+            --primary-soft: #EAF3FA;
+            --primary-soft-2: #F4F8FC;
+            --primary-border: #C9D9E6;
+            --text-main: #17324D;
+            --text-muted: #64748B;
+        }
+
         header {visibility: hidden !important; height: 0 !important;}
         #MainMenu {visibility: hidden !important;}
         footer {visibility: hidden !important;}
 
         .stApp {
-            background: #f4f7f9;
-            color: #163b3a;
+            background: #F4F7FB;
+            color: var(--text-main);
         }
         .block-container {
             max-width: 1220px;
             padding-top: 22px !important;
             padding-bottom: 44px !important;
         }
-        h1, h2, h3, h4, label { color: #0d5c58 !important; }
+        h1, h2, h3, h4, label { color: var(--primary) !important; }
+
         .app-title {
             font-size: 30px;
             line-height: 1.15;
-            font-weight: 760;
-            color: #0d5c58;
+            font-weight: 780;
+            color: var(--primary);
             margin: 2px 0 4px 0;
             letter-spacing: -0.5px;
         }
         .app-subtitle {
-            color: #64748b;
+            color: var(--text-muted);
             font-size: 14px;
             margin-bottom: 16px;
         }
         .section-title {
             font-size: 16px;
-            font-weight: 750;
-            color: #0d5c58;
+            font-weight: 760;
+            color: var(--primary);
             margin: 0;
         }
+
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -218,52 +232,129 @@ st.markdown(
             margin: 12px 0 18px 0;
         }
         .summary-card {
-            background: #ffffff;
-            border: 1px solid #dbe4e8;
+            background: #FFFFFF;
+            border: 1px solid var(--primary-border);
             border-radius: 12px;
             padding: 13px 15px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+            box-shadow: 0 1px 3px rgba(14, 82, 133, .06);
         }
         .summary-label {
-            color: #64748b;
+            color: var(--text-muted);
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 720;
             text-transform: uppercase;
             letter-spacing: .35px;
         }
         .summary-value {
-            color: #0d5c58;
+            color: var(--primary);
             font-size: 21px;
-            font-weight: 780;
+            font-weight: 800;
             margin-top: 2px;
         }
+
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            border-color: #dbe4e8 !important;
+            border-color: var(--primary-border) !important;
             border-radius: 12px !important;
-            background: #ffffff !important;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, .035);
+            background: #FFFFFF !important;
+            box-shadow: 0 1px 3px rgba(14, 82, 133, .045);
         }
+
         .stTextInput input, .stNumberInput input, div[data-baseweb="select"] > div {
             border-radius: 8px !important;
+            border-color: #D7E2EB !important;
         }
-        .stButton button {
+        .stTextInput input:focus, .stNumberInput input:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 1px var(--primary) !important;
+        }
+
+        .stButton button, .stDownloadButton button {
             border-radius: 8px !important;
             font-weight: 650 !important;
+            min-height: 38px;
         }
         .stButton button[kind="primary"] {
-            background-color: #0d5c58 !important;
-            color: #ffffff !important;
-            border: 1px solid #0d5c58 !important;
+            background-color: var(--primary) !important;
+            color: #FFFFFF !important;
+            border: 1px solid var(--primary) !important;
         }
         .stButton button[kind="primary"]:hover {
-            background-color: #094744 !important;
-            border-color: #094744 !important;
+            background-color: var(--primary-hover) !important;
+            border-color: var(--primary-hover) !important;
         }
-        .status-ok { color: #047857; font-size: 12px; font-weight: 650; }
-        .status-warn { color: #b45309; font-size: 12px; font-weight: 650; }
-        .muted { color: #64748b; font-size: 12px; }
+        .stButton button:not([kind="primary"]):hover,
+        .stDownloadButton button:hover {
+            color: var(--primary) !important;
+            border-color: var(--primary) !important;
+            background: var(--primary-soft-2) !important;
+        }
+
+        /* Streamlit toggle: azul quando ligado, cinza quando desligado. */
+        div[data-testid="stToggle"] input[role="switch"]:checked + div,
+        div[data-testid="stToggle"] input:checked + div,
+        div[data-testid="stToggle"] [role="switch"][aria-checked="true"] {
+            background-color: var(--primary) !important;
+            border-color: var(--primary) !important;
+        }
+        div[data-testid="stToggle"] input[role="switch"]:not(:checked) + div,
+        div[data-testid="stToggle"] input:not(:checked) + div,
+        div[data-testid="stToggle"] [role="switch"][aria-checked="false"] {
+            background-color: #94A3B8 !important;
+            border-color: #94A3B8 !important;
+        }
+        div[data-testid="stToggle"] label p {
+            color: var(--primary) !important;
+            font-weight: 650 !important;
+        }
+
+        div[data-testid="stExpander"] details {
+            border-color: var(--primary-border) !important;
+            border-radius: 10px !important;
+            background: #FFFFFF !important;
+        }
+        div[data-testid="stExpander"] summary:hover {
+            color: var(--primary) !important;
+        }
+
+        .status-ok { color: #047857; font-size: 12px; font-weight: 680; }
+        .status-warn { color: #B45309; font-size: 12px; font-weight: 680; }
+        .muted { color: var(--text-muted); font-size: 12px; }
+        .f5-pill-on, .f5-pill-off {
+            display: inline-block;
+            margin-top: -3px;
+            padding: 2px 7px;
+            border-radius: 999px;
+            font-size: 10px;
+            line-height: 1.25;
+            font-weight: 800;
+            letter-spacing: .25px;
+        }
+        .f5-pill-on {
+            color: var(--primary);
+            background: var(--primary-soft);
+            border: 1px solid #B8D2E5;
+        }
+        .f5-pill-off {
+            color: #5B6573;
+            background: #F1F5F9;
+            border: 1px solid #CBD5E1;
+        }
+        .url-status-wrap {
+            padding-top: 30px;
+            min-height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            white-space: nowrap;
+        }
+        .palette-note {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
         @media (max-width: 900px) {
             .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .block-container { padding-left: 12px !important; padding-right: 12px !important; }
         }
     </style>
     """,
@@ -272,7 +363,7 @@ st.markdown(
 
 
 # =========================================================
-# TELA 1 - CONFIGURAÇÃO 2.0
+# TELA 1 - CONFIGURAÇÃO 2.1
 # =========================================================
 if not st.session_state.iniciado:
     top_left, top_right = st.columns([1.65, 1])
@@ -407,16 +498,19 @@ if not st.session_state.iniciado:
     for i, painel in enumerate(paineis):
         pid = painel["id"]
         with st.container(border=True):
-            row_top = st.columns([0.42, 0.42, 0.9, 4.0, 1.2, 1.25, 0.9, 0.9])
+            # Linha principal mais compacta e com colunas dimensionadas para evitar cortes.
+            row_top = st.columns([0.52, 0.52, 0.95, 3.65, 0.9, 1.45, 1.0, 0.95])
 
             with row_top[0]:
-                if st.button("↑", key=f"up_{pid}", help="Mover para cima", disabled=i == 0, use_container_width=True):
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("▲", key=f"up_{pid}", help="Mover painel para cima", disabled=i == 0, use_container_width=True):
                     paineis[i - 1], paineis[i] = paineis[i], paineis[i - 1]
                     salvar_config(config)
                     st.rerun()
 
             with row_top[1]:
-                if st.button("↓", key=f"down_{pid}", help="Mover para baixo", disabled=i == len(paineis) - 1, use_container_width=True):
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("▼", key=f"down_{pid}", help="Mover painel para baixo", disabled=i == len(paineis) - 1, use_container_width=True):
                     paineis[i + 1], paineis[i] = paineis[i], paineis[i + 1]
                     salvar_config(config)
                     st.rerun()
@@ -429,7 +523,7 @@ if not st.session_state.iniciado:
 
             with row_top[4]:
                 painel["tempo"] = st.number_input(
-                    "Segundos",
+                    "Tempo (s)",
                     min_value=5,
                     max_value=600,
                     value=int(painel.get("tempo", 20)),
@@ -439,15 +533,18 @@ if not st.session_state.iniciado:
 
             with row_top[5]:
                 painel["recarregar"] = st.toggle(
-                    "Atualização (F5)",
+                    "F5 automático",
                     value=bool(painel.get("recarregar", True)),
                     key=f"reload_{pid}",
-                    help="ON: o painel pode ser recarregado automaticamente. OFF: mantém o iframe preservado e impede o F5 automático.",
+                    help="ON: permite recarregamento automático. OFF: preserva a página e impede o F5 automático neste painel.",
                 )
+                classe_f5 = "f5-pill-on" if painel["recarregar"] else "f5-pill-off"
+                texto_f5 = "F5 ON" if painel["recarregar"] else "F5 OFF"
+                st.markdown(f'<span class="{classe_f5}">{texto_f5}</span>', unsafe_allow_html=True)
 
             with row_top[6]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("Duplicar", key=f"dup_{pid}", use_container_width=True):
+                if st.button("Duplicar", key=f"dup_{pid}", use_container_width=True, help="Duplicar este painel"):
                     clone = copy.deepcopy(painel)
                     clone["id"] = novo_id()
                     clone["nome"] = f"{clone['nome']} - Cópia"
@@ -457,24 +554,29 @@ if not st.session_state.iniciado:
 
             with row_top[7]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("Excluir", key=f"del_{pid}", use_container_width=True):
+                if st.button("Excluir", key=f"del_{pid}", use_container_width=True, help="Excluir este painel"):
                     st.session_state.painel_pendente_exclusao = pid
                     st.rerun()
 
-            painel["link"] = st.text_input(
-                "URL da página",
-                value=painel["link"],
-                key=f"link_{pid}",
-                placeholder="https://...",
-            )
-
-            if painel["link"].strip():
-                if url_valida(painel["link"]):
-                    st.markdown('<span class="status-ok">✓ URL válida</span>', unsafe_allow_html=True)
+            # URL + validação na mesma linha para reduzir a altura do card.
+            url_col, status_col = st.columns([6.8, 1.35])
+            with url_col:
+                painel["link"] = st.text_input(
+                    "URL da página",
+                    value=painel["link"],
+                    key=f"link_{pid}",
+                    placeholder="https://...",
+                )
+            with status_col:
+                st.markdown('<div class="url-status-wrap">', unsafe_allow_html=True)
+                if painel["link"].strip():
+                    if url_valida(painel["link"]):
+                        st.markdown('<span class="status-ok">✓ URL válida</span>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<span class="status-warn">⚠ URL inválida</span>', unsafe_allow_html=True)
                 else:
-                    st.markdown('<span class="status-warn">⚠ URL inválida. Use http:// ou https://</span>', unsafe_allow_html=True)
-            else:
-                st.markdown('<span class="muted">Informe a URL para incluir este painel na apresentação.</span>', unsafe_allow_html=True)
+                    st.markdown('<span class="muted">URL pendente</span>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             if pending_delete == pid:
                 st.warning(f"Excluir o painel **{painel['nome']}**?")
@@ -529,11 +631,11 @@ if not st.session_state.iniciado:
                 value=int(perfil.get("sim_refresh_seconds", 20)),
                 step=5,
                 key=f"sim_refresh_{config['active_profile']}",
-                help="0 desativa. Quando o painel atual for o SIM e Atualização (F5) estiver ON, ele recarrega a URL nesse intervalo.",
+                help="0 desativa. Quando o painel atual for o SIM e F5 automático estiver ON, ele recarrega a URL nesse intervalo.",
             )
 
         st.caption(
-            "O modo 2.0 mantém apenas o painel atual, o próximo painel pré-carregado e os painéis com Atualização (F5) em OFF. "
+            "O modo 2.1 mantém apenas o painel atual, o próximo painel pré-carregado e os painéis com F5 automático em OFF. "
             "Isso reduz o número de iframes simultâneos sem quebrar a função de preservar uma página escolhida sem F5."
         )
 
@@ -546,7 +648,7 @@ if not st.session_state.iniciado:
             st.download_button(
                 "Exportar configuração (.json)",
                 data=json.dumps(config, ensure_ascii=False, indent=2),
-                file_name="monitoramento_config_v2.json",
+                file_name="monitoramento_config_v2_1.json",
                 mime="application/json",
                 use_container_width=True,
             )
@@ -593,7 +695,7 @@ if not st.session_state.iniciado:
 
 
 # =========================================================
-# TELA 2 - APRESENTAÇÃO 2.0
+# TELA 2 - APRESENTAÇÃO 2.1
 # =========================================================
 else:
     # A apresentação ocupa toda a área útil do navegador.
@@ -654,10 +756,10 @@ else:
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style>
             :root {
-                --verde: #0d5c58;
-                --verde-escuro: #094744;
-                --verde-claro: #2dd4bf;
-                --texto-claro: #e8f3f2;
+                --azul: #0E5285;
+                --azul-escuro: #0A3E66;
+                --azul-claro: #4D9BD3;
+                --texto-claro: #EAF3FA;
                 --toolbar-h: 40px;
                 --progress-h: 3px;
             }
@@ -685,7 +787,7 @@ else:
             }
             #toolbar {
                 height: var(--toolbar-h);
-                background: var(--verde);
+                background: var(--azul);
                 color: #fff;
                 display: grid;
                 grid-template-columns: minmax(220px, 1.2fr) minmax(120px, .8fr) auto;
@@ -709,7 +811,7 @@ else:
                 font-size: 12px;
             }
             #panel-order {
-                color: #bfe4e0;
+                color: #C7DFF2;
                 font-size: 11px;
                 flex-shrink: 0;
             }
@@ -755,26 +857,26 @@ else:
                 user-select: none;
             }
             .btn:hover { background: rgba(255,255,255,.18); }
-            .btn.active-good { background: #0f766e; border-color: #4fd1c5; }
+            .btn.active-good { background: #1B6FA8; border-color: #8CC4E8; }
             .btn.active-bad { background: #7f1d1d; border-color: #f87171; }
             #clock {
                 min-width: 55px;
                 text-align: right;
                 font-size: 11px;
                 font-weight: 700;
-                color: #d9f0ee;
+                color: #DCEEFF;
                 margin-left: 3px;
             }
             #progress-container {
                 width: 100%;
                 height: var(--progress-h);
-                background: var(--verde-escuro);
+                background: var(--azul-escuro);
                 overflow: hidden;
             }
             #progress {
                 width: 100%;
                 height: 100%;
-                background: var(--verde-claro);
+                background: var(--azul-claro);
                 transform-origin: left;
                 transform: scaleX(1);
             }
@@ -1266,4 +1368,3 @@ else:
 
     # O componente ocupa praticamente toda a viewport. O CSS interno administra a barra compacta.
     components.html(html_painel, height=960, scrolling=False)
-
