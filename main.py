@@ -1,6 +1,7 @@
 import base64
 import copy
 import hashlib
+import html
 import json
 import os
 import shutil
@@ -15,12 +16,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.3
-# Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual
+# Painel de Monitoramento 2.4
+# Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 CONFIG_VERSION = 3
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -417,7 +418,7 @@ elif query_iniciado != bool(st.session_state.iniciado):
 active_profile_id = perfil_id_da_url(config)
 
 # =========================================================
-# CSS - Pacote Visual 2.3
+# CSS - Pacote Visual/UX 2.4
 # =========================================================
 st.markdown(
     """
@@ -450,6 +451,26 @@ st.markdown(
         .summary-label { color:var(--text-muted); font-size:10.5px; font-weight:750; text-transform:uppercase; letter-spacing:.4px; }
         .summary-value { color:var(--primary); font-size:21px; font-weight:820; margin-top:2px; }
         .save-line { color:#64748B; font-size:11px; text-align:right; margin-top:-4px; margin-bottom:4px; }
+        .profile-help { color:var(--text-muted); font-size:11px; margin-top:-8px; margin-bottom:8px; }
+        .rotation-preview { background:#fff; border:1px solid var(--primary-border); border-radius:10px; padding:9px 12px; margin:-2px 0 16px; color:#475569; font-size:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .rotation-preview strong { color:var(--primary); }
+        .onboarding-card { background:linear-gradient(135deg,#F8FBFE 0%,#EDF5FB 100%); border:1px solid var(--primary-border); border-radius:12px; padding:14px 16px; margin:6px 0 16px; }
+        .onboarding-title { color:var(--primary); font-size:14px; font-weight:800; margin-bottom:7px; }
+        .onboarding-steps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+        .onboarding-step { background:#fff; border:1px solid #D9E6F0; border-radius:9px; padding:9px 10px; color:#475569; font-size:11.5px; }
+        .onboarding-step b { color:var(--primary); display:block; margin-bottom:2px; }
+        .panel-headline { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:-1px 0 7px; flex-wrap:wrap; }
+        .panel-headline-left { display:flex; align-items:center; gap:8px; min-width:0; }
+        .panel-number { width:31px; height:25px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; background:var(--primary-soft); border:1px solid #BAD4E7; color:var(--primary); font-size:11px; font-weight:850; flex:none; }
+        .panel-headline-name { color:#244157; font-size:12.5px; font-weight:760; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:520px; }
+        .panel-badges { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+        .ux24-fixed-bar { position:fixed; left:0; right:0; bottom:0; z-index:999998; background:rgba(255,255,255,.97); backdrop-filter:blur(10px); border-top:1px solid #C7D9E7; box-shadow:0 -5px 22px rgba(14,82,133,.09); }
+        .ux24-fixed-inner { max-width:1240px; margin:0 auto; padding:10px 18px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+        .ux24-fixed-copy { color:#64748B; font-size:11px; }
+        .ux24-fixed-copy strong { color:#0E5285; font-size:12px; }
+        .ux24-start-link { display:inline-flex; align-items:center; justify-content:center; text-decoration:none!important; background:#0E5285; color:#fff!important; padding:9px 18px; border-radius:8px; font-size:12.5px; font-weight:800; min-width:190px; box-shadow:0 2px 7px rgba(14,82,133,.17); }
+        .ux24-start-link:hover { background:#0B466F; color:#fff!important; }
+        .ux24-start-disabled { display:inline-flex; align-items:center; justify-content:center; background:#E2E8F0; color:#94A3B8; padding:9px 18px; border-radius:8px; font-size:12.5px; font-weight:800; min-width:190px; cursor:not-allowed; }
         .version-pill { display:inline-block; padding:3px 8px; border-radius:999px; background:var(--primary-soft); border:1px solid var(--primary-border); color:var(--primary); font-size:10px; font-weight:800; }
         div[data-testid="stVerticalBlockBorderWrapper"] { border-color:var(--primary-border)!important; border-radius:12px!important; background:#fff!important; box-shadow:0 1px 3px rgba(14,82,133,.04); }
         .stTextInput input,.stNumberInput input,div[data-baseweb="select"]>div { border-radius:8px!important; border-color:#D6E2EC!important; }
@@ -458,12 +479,18 @@ st.markdown(
         .stButton button[kind="primary"] { background:var(--primary)!important; color:#fff!important; border:1px solid var(--primary)!important; }
         .stButton button[kind="primary"]:hover { background:var(--primary-hover)!important; border-color:var(--primary-hover)!important; }
         .stButton button:not([kind="primary"]):hover,.stDownloadButton button:hover { color:var(--primary)!important; border-color:var(--primary)!important; background:var(--primary-soft-2)!important; }
-        div[data-testid="stToggle"] input[role="switch"]:checked + div,
+        /* Força os switches do Streamlit para azul quando ligados e cinza quando desligados. */
         div[data-testid="stToggle"] input:checked + div,
-        div[data-testid="stToggle"] [role="switch"][aria-checked="true"] { background-color:var(--primary)!important; border-color:var(--primary)!important; }
-        div[data-testid="stToggle"] input[role="switch"]:not(:checked) + div,
+        div[data-testid="stToggle"] input:checked ~ div:first-of-type,
+        div[data-testid="stToggle"] label[data-baseweb="checkbox"] input:checked + div,
+        div[data-testid="stToggle"] [role="switch"][aria-checked="true"],
+        div[data-testid="stToggle"] [role="checkbox"][aria-checked="true"] { background-color:var(--primary)!important; border-color:var(--primary)!important; }
         div[data-testid="stToggle"] input:not(:checked) + div,
-        div[data-testid="stToggle"] [role="switch"][aria-checked="false"] { background-color:#94A3B8!important; border-color:#94A3B8!important; }
+        div[data-testid="stToggle"] input:not(:checked) ~ div:first-of-type,
+        div[data-testid="stToggle"] label[data-baseweb="checkbox"] input:not(:checked) + div,
+        div[data-testid="stToggle"] [role="switch"][aria-checked="false"],
+        div[data-testid="stToggle"] [role="checkbox"][aria-checked="false"] { background-color:#CBD5E1!important; border-color:#CBD5E1!important; }
+        div[data-testid="stToggle"] label[data-baseweb="checkbox"] > div:nth-child(2) { transition:background-color .15s ease!important; }
         div[data-testid="stToggle"] label p { color:var(--primary)!important; font-weight:650!important; }
         div[data-testid="stExpander"] details { border-color:var(--primary-border)!important; border-radius:10px!important; background:#fff!important; }
         .status-ok { color:var(--success); font-size:11.5px; font-weight:700; }
@@ -478,7 +505,15 @@ st.markdown(
         .compact-hint { color:#64748B; font-size:11px; margin-top:-5px; }
         .panel-divider { height:1px; background:#EEF3F7; margin:4px 0 8px; }
         .profile-url { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; padding:8px 10px; border-radius:8px; }
-        @media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.block-container{padding-left:12px!important;padding-right:12px!important;}}
+        .block-container { padding-bottom:100px!important; }
+        @media(max-width:900px){
+            .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+            .block-container{padding-left:12px!important;padding-right:12px!important;padding-bottom:112px!important;}
+            .onboarding-steps{grid-template-columns:1fr;}
+            .ux24-fixed-inner{padding:9px 12px;}
+            .ux24-fixed-copy span{display:none;}
+            .ux24-start-link,.ux24-start-disabled{min-width:155px;}
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -493,28 +528,6 @@ if not st.session_state.iniciado:
         active_profile_id = config["default_profile_id"]
         perfil = perfil_por_id(config, active_profile_id)
 
-    top_left, top_right = st.columns([1.6, 1])
-    with top_left:
-        st.image("https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png", width=250)
-        st.markdown('<div class="app-title">Painel de Monitoramento</div>', unsafe_allow_html=True)
-        st.markdown('<div class="app-subtitle">Rotação de telas com estabilidade para operação contínua e perfis independentes por monitor.</div>', unsafe_allow_html=True)
-    with top_right:
-        st.markdown("<div style='height:38px'></div>", unsafe_allow_html=True)
-        profile_ids = list(config["profiles"].keys())
-        selected = st.selectbox(
-            "Perfil deste monitor",
-            options=profile_ids,
-            index=profile_ids.index(active_profile_id),
-            format_func=lambda pid: config["profiles"][pid]["nome"],
-            key="perfil_select_v23",
-            help="A seleção fica registrada na URL. TVs diferentes podem usar perfis diferentes sem alterar o perfil padrão global.",
-        )
-        if selected != active_profile_id:
-            st.query_params["perfil"] = selected
-            st.query_params["iniciado"] = "false"
-            st.session_state.iniciado = False
-            st.rerun()
-
     paineis = perfil["paineis"]
     ativos = perfil_ativos(perfil)
     tempo_total = sum(int(p.get("tempo", 0)) for p in ativos)
@@ -522,14 +535,55 @@ if not st.session_state.iniciado:
     tempo_fmt = f"{m}m {s:02d}s" if m else f"{s}s"
     urls_invalidas = sum(1 for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", "")))
     preservados = sum(1 for p in paineis if p.get("preserve_session", False))
+    invalid_active = [p for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
+
+    def iniciar_monitoramento_ux24():
+        atuais = perfil_ativos(perfil)
+        invalidos = [p for p in perfil.get("paineis", []) if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
+        if not atuais:
+            st.error("Ative e configure pelo menos um painel com URL válida.")
+            return
+        if invalidos:
+            st.error("Existem painéis ativos com URL inválida. Corrija-os antes de iniciar.")
+            return
+        salvar_config(config)
+        st.session_state.iniciado = True
+        st.query_params["perfil"] = active_profile_id
+        st.query_params["iniciado"] = "true"
+        st.rerun()
+
+    top_left, top_right = st.columns([1.6, 1])
+    with top_left:
+        st.image("https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png", width=250)
+        st.markdown('<div class="app-title">Painel de Monitoramento</div>', unsafe_allow_html=True)
+        st.markdown('<div class="app-subtitle">Organize as telas, defina o tempo de exibição e inicie a rotação automática do monitor.</div>', unsafe_allow_html=True)
+    with top_right:
+        st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
+        profile_ids = list(config["profiles"].keys())
+        selected = st.selectbox(
+            "Perfil deste monitor",
+            options=profile_ids,
+            index=profile_ids.index(active_profile_id),
+            format_func=lambda pid: config["profiles"][pid]["nome"],
+            key="perfil_select_v23",
+            help="Um perfil é um conjunto de painéis. Cada TV ou monitor pode usar um perfil diferente.",
+        )
+        st.markdown('<div class="profile-help">Define quais painéis serão exibidos neste monitor.</div>', unsafe_allow_html=True)
+        if selected != active_profile_id:
+            st.query_params["perfil"] = selected
+            st.query_params["iniciado"] = "false"
+            st.session_state.iniciado = False
+            st.rerun()
+        if st.button("▶ Iniciar monitoramento", type="primary", use_container_width=True, key="start_top_v24"):
+            iniciar_monitoramento_ux24()
 
     st.markdown(
         f"""
         <div class="summary-grid">
-            <div class="summary-card"><div class="summary-label">Painéis cadastrados</div><div class="summary-value">{len(paineis)}</div></div>
-            <div class="summary-card"><div class="summary-label">Painéis ativos</div><div class="summary-value">{len(ativos)}</div></div>
-            <div class="summary-card"><div class="summary-label">Tempo do ciclo</div><div class="summary-value">{tempo_fmt}</div></div>
-            <div class="summary-card"><div class="summary-label">Sessões preservadas</div><div class="summary-value">{preservados}</div></div>
+            <div class="summary-card" title="Quantidade total de painéis cadastrados neste perfil."><div class="summary-label">Painéis cadastrados</div><div class="summary-value">{len(paineis)}</div></div>
+            <div class="summary-card" title="Painéis habilitados e com endereço válido que participarão da rotação."><div class="summary-label">Painéis ativos</div><div class="summary-value">{len(ativos)}</div></div>
+            <div class="summary-card" title="Tempo necessário para exibir todos os painéis ativos uma vez."><div class="summary-label">Duração de uma volta</div><div class="summary-value">{tempo_fmt}</div></div>
+            <div class="summary-card" title="Painéis mantidos carregados em segundo plano para preservar login, filtros ou estado da página."><div class="summary-label">Painéis mantidos abertos</div><div class="summary-value">{preservados}</div></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -537,7 +591,44 @@ if not st.session_state.iniciado:
 
     last_saved = st.session_state.get("ultima_gravacao")
     if last_saved:
-        st.markdown(f'<div class="save-line">✓ Configuração salva às {last_saved}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="save-line" title="Última gravação às {last_saved}">✓ Salvo automaticamente</div>', unsafe_allow_html=True)
+
+    if ativos:
+        nomes_preview = [html.escape(str(p.get("nome") or "Painel")) for p in ativos]
+        if len(nomes_preview) > 5:
+            visiveis = nomes_preview[:5]
+            preview = " → ".join(visiveis) + f" → +{len(nomes_preview)-5}"
+        else:
+            preview = " → ".join(nomes_preview)
+        st.markdown(
+            f'<div class="rotation-preview"><strong>Ordem de exibição:</strong><span>{preview}</span><span>→ repetir</span></div>',
+            unsafe_allow_html=True,
+        )
+
+    if "ux24_onboarding_dismissed" not in st.session_state:
+        st.session_state["ux24_onboarding_dismissed"] = False
+    if not st.session_state["ux24_onboarding_dismissed"]:
+        with st.container(border=False):
+            g1, g2 = st.columns([5, 1])
+            with g1:
+                st.markdown(
+                    """
+                    <div class="onboarding-card">
+                        <div class="onboarding-title">Primeiro acesso? Configure o monitor em 3 passos</div>
+                        <div class="onboarding-steps">
+                            <div class="onboarding-step"><b>1. Escolha o perfil</b>Selecione o conjunto de painéis que esta tela deve mostrar.</div>
+                            <div class="onboarding-step"><b>2. Confira os painéis</b>Ajuste ordem, tempo na tela e atualização automática.</div>
+                            <div class="onboarding-step"><b>3. Inicie a rotação</b>Clique em “Iniciar monitoramento” e deixe a exibição rodar.</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with g2:
+                st.markdown("<div style='height:19px'></div>", unsafe_allow_html=True)
+                if st.button("Entendi", use_container_width=True, key="dismiss_guide_v24"):
+                    st.session_state["ux24_onboarding_dismissed"] = True
+                    st.rerun()
 
     # Perfis
     with st.expander("Perfis de monitoramento", expanded=False):
@@ -630,14 +721,22 @@ if not st.session_state.iniciado:
                     st.rerun()
 
     # Cabeçalho dos painéis
-    header_l, header_m, header_r = st.columns([3.4, 1.2, 1])
+    header_l, header_m, header_r = st.columns([3.25, 1.35, 1])
     with header_l:
         st.markdown('<div class="section-title">Painéis e ordem de exibição</div>', unsafe_allow_html=True)
-        st.caption("F5 e preservação de sessão agora são independentes. O F5 alterado durante a apresentação é temporário e não sobrescreve esta configuração.")
+        st.caption("Os painéis ativos entram na rotação na ordem abaixo. Atualização automática e manter a página aberta são configurações independentes.")
     with header_m:
-        compact = st.toggle("Modo compacto", value=perfil.get("config_view", "compact") == "compact", key=f"compact_{active_profile_id}")
-        perfil["config_view"] = "compact" if compact else "detailed"
+        view_options = ["compact", "detailed"]
+        perfil["config_view"] = st.selectbox(
+            "Visualização",
+            view_options,
+            index=view_options.index(perfil.get("config_view", "compact")),
+            format_func=lambda x: "Compacta" if x == "compact" else "Detalhada",
+            key=f"view_{active_profile_id}",
+            help="Compacta recolhe as configurações avançadas. Detalhada deixa essas opções abertas.",
+        )
     with header_r:
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         if st.button("＋ Adicionar painel", use_container_width=True, key="add_painel_v23"):
             paineis.append(painel_padrao(f"Novo Painel {len(paineis) + 1}", "", 20, True))
             salvar_config(config, force=True)
@@ -648,35 +747,66 @@ if not st.session_state.iniciado:
 
     for i, painel in enumerate(paineis):
         pid = painel["id"]
+        nome_cabecalho = html.escape(str(painel.get("nome") or "Painel sem nome"))
+        ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
+        f5_badge = '<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>'
+        preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if painel.get("preserve_session", False) else ''
+
         with st.container(border=True):
-            row = st.columns([0.48, 0.48, 0.86, 3.2, 0.8, 1.15, 1.05, 0.9])
+            st.markdown(
+                f"""
+                <div class="panel-headline">
+                    <div class="panel-headline-left">
+                        <span class="panel-number">{i+1:02d}</span>
+                        <span class="panel-headline-name">{nome_cabecalho}</span>
+                    </div>
+                    <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            row = st.columns([0.46, 0.46, 0.9, 3.05, 1.0, 1.42, 1.0, 0.9])
             with row[0]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("▲", key=f"up_{pid}", help="Mover para cima", disabled=i == 0, use_container_width=True):
+                if st.button("▲", key=f"up_{pid}", help="Mover este painel para cima", disabled=i == 0, use_container_width=True):
                     paineis[i - 1], paineis[i] = paineis[i], paineis[i - 1]
                     salvar_config(config, force=True)
                     st.toast("Ordem atualizada.")
                     st.rerun()
             with row[1]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("▼", key=f"down_{pid}", help="Mover para baixo", disabled=i == len(paineis)-1, use_container_width=True):
+                if st.button("▼", key=f"down_{pid}", help="Mover este painel para baixo", disabled=i == len(paineis)-1, use_container_width=True):
                     paineis[i + 1], paineis[i] = paineis[i], paineis[i + 1]
                     salvar_config(config, force=True)
                     st.toast("Ordem atualizada.")
                     st.rerun()
             with row[2]:
-                painel["ativo"] = st.toggle("Ativo", value=bool(painel.get("ativo", True)), key=f"ativo_{pid}")
+                painel["ativo"] = st.toggle(
+                    "Ativo",
+                    value=bool(painel.get("ativo", True)),
+                    key=f"ativo_{pid}",
+                    help="Quando desligado, o painel continua cadastrado, mas não participa da rotação.",
+                )
             with row[3]:
-                painel["nome"] = st.text_input("Nome", value=painel["nome"], key=f"nome_{pid}")
+                painel["nome"] = st.text_input("Nome do painel", value=painel["nome"], key=f"nome_{pid}")
             with row[4]:
-                painel["tempo"] = st.number_input("Segundos", 5, 600, int(painel.get("tempo", 20)), 5, key=f"tempo_{pid}")
+                painel["tempo"] = st.number_input(
+                    "Tempo na tela", 5, 600, int(painel.get("tempo", 20)), 5, key=f"tempo_{pid}",
+                    help="Quantidade de segundos que este painel ficará visível antes de passar para o próximo.",
+                )
             with row[5]:
-                painel["reload_enabled"] = st.toggle("F5 automático", value=bool(painel.get("reload_enabled", True)), key=f"reload_{pid}")
+                painel["reload_enabled"] = st.toggle(
+                    "Atualização",
+                    value=bool(painel.get("reload_enabled", True)),
+                    key=f"reload_{pid}",
+                    help="Liga ou desliga a atualização automática (F5) deste painel.",
+                )
                 badge = "badge-blue" if painel["reload_enabled"] else "badge-gray"
                 st.markdown(f'<span class="badge {badge}">{"F5 ON" if painel["reload_enabled"] else "F5 OFF"}</span>', unsafe_allow_html=True)
             with row[6]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("Duplicar", key=f"dup_{pid}", use_container_width=True):
+                if st.button("⧉ Duplicar", key=f"dup_{pid}", help="Criar uma cópia deste painel", use_container_width=True):
                     clone = copy.deepcopy(painel)
                     clone["id"] = novo_id("p_")
                     clone["nome"] = f"{clone['nome']} - Cópia"
@@ -686,13 +816,13 @@ if not st.session_state.iniciado:
                     st.rerun()
             with row[7]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("Excluir", key=f"del_{pid}", use_container_width=True):
+                if st.button("🗑 Excluir", key=f"del_{pid}", help="Excluir este painel", use_container_width=True):
                     st.session_state["painel_pendente_exclusao_v23"] = pid
                     st.rerun()
 
             u1, u2, u3 = st.columns([6.0, 1.05, 1.2])
             with u1:
-                painel["link"] = st.text_input("URL", value=painel["link"], key=f"link_{pid}", placeholder="https://...")
+                painel["link"] = st.text_input("Endereço da página (URL)", value=painel["link"], key=f"link_{pid}", placeholder="https://...")
             with u2:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                 if painel["link"].strip():
@@ -705,14 +835,15 @@ if not st.session_state.iniciado:
             with u3:
                 st.markdown("<div style='height:21px'></div>", unsafe_allow_html=True)
                 if url_valida(painel.get("link", "")):
-                    st.markdown(f'<a href="{painel["link"]}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#0E5285;font-size:12px;font-weight:700;border:1px solid #C7D9E7;padding:7px 10px;border-radius:8px;">Abrir página ↗</a>', unsafe_allow_html=True)
+                    link_safe = html.escape(painel["link"], quote=True)
+                    st.markdown(f'<a href="{link_safe}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#0E5285;font-size:12px;font-weight:700;border:1px solid #C7D9E7;padding:7px 10px;border-radius:8px;">Abrir página ↗</a>', unsafe_allow_html=True)
 
-            # Opções avançadas: sempre visíveis no modo detalhado, recolhidas no compacto.
-            with st.expander("Opções avançadas do painel", expanded=perfil.get("config_view") == "detailed"):
-                a1, a2, a3, a4 = st.columns([1.1, 1.2, 1.1, 1.2])
+            # Configurações avançadas: abertas somente na visualização detalhada.
+            with st.expander("Configurações avançadas", expanded=perfil.get("config_view") == "detailed"):
+                a1, a2, a3, a4 = st.columns([1.1, 1.2, 1.1, 1.25])
                 with a1:
                     painel["tipo"] = st.selectbox(
-                        "Tipo",
+                        "Tipo do painel",
                         ["normal", "sim", "personalizado"],
                         index=["normal", "sim", "personalizado"].index(painel.get("tipo", "normal")),
                         format_func=lambda x: {"normal":"Normal", "sim":"SIM", "personalizado":"Personalizado"}[x],
@@ -721,34 +852,34 @@ if not st.session_state.iniciado:
                 with a2:
                     if painel["reload_enabled"]:
                         painel["reload_strategy"] = st.selectbox(
-                            "Política de F5",
+                            "Quando atualizar",
                             ["on_show", "interval"],
                             index=["on_show", "interval"].index(painel.get("reload_strategy", "on_show")),
                             format_func=lambda x: "Ao exibir" if x == "on_show" else "Por intervalo",
                             key=f"strategy_{pid}",
-                            help="Ao exibir: usa o pré-carregamento inteligente e garante uma carga recente. Por intervalo: recarrega enquanto o painel estiver ativo.",
+                            help="Ao exibir: garante uma carga recente quando o painel entra na tela. Por intervalo: atualiza repetidamente conforme o tempo configurado.",
                         )
                     else:
-                        st.selectbox("Política de F5", ["Desativado"], disabled=True, key=f"strategy_off_{pid}")
+                        st.selectbox("Quando atualizar", ["Desativado"], disabled=True, key=f"strategy_off_{pid}")
                 with a3:
                     painel["reload_interval"] = st.number_input(
-                        "Intervalo F5 (s)", 5, 3600, int(painel.get("reload_interval", 60)), 5,
+                        "Intervalo de atualização (s)", 5, 3600, int(painel.get("reload_interval", 60)), 5,
                         key=f"interval_{pid}", disabled=(not painel["reload_enabled"] or painel.get("reload_strategy") != "interval"),
                     )
                 with a4:
                     painel["preserve_session"] = st.toggle(
-                        "Preservar sessão",
+                        "Manter painel aberto",
                         value=bool(painel.get("preserve_session", False)),
                         key=f"preserve_{pid}",
-                        help="Mantém o iframe deste painel na memória mesmo quando ele não está visível. Útil para páginas com sessão/estado que não podem ser recarregados.",
+                        help="Mantém esta página carregada em segundo plano para preservar login, filtros ou posição, mesmo quando outro painel estiver visível.",
                     )
                 if not painel["reload_enabled"] and not painel["preserve_session"]:
-                    st.warning("F5 está OFF, mas a sessão não está preservada. Se o iframe for liberado para economizar memória, a página será carregada novamente quando voltar a ser exibida.")
+                    st.warning("A atualização está desligada, mas o painel não está configurado para permanecer aberto. Se ele for liberado para economizar memória, será carregado novamente quando voltar à tela.")
                 elif painel["preserve_session"]:
-                    st.markdown('<span class="badge badge-green">Sessão preservada</span>', unsafe_allow_html=True)
+                    st.markdown('<span class="badge badge-green">PAINEL MANTIDO ABERTO</span>', unsafe_allow_html=True)
 
             if pending_delete == pid:
-                st.warning(f"Excluir o painel **{painel['nome']}**?")
+                st.warning(f"Excluir o painel **{painel['nome']}**? Esta ação remove apenas este cadastro do perfil.")
                 d1, d2 = st.columns(2)
                 with d1:
                     if st.button("Cancelar", key=f"cancel_del_{pid}", use_container_width=True):
@@ -889,7 +1020,7 @@ if not st.session_state.iniciado:
         st.write(f"Perfil padrão global: `{config['profiles'][config['default_profile_id']]['nome']}`")
         st.write(f"Painéis ativos com URL válida: `{len(ativos)}`")
         st.write(f"URLs inválidas ativas: `{urls_invalidas}`")
-        st.write(f"Sessões preservadas: `{preservados}`")
+        st.write(f"Painéis mantidos abertos: `{preservados}`")
         st.write(f"Persistência local: `{CONFIG_PATH.name}` com gravação atômica + backup")
         st.info("Em hospedagens Streamlit com filesystem efêmero, o arquivo local pode ser recriado após redeploy/reinício da infraestrutura. O backup/exportação continua recomendado para mudanças importantes.")
         if st.session_state.get("config_corrompida_backup"):
@@ -903,24 +1034,36 @@ if not st.session_state.iniciado:
             **2.2 – Estabilidade e Operação:** perfil por URL/monitor, IDs permanentes, F5 temporário sem sobrescrever configuração, preservação independente de sessão, pré-carregamento inteligente, timer por horário-alvo, watchdog, status de conexão, reinício no fim do ciclo, diagnóstico expandido e gravação atômica com backup.
 
             **2.3 – Experiência e Visual:** modo compacto/detalhado, barra superior/inferior, escala para TV, indicadores/relógio opcionais, transição configurável, badges de estado e refinamento completo na paleta `#0E5285`.
+
+            **2.4 – Primeiro Uso:** linguagem mais simples, guia inicial em 3 passos, resumo mais autoexplicativo, prévia da ordem de rotação, cards numerados, estados visuais claros, controles com tooltips, visualização compacta/detalhada e ação “Iniciar monitoramento” sempre acessível.
             """
         )
 
     st.markdown(f'<span class="version-pill">Painel de Monitoramento v{APP_VERSION}</span>', unsafe_allow_html=True)
     st.markdown("<div style='height:9px'></div>", unsafe_allow_html=True)
 
-    invalid_active = [p for p in perfil.get("paineis", []) if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
-    if st.button("Iniciar monitoramento", type="primary", use_container_width=True, key="start_v23"):
-        if not ativos:
-            st.error("Ative e configure pelo menos um painel com URL válida.")
-        elif invalid_active:
-            st.error("Existem painéis ativos com URL inválida. Corrija-os antes de iniciar.")
-        else:
-            salvar_config(config)
-            st.session_state.iniciado = True
-            st.query_params["perfil"] = active_profile_id
-            st.query_params["iniciado"] = "true"
-            st.rerun()
+    if st.button("▶ Iniciar monitoramento", type="primary", use_container_width=True, key="start_bottom_v24"):
+        iniciar_monitoramento_ux24()
+
+    # Barra fixa: mantém a ação principal acessível mesmo em páginas com muitos painéis.
+    fixed_ativos = perfil_ativos(perfil)
+    fixed_invalid = [p for p in perfil.get("paineis", []) if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
+    perfil_nome_safe = html.escape(str(perfil.get("nome", "Perfil")))
+    if fixed_ativos and not fixed_invalid:
+        fixed_action = f'<a class="ux24-start-link" href="?perfil={active_profile_id}&amp;iniciado=true" target="_self">▶ Iniciar monitoramento</a>'
+    else:
+        fixed_action = '<span class="ux24-start-disabled" title="Corrija os painéis antes de iniciar">▶ Iniciar monitoramento</span>'
+    st.markdown(
+        f"""
+        <div class="ux24-fixed-bar">
+            <div class="ux24-fixed-inner">
+                <div class="ux24-fixed-copy"><strong>✓ Salvo automaticamente</strong><span> &nbsp;•&nbsp; Perfil: {perfil_nome_safe} &nbsp;•&nbsp; {len(fixed_ativos)} painel(is) ativo(s)</span></div>
+                {fixed_action}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # =========================================================
 # TELA 2 - APRESENTAÇÃO
