@@ -16,12 +16,13 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.4
+# Painel de Monitoramento 2.4.1
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
+# 2.4.1: refinamentos visuais de estados, toggles e cards
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.4.0"
+APP_VERSION = "2.4.1"
 CONFIG_VERSION = 3
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -479,19 +480,27 @@ st.markdown(
         .stButton button[kind="primary"] { background:var(--primary)!important; color:#fff!important; border:1px solid var(--primary)!important; }
         .stButton button[kind="primary"]:hover { background:var(--primary-hover)!important; border-color:var(--primary-hover)!important; }
         .stButton button:not([kind="primary"]):hover,.stDownloadButton button:hover { color:var(--primary)!important; border-color:var(--primary)!important; background:var(--primary-soft-2)!important; }
-        /* Força os switches do Streamlit para azul quando ligados e cinza quando desligados. */
-        div[data-testid="stToggle"] input:checked + div,
-        div[data-testid="stToggle"] input:checked ~ div:first-of-type,
-        div[data-testid="stToggle"] label[data-baseweb="checkbox"] input:checked + div,
+        /*
+           O primaryColor do tema é a fonte principal da cor dos toggles.
+           Estes seletores funcionam como fallback visual entre versões do Streamlit/BaseWeb.
+        */
+        div[data-testid="stToggle"] [data-baseweb="checkbox"] input:checked ~ div,
+        div[data-testid="stToggle"] [data-baseweb="checkbox"] input:checked + div,
         div[data-testid="stToggle"] [role="switch"][aria-checked="true"],
-        div[data-testid="stToggle"] [role="checkbox"][aria-checked="true"] { background-color:var(--primary)!important; border-color:var(--primary)!important; }
-        div[data-testid="stToggle"] input:not(:checked) + div,
-        div[data-testid="stToggle"] input:not(:checked) ~ div:first-of-type,
-        div[data-testid="stToggle"] label[data-baseweb="checkbox"] input:not(:checked) + div,
+        div[data-testid="stToggle"] [role="checkbox"][aria-checked="true"] {
+            background-color:var(--primary)!important;
+            border-color:var(--primary)!important;
+        }
+        div[data-testid="stToggle"] [data-baseweb="checkbox"] input:not(:checked) ~ div,
+        div[data-testid="stToggle"] [data-baseweb="checkbox"] input:not(:checked) + div,
         div[data-testid="stToggle"] [role="switch"][aria-checked="false"],
-        div[data-testid="stToggle"] [role="checkbox"][aria-checked="false"] { background-color:#CBD5E1!important; border-color:#CBD5E1!important; }
-        div[data-testid="stToggle"] label[data-baseweb="checkbox"] > div:nth-child(2) { transition:background-color .15s ease!important; }
+        div[data-testid="stToggle"] [role="checkbox"][aria-checked="false"] {
+            background-color:#CBD5E1!important;
+            border-color:#CBD5E1!important;
+        }
+        div[data-testid="stToggle"] [data-baseweb="checkbox"] > div { transition:background-color .15s ease!important; }
         div[data-testid="stToggle"] label p { color:var(--primary)!important; font-weight:650!important; }
+        div[data-testid="stToggle"] { min-width:0; }
         div[data-testid="stExpander"] details { border-color:var(--primary-border)!important; border-radius:10px!important; background:#fff!important; }
         .status-ok { color:var(--success); font-size:11.5px; font-weight:700; }
         .status-warn { color:var(--warning); font-size:11.5px; font-weight:700; }
@@ -766,7 +775,7 @@ if not st.session_state.iniciado:
                 unsafe_allow_html=True,
             )
 
-            row = st.columns([0.46, 0.46, 0.9, 3.05, 1.0, 1.42, 1.0, 0.9])
+            row = st.columns([0.46, 0.46, 1.05, 3.15, 1.0, 1.45, 1.0, 0.9])
             with row[0]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                 if st.button("▲", key=f"up_{pid}", help="Mover este painel para cima", disabled=i == 0, use_container_width=True):
@@ -783,10 +792,10 @@ if not st.session_state.iniciado:
                     st.rerun()
             with row[2]:
                 painel["ativo"] = st.toggle(
-                    "Ativo",
+                    "Exibir",
                     value=bool(painel.get("ativo", True)),
                     key=f"ativo_{pid}",
-                    help="Quando desligado, o painel continua cadastrado, mas não participa da rotação.",
+                    help="Liga ou desliga este painel na rotação. Desligado, ele continua cadastrado.",
                 )
             with row[3]:
                 painel["nome"] = st.text_input("Nome do painel", value=painel["nome"], key=f"nome_{pid}")
@@ -800,10 +809,8 @@ if not st.session_state.iniciado:
                     "Atualização",
                     value=bool(painel.get("reload_enabled", True)),
                     key=f"reload_{pid}",
-                    help="Liga ou desliga a atualização automática (F5) deste painel.",
+                    help="Liga ou desliga a atualização automática (F5) deste painel. O estado também aparece no selo do cabeçalho.",
                 )
-                badge = "badge-blue" if painel["reload_enabled"] else "badge-gray"
-                st.markdown(f'<span class="badge {badge}">{"F5 ON" if painel["reload_enabled"] else "F5 OFF"}</span>', unsafe_allow_html=True)
             with row[6]:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                 if st.button("⧉ Duplicar", key=f"dup_{pid}", help="Criar uma cópia deste painel", use_container_width=True):
@@ -1036,6 +1043,8 @@ if not st.session_state.iniciado:
             **2.3 – Experiência e Visual:** modo compacto/detalhado, barra superior/inferior, escala para TV, indicadores/relógio opcionais, transição configurável, badges de estado e refinamento completo na paleta `#0E5285`.
 
             **2.4 – Primeiro Uso:** linguagem mais simples, guia inicial em 3 passos, resumo mais autoexplicativo, prévia da ordem de rotação, cards numerados, estados visuais claros, controles com tooltips, visualização compacta/detalhada e ação “Iniciar monitoramento” sempre acessível.
+
+            **2.4.1 – Refinamento visual:** cor ativa dos controles alinhada ao azul #0E5285, campos dos cards redistribuídos para evitar cortes e remoção da indicação F5 duplicada na linha do painel.
             """
         )
 
