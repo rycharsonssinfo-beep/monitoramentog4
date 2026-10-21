@@ -16,15 +16,16 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.4.4
+# Painel de Monitoramento 2.5.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
 # 2.4.4: botão Ajustes via ponte bidirecional Streamlit (postMessage -> Python), sem depender de navegação do iframe
+# 2.5.0: Modo Monitor Profissional - tela útil total, barra simplificada, menu secundário e auto-ocultação refinada
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.4.4"
+APP_VERSION = "2.5.0"
 CONFIG_VERSION = 3
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -1063,6 +1064,8 @@ if not st.session_state.iniciado:
 
             **2.4.4 – Ajustes robustos:** o botão ⚙ passa a enviar um evento do monitor para o Streamlit por `postMessage`; o Python recebe o evento, encerra a apresentação e retorna para a tela de ajustes. Isso elimina a dependência de `window.parent`, `window.top` e `target="_top"`, que podem ser bloqueados pelo sandbox do navegador.
 
+            **2.5 – Modo Monitor Profissional:** apresentação ocupa toda a área útil do navegador, removendo folgas do Streamlit; barra superior mais compacta com somente controles principais; Atualizar agora, Modo TV e Diagnóstico foram agrupados no menu `⋮`; contador ganhou maior destaque; status usa “1 de 3”; barra auto-ocultável deixa apenas uma faixa de 4 px para recuperação rápida dos controles; e o iframe monitorado ocupa 100% da área restante sem criar rolagem externa do Streamlit.
+
             **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
             """
         )
@@ -1100,10 +1103,31 @@ else:
     st.markdown(
         """
         <style>
-            .block-container {max-width:100%!important;width:100%!important;height:100vh!important;padding:0!important;margin:0!important;overflow:hidden!important;}
-            .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"] {overflow:hidden!important;height:100vh!important;}
-            iframe[title="streamlit.components.v1.html"] {width:100%!important;height:100vh!important;display:block!important;border:0!important;}
-            div[data-testid="stElementContainer"] {margin:0!important;}
+            html, body { margin:0!important; padding:0!important; overflow:hidden!important; }
+            header, [data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu, footer {
+                display:none!important; height:0!important; min-height:0!important; visibility:hidden!important;
+            }
+            .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+                position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important;
+                margin:0!important; padding:0!important; overflow:hidden!important;
+            }
+            .block-container {
+                position:fixed!important; inset:0!important; max-width:none!important; width:100vw!important; height:100vh!important;
+                padding:0!important; margin:0!important; overflow:hidden!important;
+            }
+            div[data-testid="stElementContainer"] { margin:0!important; padding:0!important; }
+            div[data-testid="stElementContainer"]:has(iframe[title="streamlit.components.v1.html"]) {
+                position:fixed!important; inset:0!important; width:100vw!important; height:100vh!important;
+                margin:0!important; padding:0!important; z-index:9990!important; overflow:hidden!important;
+            }
+            iframe[title="streamlit.components.v1.html"] {
+                position:absolute!important; inset:0!important; width:100vw!important; height:100vh!important;
+                display:block!important; border:0!important; margin:0!important; padding:0!important;
+            }
+            div[data-testid="stCustomComponentV2"] {
+                position:absolute!important; width:0!important; height:0!important; overflow:hidden!important;
+                opacity:0!important; pointer-events:none!important;
+            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -1214,47 +1238,53 @@ else:
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <style>
             :root{
-                --blue:#0E5285;--blue-dark:#093D63;--blue-light:#54A3D8;--toolbar-h:42px;--progress-h:3px;--scale:1;--fade:220ms;
+                --blue:#0E5285;--blue-dark:#093D63;--blue-light:#54A3D8;--toolbar-h:40px;--progress-h:3px;--scale:1;--fade:220ms;
             }
             *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
             #control-shell{position:fixed;left:0;width:100%;z-index:10000;transition:transform .18s ease,opacity .18s ease;transform-origin:center;}
             body.bar-top #control-shell{top:0} body.bar-bottom #control-shell{bottom:0}
             body.bar-top #control-shell.hidden{transform:translateY(calc(-1*(var(--toolbar-h) + var(--progress-h))));opacity:0;pointer-events:none}
             body.bar-bottom #control-shell.hidden{transform:translateY(calc(var(--toolbar-h) + var(--progress-h)));opacity:0;pointer-events:none}
-            #toolbar{height:var(--toolbar-h);background:var(--blue);color:#fff;display:grid;grid-template-columns:minmax(220px,1.25fr) minmax(160px,.85fr) auto;align-items:center;gap:12px;padding:0 11px 0 14px;box-shadow:0 2px 7px rgba(0,0,0,.18);font-size:calc(12px * var(--scale))}
+            #toolbar{height:var(--toolbar-h);background:var(--blue);color:#fff;display:grid;grid-template-columns:minmax(260px,1.35fr) minmax(150px,.65fr) auto;align-items:center;gap:12px;padding:0 10px 0 12px;box-shadow:0 2px 7px rgba(0,0,0,.18);font-size:calc(12px * var(--scale))}
             .toolbar-left{min-width:0;display:flex;align-items:center;gap:8px;overflow:hidden;white-space:nowrap}.state-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 2px rgba(255,255,255,.16);flex:0 0 auto}.state-dot.offline{background:#ef4444}.state-dot.recovering{background:#f59e0b}
-            #panel-name{overflow:hidden;text-overflow:ellipsis;font-weight:780}#panel-order{color:#C9E0F1;font-size:.92em;flex-shrink:0}.toolbar-center{display:flex;align-items:center;justify-content:center;gap:9px;color:#EAF3FA;font-size:.92em}#dots{display:flex;gap:5px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.68);background:transparent;opacity:.8;cursor:pointer}.dot.active{background:#fff;opacity:1}
-            .toolbar-right{display:flex;align-items:center;justify-content:flex-end;gap:4px}.btn{height:29px;min-width:30px;padding:0 8px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:.91em;font-weight:720;display:inline-flex;align-items:center;justify-content:center;gap:4px;user-select:none}.btn:hover{background:rgba(255,255,255,.18)}.btn.active{background:#1C70A9;border-color:#8CC4E8}.btn.off{background:#334155;border-color:#94A3B8}.btn.warn{background:#92400e;border-color:#fbbf24}.btn.pause{background:#7f1d1d;border-color:#f87171}.status-text{font-size:.88em;color:#DCEEFF;white-space:nowrap}.hidden-item{display:none!important}#clock{min-width:50px;text-align:right;font-weight:720;color:#DCEEFF}
+            #panel-name{overflow:hidden;text-overflow:ellipsis;font-weight:800}#panel-order{color:#C9E0F1;font-size:.92em;flex-shrink:0}.toolbar-center{display:flex;align-items:center;justify-content:center;gap:9px;color:#EAF3FA;font-size:.92em}#dots{display:flex;gap:5px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.68);background:transparent;opacity:.8;cursor:pointer}.dot.active{background:#fff;opacity:1}#countdown{min-width:54px;text-align:center;font-weight:850;font-variant-numeric:tabular-nums;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:3px 8px}
+            .toolbar-right{display:flex;align-items:center;justify-content:flex-end;gap:4px}.btn{height:30px;min-width:31px;padding:0 8px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:.91em;font-weight:720;display:inline-flex;align-items:center;justify-content:center;gap:4px;user-select:none}.btn:hover{background:rgba(255,255,255,.18)}.btn.active{background:#1C70A9;border-color:#8CC4E8}.btn.off{background:#334155;border-color:#94A3B8}.btn.warn{background:#92400e;border-color:#fbbf24}.btn.pause{background:#7f1d1d;border-color:#f87171}.btn.settings-btn{min-width:34px;padding:0 10px}.status-text{font-size:.88em;color:#DCEEFF;white-space:nowrap}.hidden-item{display:none!important}#clock{min-width:50px;text-align:right;font-weight:760;color:#DCEEFF}.more-wrap{position:relative;display:inline-flex}.more-menu{position:absolute;right:0;top:calc(100% + 7px);min-width:190px;display:none;flex-direction:column;padding:6px;background:#fff;border:1px solid #C7D9E7;border-radius:9px;box-shadow:0 10px 28px rgba(15,23,42,.22);z-index:10050}.more-menu.open{display:flex}body.bar-bottom .more-menu{top:auto;bottom:calc(100% + 7px)}.menu-item{width:100%;border:0;background:transparent;color:#16324A;border-radius:6px;padding:8px 10px;text-align:left;cursor:pointer;font-size:12px;font-weight:650;display:flex;align-items:center;gap:8px}.menu-item:hover{background:#EAF3FA;color:#0E5285}.menu-item.active{background:#EAF3FA;color:#0E5285}
             #progress-container{width:100%;height:var(--progress-h);background:var(--blue-dark);overflow:hidden}body.bar-bottom #progress-container{order:-1}#control-shell{display:flex;flex-direction:column}#progress{width:100%;height:100%;background:var(--blue-light);transform-origin:left;transform:scaleX(1)}
             #stage{position:fixed;left:0;width:100%;background:#fff;overflow:hidden;transition:top .18s ease,height .18s ease,bottom .18s ease}body.bar-top #stage{top:calc(var(--toolbar-h) + var(--progress-h));height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.bar-bottom #stage{top:0;height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.controls-hidden #stage{top:0!important;height:100vh!important;bottom:auto!important}
             .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff}
             .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:7px;padding:7px 10px;cursor:pointer;font-weight:700}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
-            body.kiosk.controls-hidden{cursor:none}
-            @media(max-width:980px){#toolbar{grid-template-columns:1fr auto}.toolbar-center{display:none}.btn .label{display:none}.btn{padding:0 7px}.status-text{display:none}}
+            body.kiosk.controls-hidden{cursor:none}#reveal-strip{position:fixed;left:0;width:100%;height:4px;z-index:10015;opacity:0;pointer-events:none;background:linear-gradient(90deg,#0E5285,#54A3D8,#0E5285);transition:opacity .15s ease}body.bar-top #reveal-strip{top:0}body.bar-bottom #reveal-strip{bottom:0}body.controls-hidden #reveal-strip{opacity:.9;pointer-events:auto}
+            @media(max-width:980px){#toolbar{grid-template-columns:1fr auto}.toolbar-center{display:none}.btn .label{display:none}.btn{padding:0 7px}.status-text{display:none}.more-menu{min-width:175px}}
         </style>
     </head>
     <body class="bar-top">
         <div id="control-shell">
             <div id="toolbar">
-                <div class="toolbar-left"><span id="state-dot" class="state-dot"></span><span id="panel-name">Carregando...</span><span id="panel-order"></span><span id="network-status" class="status-text">Online</span></div>
+                <div class="toolbar-left"><span id="state-dot" class="state-dot"></span><span id="panel-name">Carregando...</span><span id="panel-order"></span><span id="network-status" class="status-text">· Online</span></div>
                 <div class="toolbar-center"><div id="dots"></div><span id="countdown">--:--</span><span id="runtime-status" class="status-text"></span></div>
                 <div class="toolbar-right">
                     <button class="btn" onclick="mudarTela(-1)" title="Painel anterior (←)">←</button>
                     <button class="btn" id="pause-btn" onclick="alternarPausa()" title="Pausar/retomar (Espaço)">Ⅱ <span class="label">Pausar</span></button>
                     <button class="btn" onclick="mudarTela(1)" title="Próximo painel (→)">→</button>
-                    <button class="btn" id="reload-toggle" onclick="alternarRecarregamentoTemporario()" title="Alteração temporária do F5; não altera a configuração salva">↻ <span class="label">F5</span></button>
-                    <button class="btn" onclick="recarregarAgora()" title="Atualizar agora (R)">⟳</button>
-                    <button class="btn" id="kiosk-btn" onclick="alternarModoTV()" title="Modo TV (K)">▣ <span class="label">TV</span></button>
+                    <button class="btn" id="reload-toggle" onclick="alternarRecarregamentoTemporario()" title="F5 automático deste painel; alteração temporária não muda a configuração salva">↻ <span class="label">F5</span></button>
                     <button class="btn" onclick="alternarTelaCheia()" title="Tela cheia (F)">⛶</button>
-                    <button class="btn" onclick="toggleDiag()" title="Diagnóstico">i</button>
-                    <button class="btn" id="settings-btn" onclick="irParaAjustes()" title="Voltar para os ajustes">⚙</button>
+                    <div class="more-wrap">
+                        <button class="btn" id="more-btn" onclick="toggleMoreMenu(event)" title="Mais controles">⋮</button>
+                        <div class="more-menu" id="more-menu">
+                            <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
+                            <button class="menu-item" id="kiosk-btn" onclick="alternarModoTV(); closeMoreMenu();" title="Modo TV (K)">▣ Modo TV</button>
+                            <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
+                        </div>
+                    </div>
+                    <button class="btn settings-btn" id="settings-btn" onclick="irParaAjustes()" title="Voltar para os ajustes">⚙</button>
                     <span id="clock"></span>
                 </div>
             </div>
             <div id="progress-container"><div id="progress"></div></div>
         </div>
+        <div id="reveal-strip" title="Mostrar controles"></div>
         <div id="stage"></div>
         <div id="restart-notice"></div>
         <div id="diag">
@@ -1318,6 +1348,9 @@ else:
             const pauseBtn = document.getElementById('pause-btn');
             const reloadToggle = document.getElementById('reload-toggle');
             const kioskBtn = document.getElementById('kiosk-btn');
+            const moreMenu = document.getElementById('more-menu');
+            const moreBtn = document.getElementById('more-btn');
+            const revealStrip = document.getElementById('reveal-strip');
             const clock = document.getElementById('clock');
             const dots = document.getElementById('dots');
             const diag = document.getElementById('diag');
@@ -1414,7 +1447,7 @@ else:
 
             function renderDots(){ dots.innerHTML=''; panels.forEach((p,i)=>{ const d=document.createElement('span'); d.className='dot'+(i===index?' active':''); d.title=p.nome; d.onclick=()=>{index=i;afterIndexChange('Indicador');}; dots.appendChild(d); }); }
             function renderReloadButton(){ const p=panels[index], on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 temporário nesta apresentação. * indica valor diferente da configuração salva.'; }
-            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`${index+1}/${panels.length}`; renderDots(); renderReloadButton(); localStorage.setItem(indexKey,p.id); }
+            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); localStorage.setItem(indexKey,p.id); }
 
             function stopTimers(){ clearInterval(timer); clearInterval(intervalReloadTimer); clearTimeout(preloadTimer); timer=null; intervalReloadTimer=null; preloadTimer=null; }
             function setupIntervalReload(){ clearInterval(intervalReloadTimer); intervalReloadTimer=null; const p=panels[index]; if(!effectiveReload(p)||p.reload_strategy!=='interval')return; const every=Math.max(5,parseInt(p.reload_interval||60,10)); intervalReloadTimer=setInterval(()=>{ if(!paused && panels[index].id===p.id && effectiveReload(p)){ const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,false); } },every*1000); runtimeStatus.textContent=`F5 ${every}s`; }
@@ -1451,9 +1484,11 @@ else:
             function recarregarAgora(){ const p=panels[index]; const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,true); }
             function alternarTelaCheia(){ if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}else if(document.exitFullscreen){document.exitFullscreen().catch(()=>{});} }
 
+            function closeMoreMenu(){ if(moreMenu)moreMenu.classList.remove('open'); }
+            function toggleMoreMenu(event){ if(event)event.stopPropagation(); if(moreMenu)moreMenu.classList.toggle('open'); showControls(); }
             function showControls(){ controlShell.classList.remove('hidden'); document.body.classList.remove('controls-hidden'); document.body.style.cursor=''; clearTimeout(hideTimer); if(settings.autoHide||kioskMode)hideTimer=setTimeout(hideControls,kioskMode?2200:4300); }
-            function hideControls(){ if(!(settings.autoHide||kioskMode))return; controlShell.classList.add('hidden'); document.body.classList.add('controls-hidden'); if(kioskMode)document.body.style.cursor='none'; }
-            function alternarModoTV(force=null){ kioskMode=force===null?!kioskMode:!!force; document.body.classList.toggle('kiosk',kioskMode); kioskBtn.classList.toggle('active',kioskMode); kioskBtn.innerHTML=kioskMode?'▣ <span class="label">TV ON</span>':'▣ <span class="label">TV</span>'; if(kioskMode&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{}); showControls(); log(`Modo TV ${kioskMode?'ativado':'desativado'}`); }
+            function hideControls(){ if(!(settings.autoHide||kioskMode))return; closeMoreMenu(); controlShell.classList.add('hidden'); document.body.classList.add('controls-hidden'); if(kioskMode)document.body.style.cursor='none'; }
+            function alternarModoTV(force=null){ kioskMode=force===null?!kioskMode:!!force; document.body.classList.toggle('kiosk',kioskMode); kioskBtn.classList.toggle('active',kioskMode); kioskBtn.innerHTML=kioskMode?'▣ Modo TV ativado':'▣ Modo TV'; if(kioskMode&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{}); showControls(); log(`Modo TV ${kioskMode?'ativado':'desativado'}`); }
             function toggleDiag(){ diag.classList.toggle('open'); showControls(); updateDiag(); }
 
             function enviarAcaoHost(action){
@@ -1484,7 +1519,7 @@ else:
             }
 
             function updateClock(){ const d=new Date(); clock.textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
-            function updateNetwork(){ const online=navigator.onLine; networkStatus.textContent=online?'Online':'Sem conexão'; setState(online?'online':'offline'); document.getElementById('d-network').textContent=online?'Online':'Offline'; if(online)log('Conexão restabelecida'); }
+            function updateNetwork(){ const online=navigator.onLine; networkStatus.textContent=online?'· Online':'· Sem conexão'; setState(online?'online':'offline'); document.getElementById('d-network').textContent=online?'Online':'Offline'; if(online)log('Conexão restabelecida'); }
             window.addEventListener('online',updateNetwork); window.addEventListener('offline',updateNetwork);
 
             function updateDiag(){
@@ -1518,6 +1553,8 @@ else:
             });
 
             document.addEventListener('mousemove',showControls,{passive:true}); document.addEventListener('touchstart',showControls,{passive:true});
+            document.addEventListener('click',(e)=>{ if(moreMenu && !moreMenu.contains(e.target) && e.target!==moreBtn)closeMoreMenu(); });
+            if(revealStrip){ revealStrip.addEventListener('mouseenter',showControls); revealStrip.addEventListener('touchstart',showControls,{passive:true}); }
             document.addEventListener('keydown',(e)=>{ if(e.key==='ArrowLeft')mudarTela(-1);else if(e.key==='ArrowRight')mudarTela(1);else if(e.code==='Space'){e.preventDefault();alternarPausa();}else if(e.key.toLowerCase()==='f')alternarTelaCheia();else if(e.key.toLowerCase()==='r')recarregarAgora();else if(e.key.toLowerCase()==='k')alternarModoTV(); });
 
             if(settings.generalReloadMs>0){ setTimeout(()=>{ pendingGeneralReload=true; restartNotice.style.display='block'; restartNotice.textContent='Reinício programado: a aplicação será reiniciada ao fim do painel atual.'; runtimeStatus.textContent='Reinício pendente'; log('Reinício geral aguardando o fim do painel atual'); },settings.generalReloadMs); }
