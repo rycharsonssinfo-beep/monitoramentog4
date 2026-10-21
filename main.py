@@ -16,14 +16,15 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.4.3
+# Painel de Monitoramento 2.4.4
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
-# 2.4.3: correção definitiva do botão Ajustes por navegação direta no topo do iframe
+# 2.4.3: tentativa de navegação direta do botão Ajustes
+# 2.4.4: botão Ajustes via ponte bidirecional Streamlit (postMessage -> Python), sem depender de navegação do iframe
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.4.3"
+APP_VERSION = "2.4.4"
 CONFIG_VERSION = 3
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -1060,6 +1061,8 @@ if not st.session_state.iniciado:
 
             **2.4.3 – Ajustes:** o botão ⚙ agora usa um link direto com `target="_top"`, permitindo sair do iframe e voltar à tela de configuração.
 
+            **2.4.4 – Ajustes robustos:** o botão ⚙ passa a enviar um evento do monitor para o Streamlit por `postMessage`; o Python recebe o evento, encerra a apresentação e retorna para a tela de ajustes. Isso elimina a dependência de `window.parent`, `window.top` e `target="_top"`, que podem ser bloqueados pelo sandbox do navegador.
+
             **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
             """
         )
@@ -1123,6 +1126,67 @@ else:
             st.rerun()
         st.stop()
 
+    # Ponte bidirecional invisível entre o iframe do monitor e o Python.
+    # O components.html é executado em um iframe sandboxado; por isso, navegar
+    # diretamente o window.parent/window.top pode ser bloqueado pelo navegador.
+    # A ponte V2 escuta postMessage no documento principal e transforma a ação
+    # em um evento do Streamlit, permitindo que o próprio Python troque de tela.
+    if not hasattr(st.components, "v2"):
+        st.error(
+            "Esta versão do monitoramento requer Streamlit 1.54 ou superior. "
+            "Adicione `streamlit>=1.54` ao requirements.txt e faça o redeploy."
+        )
+        st.stop()
+
+    monitor_bridge = st.components.v2.component(
+        "monitor_host_bridge_v244",
+        html="<span aria-hidden=\"true\"></span>",
+        css=":host { display: none !important; }",
+        js=r"""
+        export default function(component) {
+            const { setTriggerValue } = component;
+
+            const onMessage = (event) => {
+                const msg = event.data;
+
+                if (!msg || msg.source !== "monitoramentog4") {
+                    return;
+                }
+
+                if (msg.action === "settings" || msg.action === "reload") {
+                    setTriggerValue("action", msg.action);
+                }
+            };
+
+            window.addEventListener("message", onMessage);
+
+            return () => {
+                window.removeEventListener("message", onMessage);
+            };
+        }
+        """,
+    )
+
+    bridge_result = monitor_bridge(
+        key=f"monitor_bridge_{active_profile_id}",
+        on_action_change=lambda: None,
+    )
+
+    bridge_action = getattr(bridge_result, "action", None)
+
+    if bridge_action == "settings":
+        st.session_state.iniciado = False
+        st.query_params["perfil"] = active_profile_id
+        st.query_params["iniciado"] = "false"
+        st.rerun()
+
+    if bridge_action == "reload":
+        # Mantém a apresentação ativa e força um novo ciclo Python/HTML.
+        st.session_state.iniciado = True
+        st.query_params["perfil"] = active_profile_id
+        st.query_params["iniciado"] = "true"
+        st.rerun()
+
     # Base64 evita injetar strings de usuário diretamente dentro do JavaScript.
     payload_b64 = b64_json({
         "panels": paineis_ativos,
@@ -1185,7 +1249,7 @@ else:
                     <button class="btn" id="kiosk-btn" onclick="alternarModoTV()" title="Modo TV (K)">▣ <span class="label">TV</span></button>
                     <button class="btn" onclick="alternarTelaCheia()" title="Tela cheia (F)">⛶</button>
                     <button class="btn" onclick="toggleDiag()" title="Diagnóstico">i</button>
-                    <a class="btn" id="settings-link" href="__SETTINGS_URL__" target="_top" title="Voltar para os ajustes" onclick="log('Abrindo ajustes')">⚙</a>
+                    <button class="btn" id="settings-btn" onclick="irParaAjustes()" title="Voltar para os ajustes">⚙</button>
                     <span id="clock"></span>
                 </div>
             </div>
@@ -1392,54 +1456,31 @@ else:
             function alternarModoTV(force=null){ kioskMode=force===null?!kioskMode:!!force; document.body.classList.toggle('kiosk',kioskMode); kioskBtn.classList.toggle('active',kioskMode); kioskBtn.innerHTML=kioskMode?'▣ <span class="label">TV ON</span>':'▣ <span class="label">TV</span>'; if(kioskMode&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{}); showControls(); log(`Modo TV ${kioskMode?'ativado':'desativado'}`); }
             function toggleDiag(){ diag.classList.toggle('open'); showControls(); updateDiag(); }
 
-            function buildAppUrl(iniciado){
-                const started = iniciado ? 'true' : 'false';
-
-                // document.referrer normalmente aponta para a página principal do Streamlit
-                // e pode ser lido mesmo quando o componente está em um iframe isolado.
-                try{
-                    if(document.referrer){
-                        const u=new URL(document.referrer);
-                        u.searchParams.set('iniciado',started);
-                        u.searchParams.set('perfil',profile.id);
-                        return u.toString();
-                    }
-                }catch(e){}
-
-                // Fallback para apps publicados na raiz do domínio (caso do Streamlit Cloud).
-                return `/?perfil=${encodeURIComponent(profile.id)}&iniciado=${started}`;
-            }
-
-            function navegarAplicacao(iniciado){
-                const target=buildAppUrl(iniciado);
-
-                // Não tenta ler window.parent.location.href, pois isso pode gerar
-                // SecurityError dentro do iframe do Streamlit. Apenas navega o ancestral.
-                try{
-                    window.parent.location.href=target;
-                    return;
-                }catch(e){}
+            function enviarAcaoHost(action){
+                const message={
+                    source:'monitoramentog4',
+                    action:action,
+                    profileId:profile.id,
+                    sentAt:Date.now()
+                };
 
                 try{
-                    window.top.location.href=target;
-                    return;
-                }catch(e){}
-
-                try{
-                    window.open(target,'_top');
-                    return;
-                }catch(e){}
-
-                window.location.href=target;
+                    window.parent.postMessage(message,'*');
+                    return true;
+                }catch(e){
+                    log(`Falha ao comunicar com a aplicação: ${e}`);
+                    return false;
+                }
             }
 
             function irParaAjustes(){
-                log('Abrindo ajustes');
-                navegarAplicacao(false);
+                log('Solicitando retorno aos ajustes');
+                enviarAcaoHost('settings');
             }
 
             function reloadApplication(){
-                navegarAplicacao(true);
+                log('Solicitando reinício da apresentação');
+                enviarAcaoHost('reload');
             }
 
             function updateClock(){ const d=new Date(); clock.textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
@@ -1488,10 +1529,5 @@ else:
     </body>
     </html>
     '''
-    settings_url = f"?perfil={active_profile_id}&iniciado=false"
-    html_painel = html_painel.replace(
-        "__SETTINGS_URL__",
-        html.escape(settings_url, quote=True),
-    )
     html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)
     components.html(html_painel, height=960, scrolling=False)
