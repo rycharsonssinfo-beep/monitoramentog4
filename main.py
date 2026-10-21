@@ -18,11 +18,11 @@ import streamlit.components.v1 as components
 # =========================================================
 # Painel de Monitoramento 2.4.1
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
-# 2.4.1: refinamentos visuais de estados, toggles e cards
+# 2.4.2: correção do F5 OFF com preservação automática e navegação de Ajustes
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.4.1"
+APP_VERSION = "2.4.2"
 CONFIG_VERSION = 3
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -543,7 +543,7 @@ if not st.session_state.iniciado:
     m, s = divmod(tempo_total, 60)
     tempo_fmt = f"{m}m {s:02d}s" if m else f"{s}s"
     urls_invalidas = sum(1 for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", "")))
-    preservados = sum(1 for p in paineis if p.get("preserve_session", False))
+    preservados = sum(1 for p in paineis if p.get("preserve_session", False) or not p.get("reload_enabled", True))
     invalid_active = [p for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
 
     def iniciar_monitoramento_ux24():
@@ -759,7 +759,7 @@ if not st.session_state.iniciado:
         nome_cabecalho = html.escape(str(painel.get("nome") or "Painel sem nome"))
         ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
         f5_badge = '<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>'
-        preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if painel.get("preserve_session", False) else ''
+        preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if (painel.get("preserve_session", False) or not painel.get("reload_enabled", True)) else ''
 
         with st.container(border=True):
             st.markdown(
@@ -874,14 +874,23 @@ if not st.session_state.iniciado:
                         key=f"interval_{pid}", disabled=(not painel["reload_enabled"] or painel.get("reload_strategy") != "interval"),
                     )
                 with a4:
-                    painel["preserve_session"] = st.toggle(
-                        "Manter painel aberto",
-                        value=bool(painel.get("preserve_session", False)),
-                        key=f"preserve_{pid}",
-                        help="Mantém esta página carregada em segundo plano para preservar login, filtros ou posição, mesmo quando outro painel estiver visível.",
-                    )
-                if not painel["reload_enabled"] and not painel["preserve_session"]:
-                    st.warning("A atualização está desligada, mas o painel não está configurado para permanecer aberto. Se ele for liberado para economizar memória, será carregado novamente quando voltar à tela.")
+                    if not painel["reload_enabled"]:
+                        st.toggle(
+                            "Manter painel aberto",
+                            value=True,
+                            key=f"preserve_auto_{pid}",
+                            disabled=True,
+                            help="Com F5 OFF, o painel é mantido aberto automaticamente para não recarregar quando voltar à tela.",
+                        )
+                    else:
+                        painel["preserve_session"] = st.toggle(
+                            "Manter painel aberto",
+                            value=bool(painel.get("preserve_session", False)),
+                            key=f"preserve_{pid}",
+                            help="Mantém esta página carregada em segundo plano para preservar login, filtros ou posição, mesmo quando outro painel estiver visível.",
+                        )
+                if not painel["reload_enabled"]:
+                    st.info("Com **F5 OFF**, este painel é mantido carregado automaticamente. Ao sair e voltar para ele, o monitoramento reutiliza o mesmo iframe e não executa F5.")
                 elif painel["preserve_session"]:
                     st.markdown('<span class="badge badge-green">PAINEL MANTIDO ABERTO</span>', unsafe_allow_html=True)
 
@@ -1045,6 +1054,8 @@ if not st.session_state.iniciado:
             **2.4 – Primeiro Uso:** linguagem mais simples, guia inicial em 3 passos, resumo mais autoexplicativo, prévia da ordem de rotação, cards numerados, estados visuais claros, controles com tooltips, visualização compacta/detalhada e ação “Iniciar monitoramento” sempre acessível.
 
             **2.4.1 – Refinamento visual:** cor ativa dos controles alinhada ao azul #0E5285, campos dos cards redistribuídos para evitar cortes e remoção da indicação F5 duplicada na linha do painel.
+
+            **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
             """
         )
 
@@ -1303,7 +1314,7 @@ else:
                 const currentId=panels[index].id;
                 for(const [id,item] of pool.entries()){
                     const p=getPanelById(id);
-                    const mustKeep=id===currentId || (p && p.preserve_session===true);
+                    const mustKeep=id===currentId || (p && (p.preserve_session===true || effectiveReload(p)===false));
                     const isNextPreloaded=id===panels[nextIndex()].id && item.container.classList.contains('preload');
                     if(!mustKeep && !isNextPreloaded){ item.container.remove(); pool.delete(id); log(`Liberado da memória: ${item.panel.nome}`); }
                 }
@@ -1376,8 +1387,55 @@ else:
             function alternarModoTV(force=null){ kioskMode=force===null?!kioskMode:!!force; document.body.classList.toggle('kiosk',kioskMode); kioskBtn.classList.toggle('active',kioskMode); kioskBtn.innerHTML=kioskMode?'▣ <span class="label">TV ON</span>':'▣ <span class="label">TV</span>'; if(kioskMode&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{}); showControls(); log(`Modo TV ${kioskMode?'ativado':'desativado'}`); }
             function toggleDiag(){ diag.classList.toggle('open'); showControls(); updateDiag(); }
 
-            function irParaAjustes(){ try{ const u=new URL(window.parent.location.href);u.searchParams.set('iniciado','false');u.searchParams.set('perfil',profile.id);window.parent.location.href=u.toString(); }catch(e){ const u=new URL(window.location.href);u.searchParams.set('iniciado','false');u.searchParams.set('perfil',profile.id);window.location.href=u.toString(); } }
-            function reloadApplication(){ try{ const u=new URL(window.parent.location.href);u.searchParams.set('iniciado','true');u.searchParams.set('perfil',profile.id);window.parent.location.href=u.toString(); }catch(e){window.location.reload();} }
+            function buildAppUrl(iniciado){
+                const started = iniciado ? 'true' : 'false';
+
+                // document.referrer normalmente aponta para a página principal do Streamlit
+                // e pode ser lido mesmo quando o componente está em um iframe isolado.
+                try{
+                    if(document.referrer){
+                        const u=new URL(document.referrer);
+                        u.searchParams.set('iniciado',started);
+                        u.searchParams.set('perfil',profile.id);
+                        return u.toString();
+                    }
+                }catch(e){}
+
+                // Fallback para apps publicados na raiz do domínio (caso do Streamlit Cloud).
+                return `/?perfil=${encodeURIComponent(profile.id)}&iniciado=${started}`;
+            }
+
+            function navegarAplicacao(iniciado){
+                const target=buildAppUrl(iniciado);
+
+                // Não tenta ler window.parent.location.href, pois isso pode gerar
+                // SecurityError dentro do iframe do Streamlit. Apenas navega o ancestral.
+                try{
+                    window.parent.location.href=target;
+                    return;
+                }catch(e){}
+
+                try{
+                    window.top.location.href=target;
+                    return;
+                }catch(e){}
+
+                try{
+                    window.open(target,'_top');
+                    return;
+                }catch(e){}
+
+                window.location.href=target;
+            }
+
+            function irParaAjustes(){
+                log('Abrindo ajustes');
+                navegarAplicacao(false);
+            }
+
+            function reloadApplication(){
+                navegarAplicacao(true);
+            }
 
             function updateClock(){ const d=new Date(); clock.textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
             function updateNetwork(){ const online=navigator.onLine; networkStatus.textContent=online?'Online':'Sem conexão'; setState(online?'online':'offline'); document.getElementById('d-network').textContent=online?'Online':'Offline'; if(online)log('Conexão restabelecida'); }
