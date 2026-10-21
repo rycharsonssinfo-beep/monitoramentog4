@@ -16,13 +16,14 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.4.1
+# Painel de Monitoramento 2.4.3
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
-# 2.4.2: correção do F5 OFF com preservação automática e navegação de Ajustes
+# 2.4.2: correção do F5 OFF com preservação automática
+# 2.4.3: correção definitiva do botão Ajustes por navegação direta no topo do iframe
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.4.2"
+APP_VERSION = "2.4.3"
 CONFIG_VERSION = 3
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -1055,6 +1056,10 @@ if not st.session_state.iniciado:
 
             **2.4.1 – Refinamento visual:** cor ativa dos controles alinhada ao azul #0E5285, campos dos cards redistribuídos para evitar cortes e remoção da indicação F5 duplicada na linha do painel.
 
+            **2.4.2 – Preservação com F5 OFF:** painel com F5 desligado permanece em memória e reutiliza o mesmo iframe ao retornar.
+
+            **2.4.3 – Ajustes:** o botão ⚙ agora usa um link direto com `target="_top"`, permitindo sair do iframe e voltar à tela de configuração.
+
             **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
             """
         )
@@ -1180,7 +1185,7 @@ else:
                     <button class="btn" id="kiosk-btn" onclick="alternarModoTV()" title="Modo TV (K)">▣ <span class="label">TV</span></button>
                     <button class="btn" onclick="alternarTelaCheia()" title="Tela cheia (F)">⛶</button>
                     <button class="btn" onclick="toggleDiag()" title="Diagnóstico">i</button>
-                    <button class="btn" onclick="irParaAjustes()" title="Ajustes">⚙</button>
+                    <a class="btn" id="settings-link" href="__SETTINGS_URL__" target="_top" title="Voltar para os ajustes" onclick="log('Abrindo ajustes')">⚙</a>
                     <span id="clock"></span>
                 </div>
             </div>
@@ -1483,5 +1488,10 @@ else:
     </body>
     </html>
     '''
+    settings_url = f"?perfil={active_profile_id}&iniciado=false"
+    html_painel = html_painel.replace(
+        "__SETTINGS_URL__",
+        html.escape(settings_url, quote=True),
+    )
     html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)
     components.html(html_painel, height=960, scrolling=False)
