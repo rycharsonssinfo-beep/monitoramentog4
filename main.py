@@ -16,17 +16,18 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.6.0
+# Painel de Monitoramento 2.6.1
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
 # 2.4.4: botão Ajustes via ponte bidirecional Streamlit (postMessage -> Python), sem depender de navegação do iframe
 # 2.5.0: Modo Monitor Profissional - tela útil total, barra simplificada, menu secundário e auto-ocultação refinada
 # 2.6.0: Modo Foco - zoom configurável por painel nos segundos finais, com coordenadas X/Y e presets
+# 2.6.1: Calibração Visual do Foco - clique no painel para definir X/Y e testar o zoom antes de salvar
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.6.1"
 CONFIG_VERSION = 4
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -428,6 +429,160 @@ def b64_json(data):
     return base64.b64encode(raw).decode("ascii")
 
 
+def render_focus_calibrator(painel):
+    # Calibrador visual: o clique é capturado por uma camada transparente
+    # sobre o iframe externo. Nenhum acesso ao DOM interno do site é necessário.
+    payload = b64_json({
+        "panelId": painel["id"],
+        "name": painel.get("nome", "Painel"),
+        "link": painel.get("link", ""),
+        "x": int(painel.get("focus_x", 50)),
+        "y": int(painel.get("focus_y", 50)),
+        "zoom": int(painel.get("focus_zoom", 175)),
+        "transitionMs": int(painel.get("focus_transition_ms", 600)),
+    })
+
+    calibration_html = r'''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+    :root{--blue:#0E5285;--blue-dark:#093D63;--border:#C7D9E7;--soft:#F3F7FB;--text:#16324A;--muted:#64748B;--amber:#F59E0B}
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);overflow:hidden}
+    #app{height:650px;display:flex;flex-direction:column;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .top{height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 15px;background:#F8FBFE;border-bottom:1px solid var(--border)}
+    .top-left{min-width:0}.title{font-size:14px;font-weight:850;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.subtitle{font-size:11px;color:var(--muted);margin-top:2px}
+    .coord-pill{flex:none;padding:6px 10px;border-radius:999px;background:#EAF3FA;border:1px solid #BAD4E7;color:var(--blue);font-size:11px;font-weight:800}
+    #viewport{position:relative;flex:1;min-height:0;overflow:hidden;background:#E8EEF3}
+    #panel-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;transform-origin:0 0;will-change:transform}
+    #selector{position:absolute;inset:0;z-index:5;cursor:crosshair;background-image:linear-gradient(rgba(14,82,133,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(14,82,133,.12) 1px,transparent 1px);background-size:25% 25%;background-position:-1px -1px}
+    #selector::after{content:"Clique no ponto que deve ficar no centro do zoom";position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:6px 10px;border-radius:999px;background:rgba(14,82,133,.94);color:#fff;font-size:11px;font-weight:750;box-shadow:0 2px 9px rgba(0,0,0,.18);pointer-events:none;white-space:nowrap}
+    #crosshair{position:absolute;width:34px;height:34px;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.32))}
+    #crosshair::before,#crosshair::after{content:"";position:absolute;background:#fff;box-shadow:0 0 0 1px var(--blue)}
+    #crosshair::before{width:34px;height:2px;left:0;top:16px}#crosshair::after{width:2px;height:34px;top:0;left:16px}
+    .ring{position:absolute;inset:7px;border:3px solid var(--amber);border-radius:50%;background:rgba(245,158,11,.12)}
+    #preview-label{display:none;position:absolute;z-index:8;left:50%;top:12px;transform:translateX(-50%);padding:7px 11px;border-radius:999px;background:rgba(15,23,42,.92);color:#fff;font-size:11px;font-weight:800;pointer-events:none}
+    .bottom{height:72px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:#fff;border-top:1px solid var(--border)}
+    .help{font-size:11px;color:var(--muted);line-height:1.3;max-width:390px}.buttons{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+    button{height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--blue);font-weight:750;font-size:11.5px;cursor:pointer}button:hover{background:#F5F9FC;border-color:var(--blue)}
+    button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button.primary:hover{background:var(--blue-dark)}button.active{background:#EAF3FA;border-color:#8CB9D8}
+    #loading{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:#F5F9FC;color:#64748B;font-size:12px;pointer-events:none}
+    #loading.hidden{display:none}
+    @media(max-width:760px){#app{height:590px}.bottom{height:104px;align-items:flex-start;flex-direction:column}.help{max-width:none}.buttons{width:100%;justify-content:flex-start}.coord-pill{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+    <div class="top">
+        <div class="top-left"><div class="title" id="panel-title">Calibração visual</div><div class="subtitle">A mira representa o ponto que ficará centralizado quando o Modo Foco for ativado.</div></div>
+        <div class="coord-pill" id="coords">X 50% · Y 50% · Zoom 175%</div>
+    </div>
+    <div id="viewport">
+        <iframe id="panel-frame" allow="fullscreen"></iframe>
+        <div id="loading">Carregando painel para calibração...</div>
+        <div id="selector"><div id="crosshair"><span class="ring"></span></div></div>
+        <div id="preview-label">Prévia do foco</div>
+    </div>
+    <div class="bottom">
+        <div class="help" id="help">Clique diretamente sobre a informação que deseja destacar. Depois use <b>Testar zoom</b> para conferir o enquadramento.</div>
+        <div class="buttons">
+            <button id="select-btn" class="active">🎯 Selecionar ponto</button>
+            <button id="preview-btn">🔍 Testar zoom</button>
+            <button id="normal-btn" style="display:none">↩ Voltar à seleção</button>
+            <button id="cancel-btn">Cancelar</button>
+            <button id="save-btn" class="primary">✓ Salvar ponto</button>
+        </div>
+    </div>
+</div>
+<script>
+const DATA_B64='__PAYLOAD_B64__';
+const decode=(s)=>JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s),c=>c.charCodeAt(0))));
+const data=decode(DATA_B64);
+const viewport=document.getElementById('viewport');
+const frame=document.getElementById('panel-frame');
+const selector=document.getElementById('selector');
+const crosshair=document.getElementById('crosshair');
+const coords=document.getElementById('coords');
+const loading=document.getElementById('loading');
+const previewLabel=document.getElementById('preview-label');
+const selectBtn=document.getElementById('select-btn');
+const previewBtn=document.getElementById('preview-btn');
+const normalBtn=document.getElementById('normal-btn');
+const help=document.getElementById('help');
+let x=Math.max(0,Math.min(100,Number(data.x)||50));
+let y=Math.max(0,Math.min(100,Number(data.y)||50));
+let preview=false;
+
+document.getElementById('panel-title').textContent=`Calibração visual · ${data.name}`;
+frame.src=data.link;
+frame.addEventListener('load',()=>loading.classList.add('hidden'));
+setTimeout(()=>loading.classList.add('hidden'),12000);
+
+function renderPoint(){
+    crosshair.style.left=`${x}%`;
+    crosshair.style.top=`${y}%`;
+    coords.textContent=`X ${Math.round(x)}% · Y ${Math.round(y)}% · Zoom ${data.zoom}%`;
+}
+function resetView(){
+    preview=false;
+    frame.style.transition=`transform ${Math.max(0,Number(data.transitionMs)||0)}ms ease`;
+    frame.style.transformOrigin='0 0';
+    frame.style.transform='matrix(1,0,0,1,0,0)';
+    selector.style.display='block';
+    previewLabel.style.display='none';
+    previewBtn.style.display='inline-flex';
+    normalBtn.style.display='none';
+    selectBtn.classList.add('active');
+    help.innerHTML='Clique diretamente sobre a informação que deseja destacar. Depois use <b>Testar zoom</b> para conferir o enquadramento.';
+    renderPoint();
+}
+function applyPreview(){
+    const zoom=Math.max(1,Math.min(3,Number(data.zoom||175)/100));
+    const w=Math.max(1,viewport.clientWidth);
+    const h=Math.max(1,viewport.clientHeight);
+    const tx=(w/2)-(w*(x/100)*zoom);
+    const ty=(h/2)-(h*(y/100)*zoom);
+    frame.style.transition=`transform ${Math.max(0,Number(data.transitionMs)||0)}ms ease`;
+    frame.style.transformOrigin='0 0';
+    frame.style.transform=`matrix(${zoom},0,0,${zoom},${tx},${ty})`;
+    selector.style.display='none';
+    previewLabel.textContent=`Prévia · ${data.zoom}% · X ${Math.round(x)}% · Y ${Math.round(y)}%`;
+    previewLabel.style.display='block';
+    previewBtn.style.display='none';
+    normalBtn.style.display='inline-flex';
+    selectBtn.classList.remove('active');
+    preview=true;
+    help.innerHTML='Esta é a prévia aproximada do enquadramento no monitor. Se estiver bom, clique em <b>Salvar ponto</b>.';
+}
+function send(action){
+    const message={source:'monitoramentog4-focus-calibration',action,panelId:data.panelId,x:Math.round(x),y:Math.round(y),sentAt:Date.now()};
+    try{window.parent.postMessage(message,'*');}catch(e){console.error(e);}
+}
+selector.addEventListener('click',(ev)=>{
+    if(preview)return;
+    const rect=selector.getBoundingClientRect();
+    x=((ev.clientX-rect.left)/rect.width)*100;
+    y=((ev.clientY-rect.top)/rect.height)*100;
+    x=Math.max(0,Math.min(100,x));
+    y=Math.max(0,Math.min(100,y));
+    renderPoint();
+});
+selectBtn.addEventListener('click',resetView);
+previewBtn.addEventListener('click',applyPreview);
+normalBtn.addEventListener('click',resetView);
+document.getElementById('save-btn').addEventListener('click',()=>{document.getElementById('save-btn').textContent='Salvando...';send('save');});
+document.getElementById('cancel-btn').addEventListener('click',()=>send('cancel'));
+window.addEventListener('resize',()=>{if(preview)applyPreview();});
+renderPoint();
+</script>
+</body>
+</html>'''
+    calibration_html = calibration_html.replace("__PAYLOAD_B64__", payload)
+    components.html(calibration_html, height=660, scrolling=False)
+
+
 if "config_v23" not in st.session_state:
     st.session_state.config_v23 = carregar_config()
     st.session_state["ultimo_hash_salvo"] = config_hash(st.session_state.config_v23)
@@ -570,6 +725,58 @@ if not st.session_state.iniciado:
     urls_invalidas = sum(1 for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", "")))
     preservados = sum(1 for p in paineis if p.get("preserve_session", False) or not p.get("reload_enabled", True))
     invalid_active = [p for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
+
+    # Estado do calibrador visual do Modo Foco.
+    if "focus_calibration_panel" not in st.session_state:
+        st.session_state["focus_calibration_panel"] = None
+    if "focus_calibration_last_event" not in st.session_state:
+        st.session_state["focus_calibration_last_event"] = None
+
+    # Ponte invisível que recebe o ponto escolhido no calibrador visual.
+    if hasattr(st.components, "v2"):
+        focus_calibration_bridge = st.components.v2.component(
+            "focus_calibration_bridge_v261",
+            html='<span aria-hidden="true"></span>',
+            css=":host { display: none !important; }",
+            js=r'''export default function(component) {
+                const { setTriggerValue } = component;
+                const onMessage = (event) => {
+                    const msg = event.data;
+                    if (!msg || msg.source !== "monitoramentog4-focus-calibration") return;
+                    if (msg.action !== "save" && msg.action !== "cancel") return;
+                    setTriggerValue("focus_event", JSON.stringify(msg));
+                };
+                window.addEventListener("message", onMessage);
+                return () => window.removeEventListener("message", onMessage);
+            }''',
+        )
+        focus_bridge_result = focus_calibration_bridge(
+            key=f"focus_calibration_bridge_{active_profile_id}",
+            on_focus_event_change=lambda: None,
+        )
+        raw_focus_event = getattr(focus_bridge_result, "focus_event", None)
+        if raw_focus_event:
+            try:
+                focus_event = json.loads(raw_focus_event)
+                event_id = f"{focus_event.get('panelId')}:{focus_event.get('action')}:{focus_event.get('sentAt')}"
+                if event_id != st.session_state.get("focus_calibration_last_event"):
+                    st.session_state["focus_calibration_last_event"] = event_id
+                    event_panel_id = str(focus_event.get("panelId") or "")
+                    target_panel = next((p for p in paineis if p.get("id") == event_panel_id), None)
+                    if focus_event.get("action") == "save" and target_panel is not None:
+                        target_panel["focus_x"] = _clamp_int(focus_event.get("x", 50), 50, 0, 100)
+                        target_panel["focus_y"] = _clamp_int(focus_event.get("y", 50), 50, 0, 100)
+                        target_panel["focus_preset"] = "custom"
+                        target_panel["focus_enabled"] = True
+                        st.session_state["focus_calibration_panel"] = None
+                        salvar_config(config, force=True)
+                        st.toast(f"Área de foco salva: X={target_panel['focus_x']}% · Y={target_panel['focus_y']}%.")
+                        st.rerun()
+                    elif focus_event.get("action") == "cancel":
+                        st.session_state["focus_calibration_panel"] = None
+                        st.rerun()
+            except Exception:
+                pass
 
     def iniciar_monitoramento_ux24():
         atuais = perfil_ativos(perfil)
@@ -876,7 +1083,7 @@ if not st.session_state.iniciado:
                     st.markdown(f'<a href="{link_safe}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#0E5285;font-size:12px;font-weight:700;border:1px solid #C7D9E7;padding:7px 10px;border-radius:8px;">Abrir página ↗</a>', unsafe_allow_html=True)
 
             # Configurações avançadas: abertas somente na visualização detalhada.
-            with st.expander("Configurações avançadas", expanded=perfil.get("config_view") == "detailed"):
+            with st.expander("Configurações avançadas", expanded=(perfil.get("config_view") == "detailed" or st.session_state.get("focus_calibration_panel") == pid)):
                 a1, a2, a3, a4 = st.columns([1.1, 1.2, 1.1, 1.25])
                 with a1:
                     painel["tipo"] = st.selectbox(
@@ -1034,7 +1241,7 @@ if not st.session_state.iniciado:
                     with c3:
                         st.info(
                             f"Área selecionada: **{preset_labels[painel['focus_preset']]}** · ponto central X={painel['focus_x']}% / Y={painel['focus_y']}%. "
-                            "O ponto configurado será levado ao centro da tela durante o foco."
+                            "Você pode usar o seletor visual abaixo para substituir este preset por um ponto personalizado."
                         )
                 else:
                     c1, c2, c3 = st.columns([1, 1, 3])
@@ -1052,9 +1259,41 @@ if not st.session_state.iniciado:
                         )
                     with c3:
                         st.info(
-                            "Para a área de **Últimas Entregas** do Monitor SIM mostrada no seu print, use como ponto inicial: "
-                            "**X=87% · Y=52% · Zoom=175%**. Depois você pode ajustar alguns pontos para a direita/esquerda conforme a resolução da TV."
+                            f"Ponto atual: **X={int(painel.get('focus_x', 50))}% · Y={int(painel.get('focus_y', 50))}%**. "
+                            "Os campos continuam disponíveis para ajuste técnico, mas o seletor visual é a forma recomendada."
                         )
+
+                visual_left, visual_right = st.columns([1.35, 3.65])
+                with visual_left:
+                    calibrator_supported = hasattr(st.components, "v2")
+                    if st.button(
+                        "🎯 Selecionar visualmente",
+                        key=f"open_focus_calibrator_{pid}",
+                        use_container_width=True,
+                        disabled=(not painel["focus_enabled"] or not url_valida(painel.get("link", "")) or not calibrator_supported),
+                        help="Abre uma prévia do painel. Clique diretamente na informação que deseja levar para o centro do zoom.",
+                    ):
+                        st.session_state["focus_calibration_panel"] = pid
+                        st.rerun()
+                with visual_right:
+                    if not hasattr(st.components, "v2"):
+                        st.warning("A calibração visual requer Streamlit 1.54 ou superior.")
+                    elif not painel["focus_enabled"]:
+                        st.caption("Ative o Modo Foco para habilitar a seleção visual da área.")
+                    elif not url_valida(painel.get("link", "")):
+                        st.caption("Informe uma URL válida para abrir a calibração visual.")
+                    else:
+                        st.caption(
+                            "Clique em **Selecionar visualmente**, marque o ponto diretamente sobre o painel e use **Testar zoom** antes de salvar. "
+                            "Ao salvar, a área passa automaticamente para **Personalizada**."
+                        )
+
+                if st.session_state.get("focus_calibration_panel") == pid:
+                    st.markdown("##### Calibração visual da área de foco")
+                    st.caption(
+                        "A camada de seleção fica sobre o painel apenas durante a calibração. Ela não acessa o HTML interno do sistema externo."
+                    )
+                    render_focus_calibrator(painel)
 
             if pending_delete == pid:
                 st.warning(f"Excluir o painel **{painel['nome']}**? Esta ação remove apenas este cadastro do perfil.")
@@ -1226,6 +1465,8 @@ if not st.session_state.iniciado:
             **2.5 – Modo Monitor Profissional:** apresentação ocupa toda a área útil do navegador, removendo folgas do Streamlit; barra superior mais compacta com somente controles principais; Atualizar agora, Modo TV e Diagnóstico foram agrupados no menu `⋮`; contador ganhou maior destaque; status usa “1 de 3”; barra auto-ocultável deixa apenas uma faixa de 4 px para recuperação rápida dos controles; e o iframe monitorado ocupa 100% da área restante sem criar rolagem externa do Streamlit.
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
+
+            **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
             **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
             """
