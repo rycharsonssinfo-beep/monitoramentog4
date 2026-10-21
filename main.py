@@ -16,17 +16,18 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.5.0
+# Painel de Monitoramento 2.6.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
 # 2.4.4: botão Ajustes via ponte bidirecional Streamlit (postMessage -> Python), sem depender de navegação do iframe
 # 2.5.0: Modo Monitor Profissional - tela útil total, barra simplificada, menu secundário e auto-ocultação refinada
+# 2.6.0: Modo Foco - zoom configurável por painel nos segundos finais, com coordenadas X/Y e presets
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.5.0"
-CONFIG_VERSION = 3
+APP_VERSION = "2.6.0"
+CONFIG_VERSION = 4
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 
@@ -54,6 +55,13 @@ def painel_padrao(nome, link, tempo, reload_enabled=True, ativo=True, tipo="norm
         "reload_interval": 20 if tipo == "sim" else 60,
         "preserve_session": not bool(reload_enabled),
         "tipo": tipo,
+        "focus_enabled": tipo == "sim",
+        "focus_seconds": 20,
+        "focus_zoom": 175,
+        "focus_x": 87,
+        "focus_y": 52,
+        "focus_transition_ms": 600,
+        "focus_preset": "sim_right" if tipo == "sim" else "custom",
     }
 
 
@@ -237,18 +245,32 @@ def normalizar_config(data):
             if panel_type not in {"normal", "sim", "personalizado"}:
                 panel_type = "normal"
 
+            tempo_normalizado = _clamp_int(p.get("tempo", 20), 20, 5, 600)
+            max_focus_seconds = max(1, tempo_normalizado - 1)
+            default_focus_seconds = min(20, max_focus_seconds)
+            focus_preset = str(p.get("focus_preset") or ("sim_right" if panel_type == "sim" else "custom"))
+            if focus_preset not in {"custom", "sim_right", "right", "center", "left", "top_right", "bottom_right"}:
+                focus_preset = "custom"
+
             panels.append(
                 {
                     "id": panel_id,
                     "nome": str(p.get("nome") or "Novo Painel"),
                     "link": str(p.get("link") or ""),
-                    "tempo": _clamp_int(p.get("tempo", 20), 20, 5, 600),
+                    "tempo": tempo_normalizado,
                     "ativo": bool(p.get("ativo", True)),
                     "reload_enabled": reload_enabled,
                     "reload_strategy": strategy,
                     "reload_interval": _clamp_int(p.get("reload_interval", 60), 60, 5, 3600),
                     "preserve_session": bool(p.get("preserve_session", not reload_enabled)),
                     "tipo": panel_type,
+                    "focus_enabled": bool(p.get("focus_enabled", panel_type == "sim")),
+                    "focus_seconds": _clamp_int(p.get("focus_seconds", default_focus_seconds), default_focus_seconds, 1, max_focus_seconds),
+                    "focus_zoom": _clamp_int(p.get("focus_zoom", 175), 175, 100, 300),
+                    "focus_x": _clamp_int(p.get("focus_x", 87 if panel_type == "sim" else 50), 87 if panel_type == "sim" else 50, 0, 100),
+                    "focus_y": _clamp_int(p.get("focus_y", 52 if panel_type == "sim" else 50), 52 if panel_type == "sim" else 50, 0, 100),
+                    "focus_transition_ms": _clamp_int(p.get("focus_transition_ms", 600), 600, 0, 2000),
+                    "focus_preset": focus_preset,
                 }
             )
 
@@ -763,6 +785,11 @@ if not st.session_state.iniciado:
         ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
         f5_badge = '<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>'
         preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if (painel.get("preserve_session", False) or not painel.get("reload_enabled", True)) else ''
+        focus_badge = (
+            f'<span class="badge badge-amber">FOCO {int(painel.get("focus_seconds", 20))}s · {int(painel.get("focus_zoom", 175))}%</span>'
+            if painel.get("focus_enabled", False)
+            else ''
+        )
 
         with st.container(border=True):
             st.markdown(
@@ -772,7 +799,7 @@ if not st.session_state.iniciado:
                         <span class="panel-number">{i+1:02d}</span>
                         <span class="panel-headline-name">{nome_cabecalho}</span>
                     </div>
-                    <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}</div>
+                    <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}{focus_badge}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -896,6 +923,138 @@ if not st.session_state.iniciado:
                     st.info("Com **F5 OFF**, este painel é mantido carregado automaticamente. Ao sair e voltar para ele, o monitoramento reutiliza o mesmo iframe e não executa F5.")
                 elif painel["preserve_session"]:
                     st.markdown('<span class="badge badge-green">PAINEL MANTIDO ABERTO</span>', unsafe_allow_html=True)
+
+                st.markdown("---")
+                st.markdown("**Modo Foco**")
+                st.caption(
+                    "Amplia automaticamente uma região do painel nos segundos finais, sem acessar o conteúdo interno do site e sem executar F5."
+                )
+
+                f1, f2, f3, f4, f5 = st.columns([1.05, 1.15, 1.0, 1.45, 1.3])
+                with f1:
+                    painel["focus_enabled"] = st.toggle(
+                        "Ativar foco",
+                        value=bool(painel.get("focus_enabled", False)),
+                        key=f"focus_enabled_{pid}",
+                        help="Quando ativado, o painel aplica zoom e centraliza a região configurada perto do fim do tempo de exibição.",
+                    )
+
+                max_focus_seconds = max(1, int(painel.get("tempo", 20)) - 1)
+                painel["focus_seconds"] = max(1, min(int(painel.get("focus_seconds", 20)), max_focus_seconds))
+                focus_seconds_key = f"focus_seconds_{pid}"
+                if focus_seconds_key in st.session_state:
+                    st.session_state[focus_seconds_key] = max(1, min(int(st.session_state[focus_seconds_key]), max_focus_seconds))
+
+                with f2:
+                    painel["focus_seconds"] = st.number_input(
+                        "Iniciar quando faltarem (s)",
+                        min_value=1,
+                        max_value=max_focus_seconds,
+                        value=int(painel.get("focus_seconds", min(20, max_focus_seconds))),
+                        step=1,
+                        key=focus_seconds_key,
+                        disabled=not painel["focus_enabled"],
+                        help="Ex.: em um painel de 50s, usar 20 faz o foco começar quando o contador chegar a 00:20.",
+                    )
+
+                with f3:
+                    zoom_options = [125, 150, 175, 200, 225, 250]
+                    current_zoom = int(painel.get("focus_zoom", 175))
+                    if current_zoom not in zoom_options:
+                        current_zoom = 175
+                    painel["focus_zoom"] = st.selectbox(
+                        "Zoom",
+                        zoom_options,
+                        index=zoom_options.index(current_zoom),
+                        format_func=lambda x: f"{x}%",
+                        key=f"focus_zoom_{pid}",
+                        disabled=not painel["focus_enabled"],
+                    )
+
+                preset_options = ["custom", "sim_right", "right", "center", "left", "top_right", "bottom_right"]
+                preset_labels = {
+                    "custom": "Personalizada",
+                    "sim_right": "Direita · SIM",
+                    "right": "Direita",
+                    "center": "Centro",
+                    "left": "Esquerda",
+                    "top_right": "Superior direita",
+                    "bottom_right": "Inferior direita",
+                }
+                with f4:
+                    current_preset = painel.get("focus_preset", "custom")
+                    if current_preset not in preset_options:
+                        current_preset = "custom"
+                    painel["focus_preset"] = st.selectbox(
+                        "Área de foco",
+                        preset_options,
+                        index=preset_options.index(current_preset),
+                        format_func=lambda x: preset_labels[x],
+                        key=f"focus_preset_{pid}",
+                        disabled=not painel["focus_enabled"],
+                        help="Direita · SIM usa X=87% e Y=52%, ideal para a coluna de Últimas Entregas mostrada no Monitor SIM.",
+                    )
+
+                with f5:
+                    transition_options = [0, 300, 600, 1000]
+                    current_transition = int(painel.get("focus_transition_ms", 600))
+                    if current_transition not in transition_options:
+                        current_transition = 600
+                    painel["focus_transition_ms"] = st.selectbox(
+                        "Transição",
+                        transition_options,
+                        index=transition_options.index(current_transition),
+                        format_func=lambda x: "Instantânea" if x == 0 else f"Suave · {x} ms",
+                        key=f"focus_transition_{pid}",
+                        disabled=not painel["focus_enabled"],
+                    )
+
+                preset_coords = {
+                    "sim_right": (87, 52),
+                    "right": (82, 50),
+                    "center": (50, 50),
+                    "left": (18, 50),
+                    "top_right": (86, 30),
+                    "bottom_right": (86, 70),
+                }
+
+                if painel.get("focus_preset") in preset_coords:
+                    painel["focus_x"], painel["focus_y"] = preset_coords[painel["focus_preset"]]
+                    c1, c2, c3 = st.columns([1, 1, 3])
+                    with c1:
+                        st.number_input(
+                            "Posição horizontal (X)", 0, 100, int(painel["focus_x"]), 1,
+                            key=f"focus_x_preset_{pid}_{painel['focus_preset']}", disabled=True
+                        )
+                    with c2:
+                        st.number_input(
+                            "Posição vertical (Y)", 0, 100, int(painel["focus_y"]), 1,
+                            key=f"focus_y_preset_{pid}_{painel['focus_preset']}", disabled=True
+                        )
+                    with c3:
+                        st.info(
+                            f"Área selecionada: **{preset_labels[painel['focus_preset']]}** · ponto central X={painel['focus_x']}% / Y={painel['focus_y']}%. "
+                            "O ponto configurado será levado ao centro da tela durante o foco."
+                        )
+                else:
+                    c1, c2, c3 = st.columns([1, 1, 3])
+                    with c1:
+                        painel["focus_x"] = st.number_input(
+                            "Posição horizontal (X)", 0, 100, int(painel.get("focus_x", 50)), 1,
+                            key=f"focus_x_{pid}", disabled=not painel["focus_enabled"],
+                            help="0% = extremo esquerdo; 50% = centro; 100% = extremo direito.",
+                        )
+                    with c2:
+                        painel["focus_y"] = st.number_input(
+                            "Posição vertical (Y)", 0, 100, int(painel.get("focus_y", 50)), 1,
+                            key=f"focus_y_{pid}", disabled=not painel["focus_enabled"],
+                            help="0% = topo; 50% = centro; 100% = parte inferior.",
+                        )
+                    with c3:
+                        st.info(
+                            "Para a área de **Últimas Entregas** do Monitor SIM mostrada no seu print, use como ponto inicial: "
+                            "**X=87% · Y=52% · Zoom=175%**. Depois você pode ajustar alguns pontos para a direita/esquerda conforme a resolução da TV."
+                        )
 
             if pending_delete == pid:
                 st.warning(f"Excluir o painel **{painel['nome']}**? Esta ação remove apenas este cadastro do perfil.")
@@ -1065,6 +1224,8 @@ if not st.session_state.iniciado:
             **2.4.4 – Ajustes robustos:** o botão ⚙ passa a enviar um evento do monitor para o Streamlit por `postMessage`; o Python recebe o evento, encerra a apresentação e retorna para a tela de ajustes. Isso elimina a dependência de `window.parent`, `window.top` e `target="_top"`, que podem ser bloqueados pelo sandbox do navegador.
 
             **2.5 – Modo Monitor Profissional:** apresentação ocupa toda a área útil do navegador, removendo folgas do Streamlit; barra superior mais compacta com somente controles principais; Atualizar agora, Modo TV e Diagnóstico foram agrupados no menu `⋮`; contador ganhou maior destaque; status usa “1 de 3”; barra auto-ocultável deixa apenas uma faixa de 4 px para recuperação rápida dos controles; e o iframe monitorado ocupa 100% da área restante sem criar rolagem externa do Streamlit.
+
+            **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
 
             **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
             """
@@ -1251,7 +1412,7 @@ else:
             .toolbar-right{display:flex;align-items:center;justify-content:flex-end;gap:4px}.btn{height:30px;min-width:31px;padding:0 8px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:.91em;font-weight:720;display:inline-flex;align-items:center;justify-content:center;gap:4px;user-select:none}.btn:hover{background:rgba(255,255,255,.18)}.btn.active{background:#1C70A9;border-color:#8CC4E8}.btn.off{background:#334155;border-color:#94A3B8}.btn.warn{background:#92400e;border-color:#fbbf24}.btn.pause{background:#7f1d1d;border-color:#f87171}.btn.settings-btn{min-width:34px;padding:0 10px}.status-text{font-size:.88em;color:#DCEEFF;white-space:nowrap}.hidden-item{display:none!important}#clock{min-width:50px;text-align:right;font-weight:760;color:#DCEEFF}.more-wrap{position:relative;display:inline-flex}.more-menu{position:absolute;right:0;top:calc(100% + 7px);min-width:190px;display:none;flex-direction:column;padding:6px;background:#fff;border:1px solid #C7D9E7;border-radius:9px;box-shadow:0 10px 28px rgba(15,23,42,.22);z-index:10050}.more-menu.open{display:flex}body.bar-bottom .more-menu{top:auto;bottom:calc(100% + 7px)}.menu-item{width:100%;border:0;background:transparent;color:#16324A;border-radius:6px;padding:8px 10px;text-align:left;cursor:pointer;font-size:12px;font-weight:650;display:flex;align-items:center;gap:8px}.menu-item:hover{background:#EAF3FA;color:#0E5285}.menu-item.active{background:#EAF3FA;color:#0E5285}
             #progress-container{width:100%;height:var(--progress-h);background:var(--blue-dark);overflow:hidden}body.bar-bottom #progress-container{order:-1}#control-shell{display:flex;flex-direction:column}#progress{width:100%;height:100%;background:var(--blue-light);transform-origin:left;transform:scaleX(1)}
             #stage{position:fixed;left:0;width:100%;background:#fff;overflow:hidden;transition:top .18s ease,height .18s ease,bottom .18s ease}body.bar-top #stage{top:calc(var(--toolbar-h) + var(--progress-h));height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.bar-bottom #stage{top:0;height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.controls-hidden #stage{top:0!important;height:100vh!important;bottom:auto!important}
-            .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+            .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;transform-origin:0 0;will-change:transform}.focus-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#F59E0B;color:#fff;font-size:.79em;font-weight:850;letter-spacing:.2px}.focus-chip.hidden-item{display:none!important}
             .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:7px;padding:7px 10px;cursor:pointer;font-weight:700}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
@@ -1263,7 +1424,7 @@ else:
         <div id="control-shell">
             <div id="toolbar">
                 <div class="toolbar-left"><span id="state-dot" class="state-dot"></span><span id="panel-name">Carregando...</span><span id="panel-order"></span><span id="network-status" class="status-text">· Online</span></div>
-                <div class="toolbar-center"><div id="dots"></div><span id="countdown">--:--</span><span id="runtime-status" class="status-text"></span></div>
+                <div class="toolbar-center"><div id="dots"></div><span id="countdown">--:--</span><span id="focus-status" class="focus-chip hidden-item">FOCO</span><span id="runtime-status" class="status-text"></span></div>
                 <div class="toolbar-right">
                     <button class="btn" onclick="mudarTela(-1)" title="Painel anterior (←)">←</button>
                     <button class="btn" id="pause-btn" onclick="alternarPausa()" title="Pausar/retomar (Espaço)">Ⅱ <span class="label">Pausar</span></button>
@@ -1274,6 +1435,7 @@ else:
                         <button class="btn" id="more-btn" onclick="toggleMoreMenu(event)" title="Mais controles">⋮</button>
                         <div class="more-menu" id="more-menu">
                             <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
+                            <button class="menu-item" id="focus-btn" onclick="alternarFocoManual(); closeMoreMenu();" title="Testar ou sair do Modo Foco neste painel">◎ Foco agora</button>
                             <button class="menu-item" id="kiosk-btn" onclick="alternarModoTV(); closeMoreMenu();" title="Modo TV (K)">▣ Modo TV</button>
                             <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
                         </div>
@@ -1329,6 +1491,7 @@ else:
             let pool = new Map();
             let logs = [];
             let runtimeReloadOverrides = {}; // nunca persistido: nova sessão = configuração salva
+            let manualFocusPanelId = null;
             let pendingGeneralReload = false;
             let appStartedAt = Date.now();
             let lastHeartbeat = Date.now();
@@ -1350,6 +1513,8 @@ else:
             const kioskBtn = document.getElementById('kiosk-btn');
             const moreMenu = document.getElementById('more-menu');
             const moreBtn = document.getElementById('more-btn');
+            const focusBtn = document.getElementById('focus-btn');
+            const focusStatus = document.getElementById('focus-status');
             const revealStrip = document.getElementById('reveal-strip');
             const clock = document.getElementById('clock');
             const dots = document.getElementById('dots');
@@ -1412,6 +1577,88 @@ else:
                 log(`${manual?'F5 manual':'F5 automático'}: ${item.panel.nome}`);
             }
 
+            function focusEnabled(p){
+                return !!(p && p.focus_enabled);
+            }
+
+            function resetFocus(item, immediate=false){
+                if(!item || !item.iframe)return;
+                if(immediate)item.iframe.style.transition='none';
+                else item.iframe.style.transition=`transform ${Math.max(0,parseInt(item.panel.focus_transition_ms||600,10))}ms ease`;
+                item.iframe.style.transformOrigin='0 0';
+                item.iframe.style.transform='matrix(1,0,0,1,0,0)';
+                item.container.classList.remove('focus-active');
+                item.focused=false;
+                if(immediate){ requestAnimationFrame(()=>{ item.iframe.style.transition=''; }); }
+            }
+
+            function applyFocus(item){
+                if(!item || !item.iframe)return;
+                const p=item.panel;
+                const zoom=Math.max(1,Math.min(3,parseFloat(p.focus_zoom||175)/100));
+                const xPct=Math.max(0,Math.min(100,parseFloat(p.focus_x ?? 50)))/100;
+                const yPct=Math.max(0,Math.min(100,parseFloat(p.focus_y ?? 50)))/100;
+                const w=Math.max(1,item.container.clientWidth || stage.clientWidth || window.innerWidth);
+                const h=Math.max(1,item.container.clientHeight || stage.clientHeight || window.innerHeight);
+                const tx=(w/2) - (w*xPct*zoom);
+                const ty=(h/2) - (h*yPct*zoom);
+                const duration=Math.max(0,Math.min(2000,parseInt(p.focus_transition_ms||600,10)));
+                item.iframe.style.transition=`transform ${duration}ms ease`;
+                item.iframe.style.transformOrigin='0 0';
+                item.iframe.style.transform=`matrix(${zoom},0,0,${zoom},${tx},${ty})`;
+                item.container.classList.add('focus-active');
+                item.focused=true;
+                focusStatus.textContent=`FOCO ${Math.round(zoom*100)}%`;
+                focusStatus.classList.remove('hidden-item');
+            }
+
+            function renderFocusButton(){
+                const p=panels[index];
+                const enabled=focusEnabled(p);
+                if(!focusBtn)return;
+                focusBtn.disabled=!enabled;
+                focusBtn.style.opacity=enabled?'1':'.45';
+                focusBtn.style.cursor=enabled?'pointer':'not-allowed';
+                const manual=manualFocusPanelId===p.id;
+                focusBtn.innerHTML=manual?'◎ Sair do foco':'◎ Foco agora';
+                focusBtn.title=enabled
+                    ? `Testar o foco configurado: ${p.focus_zoom||175}% em X=${p.focus_x||50}% / Y=${p.focus_y||50}%`
+                    : 'Ative o Modo Foco nas configurações avançadas deste painel.';
+            }
+
+            function updateFocus(remainingMs, forceRecalc=false){
+                const p=panels[index];
+                const item=pool.get(p.id);
+                if(!item)return;
+                const manual=manualFocusPanelId===p.id;
+                const threshold=Math.max(1,parseInt(p.focus_seconds||20,10))*1000;
+                const auto=focusEnabled(p) && remainingMs>0 && remainingMs<=threshold;
+                const shouldFocus=manual || auto;
+                if(shouldFocus){
+                    if(!item.focused || forceRecalc)applyFocus(item);
+                }else if(item.focused){
+                    resetFocus(item,false);
+                    focusStatus.classList.add('hidden-item');
+                }
+                if(!shouldFocus)focusStatus.classList.add('hidden-item');
+            }
+
+            function alternarFocoManual(){
+                const p=panels[index];
+                if(!focusEnabled(p))return;
+                if(manualFocusPanelId===p.id){
+                    manualFocusPanelId=null;
+                    updateFocus(Math.max(0,targetEndMs-Date.now()),true);
+                    log(`Foco manual desativado: ${p.nome}`);
+                }else{
+                    manualFocusPanelId=p.id;
+                    const item=pool.get(p.id)||createPanelFrame(index,'active');
+                    applyFocus(item);
+                    log(`Foco manual ativado: ${p.nome}`);
+                }
+                renderFocusButton();
+            }
+
             function cleanupPool(){
                 const currentId=panels[index].id;
                 for(const [id,item] of pool.entries()){
@@ -1425,7 +1672,12 @@ else:
             function showCurrent(){
                 const current=panels[index];
                 let item=createPanelFrame(index,'active');
-                for(const [id,it] of pool.entries()){ it.container.classList.remove('active','preload'); if(id===current.id)it.container.classList.add('active'); else it.container.classList.add('preload'); }
+                focusStatus.classList.add('hidden-item');
+                for(const [id,it] of pool.entries()){
+                    it.container.classList.remove('active','preload');
+                    if(id===current.id)it.container.classList.add('active');
+                    else { it.container.classList.add('preload'); resetFocus(it,true); }
+                }
                 // Para estratégia on_show, evita F5 duplicado se o pré-carregamento acabou de ocorrer.
                 if(effectiveReload(current) && current.reload_strategy==='on_show'){
                     const freshWindow=Math.max(3000,(settings.preloadSeconds+3)*1000);
@@ -1447,7 +1699,7 @@ else:
 
             function renderDots(){ dots.innerHTML=''; panels.forEach((p,i)=>{ const d=document.createElement('span'); d.className='dot'+(i===index?' active':''); d.title=p.nome; d.onclick=()=>{index=i;afterIndexChange('Indicador');}; dots.appendChild(d); }); }
             function renderReloadButton(){ const p=panels[index], on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 temporário nesta apresentação. * indica valor diferente da configuração salva.'; }
-            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); localStorage.setItem(indexKey,p.id); }
+            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); renderFocusButton(); localStorage.setItem(indexKey,p.id); }
 
             function stopTimers(){ clearInterval(timer); clearInterval(intervalReloadTimer); clearTimeout(preloadTimer); timer=null; intervalReloadTimer=null; preloadTimer=null; }
             function setupIntervalReload(){ clearInterval(intervalReloadTimer); intervalReloadTimer=null; const p=panels[index]; if(!effectiveReload(p)||p.reload_strategy!=='interval')return; const every=Math.max(5,parseInt(p.reload_interval||60,10)); intervalReloadTimer=setInterval(()=>{ if(!paused && panels[index].id===p.id && effectiveReload(p)){ const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,false); } },every*1000); runtimeStatus.textContent=`F5 ${every}s`; }
@@ -1457,9 +1709,11 @@ else:
                 targetEndMs=Date.now()+ms; lastHeartbeat=Date.now();
                 progress.style.transition='none'; progress.style.transform='scaleX(1)';
                 requestAnimationFrame(()=>requestAnimationFrame(()=>{ progress.style.transition=`transform ${ms}ms linear`; progress.style.transform='scaleX(0)'; }));
+                updateFocus(ms,true);
                 timer=setInterval(()=>{
                     if(paused)return;
                     const remaining=targetEndMs-Date.now(); countdown.textContent=formatCountdown(remaining); lastHeartbeat=Date.now();
+                    updateFocus(remaining,false);
                     if(remaining<=0){ clearInterval(timer); mudarTela(1); }
                 },250);
                 schedulePreload(); setupIntervalReload();
@@ -1469,6 +1723,7 @@ else:
 
             function afterIndexChange(reason='Troca'){
                 if(pendingGeneralReload){ reloadApplication(); return; }
+                manualFocusPanelId=null;
                 showCurrent(); updateHeader(); restartTimer(); lastSwitchAt=Date.now(); switchCount++; lastHeartbeat=Date.now(); log(`${reason}: ${panels[index].nome}`); updateDiag();
             }
 
@@ -1486,8 +1741,17 @@ else:
 
             function closeMoreMenu(){ if(moreMenu)moreMenu.classList.remove('open'); }
             function toggleMoreMenu(event){ if(event)event.stopPropagation(); if(moreMenu)moreMenu.classList.toggle('open'); showControls(); }
-            function showControls(){ controlShell.classList.remove('hidden'); document.body.classList.remove('controls-hidden'); document.body.style.cursor=''; clearTimeout(hideTimer); if(settings.autoHide||kioskMode)hideTimer=setTimeout(hideControls,kioskMode?2200:4300); }
-            function hideControls(){ if(!(settings.autoHide||kioskMode))return; closeMoreMenu(); controlShell.classList.add('hidden'); document.body.classList.add('controls-hidden'); if(kioskMode)document.body.style.cursor='none'; }
+            function showControls(){
+                const wasHidden=controlShell.classList.contains('hidden');
+                controlShell.classList.remove('hidden'); document.body.classList.remove('controls-hidden'); document.body.style.cursor=''; clearTimeout(hideTimer);
+                if(wasHidden)requestAnimationFrame(()=>updateFocus(Math.max(0,targetEndMs-Date.now()),true));
+                if(settings.autoHide||kioskMode)hideTimer=setTimeout(hideControls,kioskMode?2200:4300);
+            }
+            function hideControls(){
+                if(!(settings.autoHide||kioskMode))return;
+                closeMoreMenu(); controlShell.classList.add('hidden'); document.body.classList.add('controls-hidden'); if(kioskMode)document.body.style.cursor='none';
+                requestAnimationFrame(()=>updateFocus(Math.max(0,targetEndMs-Date.now()),true));
+            }
             function alternarModoTV(force=null){ kioskMode=force===null?!kioskMode:!!force; document.body.classList.toggle('kiosk',kioskMode); kioskBtn.classList.toggle('active',kioskMode); kioskBtn.innerHTML=kioskMode?'▣ Modo TV ativado':'▣ Modo TV'; if(kioskMode&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{}); showControls(); log(`Modo TV ${kioskMode?'ativado':'desativado'}`); }
             function toggleDiag(){ diag.classList.toggle('open'); showControls(); updateDiag(); }
 
@@ -1552,6 +1816,7 @@ else:
                 else { const away=visibilityHiddenAt?Date.now()-visibilityHiddenAt:0; visibilityHiddenAt=null; log(`Aba retomada após ${Math.round(away/1000)}s`); if(!paused && Date.now()>=targetEndMs)mudarTela(1); else lastHeartbeat=Date.now(); }
             });
 
+            window.addEventListener('resize',()=>{ updateFocus(Math.max(0,targetEndMs-Date.now()),true); });
             document.addEventListener('mousemove',showControls,{passive:true}); document.addEventListener('touchstart',showControls,{passive:true});
             document.addEventListener('click',(e)=>{ if(moreMenu && !moreMenu.contains(e.target) && e.target!==moreBtn)closeMoreMenu(); });
             if(revealStrip){ revealStrip.addEventListener('mouseenter',showControls); revealStrip.addEventListener('touchstart',showControls,{passive:true}); }
