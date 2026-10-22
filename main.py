@@ -20,7 +20,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.8.0
+# Painel de Monitoramento 2.9.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -31,11 +31,12 @@ import streamlit.components.v1 as components
 # 2.7.0: Tratamento de sites incompatíveis com iframe - detecção preventiva + fallback visual S&S com mascote
 # 2.7.1: mascote de alerta incorporado ao main.py; não depende mais da pasta assets no deploy
 # 2.8.0: News Ticker S&S - faixa global de atualizações, cadastro manual, validade e links clicáveis
+# 2.9.0: Ticker alternado - Atualizações S&S + Agenda S&S, tempos configuráveis e modo TV ampliado
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.8.0"
-CONFIG_VERSION = 6
+APP_VERSION = "2.9.0"
+CONFIG_VERSION = 7
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -95,16 +96,40 @@ def noticia_padrao():
     }
 
 
+def agenda_item_padrao():
+    hoje = datetime.now().date().isoformat()
+    return {
+        "id": novo_id("agenda_"),
+        "titulo": "Relacionamento",
+        "data": hoje,
+        "hora": "08:00",
+        "sistema": "",
+        "entidade": "",
+        "responsavel": "",
+        "local": "",
+        "modalidade": "presencial",
+        "status": "agendado",
+        "url": "",
+        "ativo": True,
+    }
+
+
 def ticker_padrao():
     return {
         "enabled": True,
         "label": "ATUALIZAÇÕES S&S",
+        "agenda_enabled": True,
+        "agenda_label": "AGENDA S&S",
         "speed": "normal",
-        "height": 34,
+        "height": 46,
+        "font_size": 19,
+        "news_seconds": 30,
+        "agenda_seconds": 30,
         "pause_on_hover": True,
         "show_category": True,
         "show_system": True,
         "news": [],
+        "agenda": [],
     }
 
 
@@ -161,15 +186,64 @@ def normalizar_ticker(raw):
             "ativo": bool(item.get("ativo", True)),
         })
 
+    agenda = []
+    seen_agenda = set()
+    raw_agenda = raw.get("agenda") if isinstance(raw.get("agenda"), list) else []
+    modalidades = {"presencial", "online", "hibrido", "outro"}
+    statuses = {"agendado", "realizado", "cancelado"}
+    for item in raw_agenda:
+        if not isinstance(item, dict):
+            continue
+        aid = str(item.get("id") or novo_id("agenda_"))
+        if aid in seen_agenda:
+            aid = novo_id("agenda_")
+        seen_agenda.add(aid)
+        data = _data_iso_valida(item.get("data")) or datetime.now().date().isoformat()
+        hora = str(item.get("hora") or "08:00").strip()[:5]
+        try:
+            datetime.strptime(hora, "%H:%M")
+        except Exception:
+            hora = "08:00"
+        modalidade = str(item.get("modalidade") or "presencial").lower()
+        if modalidade not in modalidades:
+            modalidade = "presencial"
+        status = str(item.get("status") or "agendado").lower()
+        if status not in statuses:
+            status = "agendado"
+        agenda.append({
+            "id": aid,
+            "titulo": str(item.get("titulo") or "Relacionamento").strip()[:120],
+            "data": data,
+            "hora": hora,
+            "sistema": str(item.get("sistema") or "").strip()[:120],
+            "entidade": str(item.get("entidade") or "").strip()[:160],
+            "responsavel": str(item.get("responsavel") or "").strip()[:120],
+            "local": str(item.get("local") or "").strip()[:240],
+            "modalidade": modalidade,
+            "status": status,
+            "url": str(item.get("url") or "").strip()[:1000],
+            "ativo": bool(item.get("ativo", True)),
+        })
+
+    raw_height = _clamp_int(raw.get("height", 46), 46, 28, 64)
+    # Migração visual da v2.8: o padrão antigo de 34 px sobe para o modo TV legível.
+    height = 46 if raw_height <= 34 else max(36, raw_height)
+
     return {
         "enabled": bool(raw.get("enabled", True)),
         "label": str(raw.get("label") or "ATUALIZAÇÕES S&S").strip()[:60] or "ATUALIZAÇÕES S&S",
+        "agenda_enabled": bool(raw.get("agenda_enabled", True)),
+        "agenda_label": str(raw.get("agenda_label") or "AGENDA S&S").strip()[:60] or "AGENDA S&S",
         "speed": speed,
-        "height": _clamp_int(raw.get("height", 34), 34, 28, 50),
+        "height": height,
+        "font_size": _clamp_int(raw.get("font_size", 19), 19, 14, 24),
+        "news_seconds": _clamp_int(raw.get("news_seconds", 30), 30, 5, 300),
+        "agenda_seconds": _clamp_int(raw.get("agenda_seconds", 30), 30, 5, 300),
         "pause_on_hover": bool(raw.get("pause_on_hover", True)),
         "show_category": bool(raw.get("show_category", True)),
         "show_system": bool(raw.get("show_system", True)),
         "news": news,
+        "agenda": agenda,
     }
 
 
@@ -192,6 +266,22 @@ def noticias_ativas_ticker(ticker, dia=None):
         ativos.append(item)
     return ativos
 
+
+def agenda_ativa_ticker(ticker, dia=None):
+    if not isinstance(ticker, dict) or not ticker.get("enabled", True) or not ticker.get("agenda_enabled", True):
+        return []
+    dia = dia or datetime.now().date()
+    ativos = []
+    for item in ticker.get("agenda", []):
+        if not item.get("ativo", True) or str(item.get("status") or "agendado") != "agendado":
+            continue
+        data_item = _data_from_iso(item.get("data"), dia)
+        if data_item < dia:
+            continue
+        if not any(str(item.get(k) or "").strip() for k in ("titulo", "sistema", "entidade", "responsavel", "local")):
+            continue
+        ativos.append(item)
+    return sorted(ativos, key=lambda x: (str(x.get("data") or ""), str(x.get("hora") or ""), str(x.get("titulo") or "")))
 
 def perfil_padrao(nome="Suporte"):
     pid = novo_id("pr_")
@@ -974,7 +1064,8 @@ st.markdown(
         .compact-hint { color:#64748B; font-size:11px; margin-top:-5px; }
         .panel-divider { height:1px; background:#EEF3F7; margin:4px 0 8px; }
         .profile-url { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; padding:8px 10px; border-radius:8px; }
-        .ticker-preview { display:flex;align-items:center;overflow:hidden;height:36px;border-radius:9px;background:#0E5285;color:#fff;margin:8px 0 10px;border:1px solid #093D63;box-shadow:0 2px 7px rgba(14,82,133,.12);font-size:11px; }
+        .ticker-preview { display:flex;align-items:center;overflow:hidden;height:46px;border-radius:9px;background:#0E5285;color:#fff;margin:8px 0 10px;border:1px solid #093D63;box-shadow:0 2px 7px rgba(14,82,133,.12);font-size:14px; }
+        .ticker-preview-news{background:#0E5285!important}.ticker-preview-agenda{background:#0B7A75!important}.ticker-preview-agenda .ticker-preview-label{background:#075A56!important}
         .ticker-preview-label { height:100%;display:flex;align-items:center;gap:6px;padding:0 12px;background:#093D63;font-weight:850;white-space:nowrap;flex:none; }
         .ticker-preview-label::before { content:'●';color:#59D38C;font-size:9px; }
         .ticker-preview-items { white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 12px;color:#F8FBFE; }
@@ -1631,34 +1722,28 @@ if not st.session_state.iniciado:
                         st.rerun()
 
     # =========================================================
-    # NEWS TICKER S&S - faixa corporativa global
+    # TICKER CORPORATIVO S&S - Atualizações + Agenda
     # =========================================================
     ticker = config.setdefault("ticker", ticker_padrao())
     ticker["news"] = ticker.get("news", []) if isinstance(ticker.get("news"), list) else []
+    ticker["agenda"] = ticker.get("agenda", []) if isinstance(ticker.get("agenda"), list) else []
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     with st.container(border=True):
         th1, th2 = st.columns([3.6, 1])
         with th1:
-            st.markdown('<div class="section-title">Faixa de atualizações · News Ticker S&S</div>', unsafe_allow_html=True)
-            st.caption("Faixa corporativa global exibida durante toda a rotação. As notícias podem abrir um comunicado ou página de atualização em uma nova aba.")
+            st.markdown('<div class="section-title">Faixas corporativas · Atualizações S&S + Agenda S&S</div>', unsafe_allow_html=True)
+            st.caption("Uma única faixa global alterna entre notícias de atualização e compromissos da agenda. Os tempos de cada faixa são independentes e configuráveis.")
         with th2:
             ticker["enabled"] = st.toggle(
-                "Exibir faixa",
+                "Exibir faixas",
                 value=bool(ticker.get("enabled", True)),
-                key="ticker_enabled_v280",
-                help="Se não existir nenhuma notícia ativa no período, a faixa some automaticamente mesmo estando ligada.",
+                key="ticker_enabled_v290",
+                help="Se não existir conteúdo ativo em nenhuma das duas faixas, o rodapé desaparece automaticamente.",
             )
 
-        tc1, tc2, tc3, tc4 = st.columns([1.35, 1.1, 1, 1.25])
+        tc1, tc2, tc3, tc4, tc5 = st.columns([1.25, 1.0, .9, .9, 1.25])
         with tc1:
-            ticker["label"] = st.text_input(
-                "Identificação fixa",
-                value=str(ticker.get("label") or "ATUALIZAÇÕES S&S"),
-                key="ticker_label_v280",
-                max_chars=60,
-            )
-        with tc2:
             speed_options = ["slow", "normal", "fast"]
             speed_current = ticker.get("speed", "normal") if ticker.get("speed", "normal") in speed_options else "normal"
             ticker["speed"] = st.selectbox(
@@ -1666,187 +1751,207 @@ if not st.session_state.iniciado:
                 speed_options,
                 index=speed_options.index(speed_current),
                 format_func=lambda x: {"slow": "Lenta", "normal": "Normal", "fast": "Rápida"}[x],
-                key="ticker_speed_v280",
+                key="ticker_speed_v290",
+            )
+        with tc2:
+            ticker["height"] = st.number_input(
+                "Altura (px)", min_value=36, max_value=64,
+                value=max(36, min(64, int(ticker.get("height", 46)))), step=1,
+                key="ticker_height_v290",
             )
         with tc3:
-            ticker["height"] = st.number_input(
-                "Altura (px)",
-                min_value=28,
-                max_value=50,
-                value=int(ticker.get("height", 34)),
-                step=1,
-                key="ticker_height_v280",
+            ticker["font_size"] = st.number_input(
+                "Texto (px)", min_value=14, max_value=24,
+                value=max(14, min(24, int(ticker.get("font_size", 19)))), step=1,
+                key="ticker_font_v290",
+                help="Para TV, 18 a 20 px costuma oferecer boa leitura à distância.",
             )
         with tc4:
-            ticker["pause_on_hover"] = st.toggle(
-                "Pausar ao passar o mouse",
-                value=bool(ticker.get("pause_on_hover", True)),
-                key="ticker_pause_hover_v280",
+            ticker["news_seconds"] = st.number_input(
+                "Atualizações (s)", min_value=5, max_value=300,
+                value=max(5, min(300, int(ticker.get("news_seconds", 30)))), step=5,
+                key="ticker_news_seconds_v290",
+                help="Tempo que a faixa Atualizações S&S permanece visível antes de alternar.",
+            )
+        with tc5:
+            ticker["agenda_seconds"] = st.number_input(
+                "Agenda (s)", min_value=5, max_value=300,
+                value=max(5, min(300, int(ticker.get("agenda_seconds", 30)))), step=5,
+                key="ticker_agenda_seconds_v290",
+                help="Tempo que a faixa Agenda S&S permanece visível antes de voltar para Atualizações.",
             )
 
-        to1, to2, to3 = st.columns([1, 1, 2.3])
+        to1, to2, to3, to4 = st.columns([1, 1, 1.2, 2.0])
         with to1:
-            ticker["show_category"] = st.toggle(
-                "Mostrar categoria",
-                value=bool(ticker.get("show_category", True)),
-                key="ticker_show_category_v280",
-            )
+            ticker["pause_on_hover"] = st.toggle("Pausar no mouse", value=bool(ticker.get("pause_on_hover", True)), key="ticker_pause_hover_v290")
         with to2:
-            ticker["show_system"] = st.toggle(
-                "Mostrar sistema",
-                value=bool(ticker.get("show_system", True)),
-                key="ticker_show_system_v280",
-            )
+            ticker["show_category"] = st.toggle("Mostrar categoria", value=bool(ticker.get("show_category", True)), key="ticker_show_category_v290")
         with to3:
-            st.caption("Links válidos ficam clicáveis na faixa e sempre abrem em uma nova aba, sem interromper o monitoramento.")
+            ticker["show_system"] = st.toggle("Mostrar sistema", value=bool(ticker.get("show_system", True)), key="ticker_show_system_v290")
+        with to4:
+            st.caption("Quando as duas faixas tiverem conteúdo ativo, a aplicação alterna automaticamente. Se apenas uma tiver conteúdo, ela permanece contínua.")
+
+        st.markdown("---")
+        u1, u2 = st.columns([1, 1])
+        with u1:
+            ticker["label"] = st.text_input("Nome da faixa de atualizações", value=str(ticker.get("label") or "ATUALIZAÇÕES S&S"), key="ticker_label_v290", max_chars=60)
+        with u2:
+            ticker["agenda_label"] = st.text_input("Nome da faixa de agenda", value=str(ticker.get("agenda_label") or "AGENDA S&S"), key="ticker_agenda_label_v290", max_chars=60)
 
         active_preview = noticias_ativas_ticker(ticker)
+        active_agenda_preview = agenda_ativa_ticker(ticker)
         if ticker.get("enabled", True) and active_preview:
             parts = []
             cat_labels = {"novo": "NOVO", "melhoria": "MELHORIA", "aviso": "AVISO", "importante": "IMPORTANTE"}
-            for item in active_preview[:6]:
+            for item in active_preview[:5]:
                 bits = []
-                if ticker.get("show_category", True):
-                    bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
-                if ticker.get("show_system", True) and item.get("sistema"):
-                    bits.append(str(item.get("sistema")))
-                title = str(item.get("titulo") or "").strip()
-                msg = str(item.get("mensagem") or "").strip()
-                text = " — ".join([b for b in bits if b])
-                content = title + ((": " + msg) if title and msg else msg)
-                if text and content:
-                    text += " — " + content
-                elif content:
-                    text = content
-                if item.get("url") and url_valida(item.get("url")):
-                    text += " ↗"
+                if ticker.get("show_category", True): bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
+                if ticker.get("show_system", True) and item.get("sistema"): bits.append(str(item.get("sistema")))
+                title = str(item.get("titulo") or "").strip(); msg = str(item.get("mensagem") or "").strip()
+                text = " — ".join([b for b in bits if b]); content = title + ((": " + msg) if title and msg else msg)
+                if text and content: text += " — " + content
+                elif content: text = content
+                if item.get("url") and url_valida(item.get("url")): text += " ↗"
                 parts.append(html.escape(text))
-            preview_text = "  •  ".join(parts)
-            st.markdown(
-                f'<div class="ticker-preview"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{preview_text}</div></div>',
-                unsafe_allow_html=True,
-            )
-        elif ticker.get("enabled", True):
-            st.info("A faixa está ligada, mas não há notícia ativa para a data atual. Nesse caso ela não ocupará espaço no monitoramento.")
-        else:
-            st.caption("A faixa está desativada.")
+            st.markdown(f'<div class="ticker-preview ticker-preview-news"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
 
+        if ticker.get("enabled", True) and ticker.get("agenda_enabled", True) and active_agenda_preview:
+            parts = []
+            hoje = datetime.now().date().isoformat()
+            for item in active_agenda_preview[:5]:
+                data_txt = "HOJE" if item.get("data") == hoje else datetime.strptime(item.get("data"), "%Y-%m-%d").strftime("%d/%m")
+                details = [f"{data_txt} {item.get('hora') or ''}".strip(), str(item.get("titulo") or "Compromisso")]
+                if item.get("sistema"): details.append(str(item.get("sistema")))
+                if item.get("entidade"): details.append(str(item.get("entidade")))
+                if item.get("responsavel"): details.append(str(item.get("responsavel")))
+                if item.get("local"): details.append(str(item.get("local")))
+                text = " · ".join([d for d in details if d])
+                if item.get("url") and url_valida(item.get("url")): text += " ↗"
+                parts.append(html.escape(text))
+            st.markdown(f'<div class="ticker-preview ticker-preview-agenda"><div class="ticker-preview-label">{html.escape(str(ticker.get("agenda_label") or "AGENDA S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
+
+        if ticker.get("enabled", True) and not active_preview and not active_agenda_preview:
+            st.info("As faixas estão ligadas, mas não há atualização nem compromisso ativo para exibir agora. O rodapé não ocupará espaço no monitoramento.")
+
+        st.markdown("### Atualizações S&S")
+        st.caption("Cadastre notícias e links manualmente. No futuro, esta mesma estrutura poderá ser alimentada diretamente pelo portal.")
         add_left, add_right = st.columns([4, 1])
-        with add_left:
-            st.markdown("**Notícias cadastradas**")
-            st.caption("Cadastre agora manualmente. A estrutura já fica preparada para futuramente receber as mesmas informações diretamente do portal.")
         with add_right:
-            if st.button("＋ Adicionar notícia", use_container_width=True, key="add_news_v280"):
-                ticker["news"].append(noticia_padrao())
-                salvar_config(config, force=True)
-                st.toast("Notícia adicionada.")
-                st.rerun()
+            if st.button("＋ Adicionar notícia", use_container_width=True, key="add_news_v290"):
+                ticker["news"].append(noticia_padrao()); salvar_config(config, force=True); st.toast("Notícia adicionada."); st.rerun()
 
-        pending_news_delete = st.session_state.get("news_pendente_exclusao_v280")
+        pending_news_delete = st.session_state.get("news_pendente_exclusao_v290")
         category_options = ["novo", "melhoria", "aviso", "importante"]
         category_labels = {"novo": "Novo", "melhoria": "Melhoria", "aviso": "Aviso", "importante": "Importante"}
-
         for ni, news in enumerate(ticker.get("news", [])):
-            nid = news.get("id") or novo_id("news_")
-            news["id"] = nid
+            nid = news.get("id") or novo_id("news_"); news["id"] = nid
             cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
             state_badge = '<span class="badge badge-blue">ATIVA</span>' if news.get("ativo", True) else '<span class="badge badge-gray">INATIVA</span>'
             cat_class = "badge-amber" if cat in {"aviso", "importante"} else ("badge-green" if cat == "melhoria" else "badge-blue")
             link_badge = '<span class="badge badge-green">LINK</span>' if news.get("url") and url_valida(news.get("url")) else ''
             headline = html.escape(str(news.get("titulo") or news.get("mensagem") or "Notícia sem título")[:100])
-
             with st.container(border=True):
-                st.markdown(
-                    f'<div class="news-headline"><div class="news-title">{ni+1:02d} · {headline}</div><div class="news-meta">{state_badge}<span class="badge {cat_class}">{category_labels[cat].upper()}</span>{link_badge}</div></div>',
-                    unsafe_allow_html=True,
-                )
-
+                st.markdown(f'<div class="news-headline"><div class="news-title">{ni+1:02d} · {headline}</div><div class="news-meta">{state_badge}<span class="badge {cat_class}">{category_labels[cat].upper()}</span>{link_badge}</div></div>', unsafe_allow_html=True)
                 nr = st.columns([0.46, 0.46, 1.0, 1.35, 1.25, 3.0, 0.9, 0.85])
                 with nr[0]:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("▲", key=f"news_up_{nid}", disabled=ni == 0, use_container_width=True, help="Mover notícia para cima"):
-                        ticker["news"][ni - 1], ticker["news"][ni] = ticker["news"][ni], ticker["news"][ni - 1]
-                        salvar_config(config, force=True); st.rerun()
+                    if st.button("▲", key=f"news_up_{nid}", disabled=ni == 0, use_container_width=True): ticker["news"][ni-1],ticker["news"][ni]=ticker["news"][ni],ticker["news"][ni-1]; salvar_config(config, force=True); st.rerun()
                 with nr[1]:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("▼", key=f"news_down_{nid}", disabled=ni == len(ticker["news"]) - 1, use_container_width=True, help="Mover notícia para baixo"):
-                        ticker["news"][ni + 1], ticker["news"][ni] = ticker["news"][ni], ticker["news"][ni + 1]
-                        salvar_config(config, force=True); st.rerun()
-                with nr[2]:
-                    news["ativo"] = st.toggle("Exibir", value=bool(news.get("ativo", True)), key=f"news_active_{nid}")
-                with nr[3]:
-                    news["sistema"] = st.text_input("Sistema", value=str(news.get("sistema") or "Geral"), key=f"news_system_{nid}")
+                    if st.button("▼", key=f"news_down_{nid}", disabled=ni == len(ticker["news"])-1, use_container_width=True): ticker["news"][ni+1],ticker["news"][ni]=ticker["news"][ni],ticker["news"][ni+1]; salvar_config(config, force=True); st.rerun()
+                with nr[2]: news["ativo"] = st.toggle("Exibir", value=bool(news.get("ativo", True)), key=f"news_active_{nid}")
+                with nr[3]: news["sistema"] = st.text_input("Sistema", value=str(news.get("sistema") or "Geral"), key=f"news_system_{nid}")
                 with nr[4]:
                     current_cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
                     news["categoria"] = st.selectbox("Categoria", category_options, index=category_options.index(current_cat), format_func=lambda x: category_labels[x], key=f"news_cat_{nid}")
-                with nr[5]:
-                    news["titulo"] = st.text_input("Título curto", value=str(news.get("titulo") or ""), key=f"news_title_{nid}", max_chars=160)
+                with nr[5]: news["titulo"] = st.text_input("Título curto", value=str(news.get("titulo") or ""), key=f"news_title_{nid}", max_chars=160)
                 with nr[6]:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("⧉", key=f"news_dup_{nid}", use_container_width=True, help="Duplicar notícia"):
-                        clone = copy.deepcopy(news); clone["id"] = novo_id("news_"); clone["titulo"] = (clone.get("titulo") or "Notícia") + " - Cópia"
-                        ticker["news"].insert(ni + 1, clone); salvar_config(config, force=True); st.rerun()
+                    if st.button("⧉", key=f"news_dup_{nid}", use_container_width=True):
+                        clone=copy.deepcopy(news); clone["id"]=novo_id("news_"); clone["titulo"]=(clone.get("titulo") or "Notícia")+" - Cópia"; ticker["news"].insert(ni+1,clone); salvar_config(config,force=True); st.rerun()
                 with nr[7]:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("🗑", key=f"news_del_{nid}", use_container_width=True, help="Excluir notícia"):
-                        st.session_state["news_pendente_exclusao_v280"] = nid; st.rerun()
-
-                nb1, nb2 = st.columns([3.2, 2.1])
-                with nb1:
-                    news["mensagem"] = st.text_area(
-                        "Mensagem",
-                        value=str(news.get("mensagem") or ""),
-                        key=f"news_msg_{nid}",
-                        height=74,
-                        max_chars=700,
-                        placeholder="Ex.: Disponibilizadas melhorias no envio dos eventos do eSocial.",
-                    )
+                    if st.button("🗑", key=f"news_del_{nid}", use_container_width=True): st.session_state["news_pendente_exclusao_v290"]=nid; st.rerun()
+                nb1,nb2=st.columns([3.2,2.1])
+                with nb1: news["mensagem"] = st.text_area("Mensagem", value=str(news.get("mensagem") or ""), key=f"news_msg_{nid}", height=74, max_chars=700, placeholder="Ex.: Disponibilizadas melhorias no envio dos eventos do eSocial.")
                 with nb2:
-                    news["url"] = st.text_input(
-                        "Link da atualização (opcional)",
-                        value=str(news.get("url") or ""),
-                        key=f"news_url_{nid}",
-                        placeholder="https://...",
-                    )
-                    if news["url"].strip():
-                        if url_valida(news["url"]):
-                            st.markdown('<span class="status-ok">✓ Link clicável · abrirá em nova aba</span>', unsafe_allow_html=True)
-                        else:
-                            st.markdown('<span class="status-warn">⚠ Link inválido · a notícia será exibida sem clique</span>', unsafe_allow_html=True)
-
-                nd1, nd2, nd3 = st.columns([1.2, 1.15, 2.95])
-                start_value = _data_from_iso(news.get("inicio"), datetime.now().date())
-                with nd1:
-                    start_date = st.date_input("Início da exibição", value=start_value, key=f"news_start_{nid}", format="DD/MM/YYYY")
-                    news["inicio"] = start_date.isoformat()
-                no_end_default = not bool(news.get("fim"))
+                    news["url"] = st.text_input("Link da atualização (opcional)", value=str(news.get("url") or ""), key=f"news_url_{nid}", placeholder="https://...")
+                    if news["url"].strip(): st.markdown('<span class="status-ok">✓ Link clicável · abrirá em nova aba</span>' if url_valida(news["url"]) else '<span class="status-warn">⚠ Link inválido · será exibida sem clique</span>', unsafe_allow_html=True)
+                nd1,nd2,nd3=st.columns([1.2,1.15,2.95]); start_value=_data_from_iso(news.get("inicio"),datetime.now().date())
+                with nd1: start_date=st.date_input("Início da exibição",value=start_value,key=f"news_start_{nid}",format="DD/MM/YYYY"); news["inicio"]=start_date.isoformat()
                 with nd2:
-                    sem_fim = st.toggle("Sem data final", value=no_end_default, key=f"news_no_end_{nid}")
-                    if sem_fim:
-                        news["fim"] = ""
-                    else:
-                        end_default = _data_from_iso(news.get("fim"), start_date)
-                        end_date = st.date_input("Fim da exibição", value=end_default, key=f"news_end_{nid}", format="DD/MM/YYYY")
-                        news["fim"] = end_date.isoformat()
+                    sem_fim=st.toggle("Sem data final",value=not bool(news.get("fim")),key=f"news_no_end_{nid}")
+                    if sem_fim: news["fim"]=""
+                    else: end_default=_data_from_iso(news.get("fim"),start_date); end_date=st.date_input("Fim da exibição",value=end_default,key=f"news_end_{nid}",format="DD/MM/YYYY"); news["fim"]=end_date.isoformat()
                 with nd3:
                     st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if news.get("fim") and _data_from_iso(news.get("fim"), start_date) < start_date:
-                        st.warning("A data final está anterior à data inicial; essa notícia não será exibida nesse período.")
-                    else:
-                        status_periodo = "ativa hoje" if news in noticias_ativas_ticker(ticker) else "fora do período atual ou desativada"
-                        st.caption(f"Situação da notícia: **{status_periodo}**.")
-
+                    st.caption(f"Situação: **{'ativa hoje' if news in noticias_ativas_ticker(ticker) else 'fora do período atual ou desativada'}**.")
                 if pending_news_delete == nid:
-                    st.warning(f"Excluir a notícia **{news.get('titulo') or 'sem título'}**?")
-                    dc1, dc2 = st.columns(2)
+                    st.warning(f"Excluir a notícia **{news.get('titulo') or 'sem título'}**?"); dc1,dc2=st.columns(2)
                     with dc1:
-                        if st.button("Cancelar", key=f"news_cancel_del_{nid}", use_container_width=True):
-                            st.session_state["news_pendente_exclusao_v280"] = None; st.rerun()
+                        if st.button("Cancelar",key=f"news_cancel_del_{nid}",use_container_width=True): st.session_state["news_pendente_exclusao_v290"]=None; st.rerun()
                     with dc2:
-                        if st.button("Confirmar exclusão", key=f"news_confirm_del_{nid}", type="primary", use_container_width=True):
-                            ticker["news"] = [n for n in ticker["news"] if n.get("id") != nid]
-                            st.session_state["news_pendente_exclusao_v280"] = None
-                            salvar_config(config, force=True); st.toast("Notícia excluída."); st.rerun()
+                        if st.button("Confirmar exclusão",key=f"news_confirm_del_{nid}",type="primary",use_container_width=True): ticker["news"]=[n for n in ticker["news"] if n.get("id")!=nid]; st.session_state["news_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
+
+        st.markdown("---")
+        ag_head, ag_toggle, ag_add = st.columns([3.1, 1.1, 1.15])
+        with ag_head:
+            st.markdown("### Agenda S&S")
+            st.caption("Compromissos futuros/agendados aparecem na faixa verde-petróleo. Itens realizados, cancelados ou vencidos deixam de ser exibidos automaticamente.")
+        with ag_toggle:
+            ticker["agenda_enabled"] = st.toggle("Exibir Agenda", value=bool(ticker.get("agenda_enabled", True)), key="agenda_enabled_v290")
+        with ag_add:
+            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+            if st.button("＋ Adicionar compromisso", use_container_width=True, key="add_agenda_v290"):
+                ticker["agenda"].append(agenda_item_padrao()); salvar_config(config, force=True); st.toast("Compromisso adicionado."); st.rerun()
+
+        pending_agenda_delete = st.session_state.get("agenda_pendente_exclusao_v290")
+        modalidade_options=["presencial","online","hibrido","outro"]
+        modalidade_labels={"presencial":"Presencial","online":"Online","hibrido":"Híbrido","outro":"Outro"}
+        status_options=["agendado","realizado","cancelado"]
+        status_labels={"agendado":"Agendado","realizado":"Realizado","cancelado":"Cancelado"}
+        for ai,item in enumerate(ticker.get("agenda", [])):
+            aid=item.get("id") or novo_id("agenda_"); item["id"]=aid
+            headline=html.escape(str(item.get("titulo") or "Compromisso")[:100])
+            status=item.get("status","agendado") if item.get("status","agendado") in status_options else "agendado"
+            state_class="badge-green" if status=="agendado" else ("badge-blue" if status=="realizado" else "badge-gray")
+            with st.container(border=True):
+                st.markdown(f'<div class="news-headline"><div class="news-title">{ai+1:02d} · {headline}</div><div class="news-meta"><span class="badge {state_class}">{status_labels[status].upper()}</span></div></div>', unsafe_allow_html=True)
+                ar=st.columns([.46,.46,.9,1.25,.85,1.15,1.3,2.3,.8])
+                with ar[0]:
+                    st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
+                    if st.button("▲",key=f"agenda_up_{aid}",disabled=ai==0,use_container_width=True): ticker["agenda"][ai-1],ticker["agenda"][ai]=ticker["agenda"][ai],ticker["agenda"][ai-1]; salvar_config(config,force=True); st.rerun()
+                with ar[1]:
+                    st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
+                    if st.button("▼",key=f"agenda_down_{aid}",disabled=ai==len(ticker["agenda"])-1,use_container_width=True): ticker["agenda"][ai+1],ticker["agenda"][ai]=ticker["agenda"][ai],ticker["agenda"][ai+1]; salvar_config(config,force=True); st.rerun()
+                with ar[2]: item["ativo"]=st.toggle("Exibir",value=bool(item.get("ativo",True)),key=f"agenda_active_{aid}")
+                with ar[3]:
+                    data_val=_data_from_iso(item.get("data"),datetime.now().date()); data_ag=st.date_input("Data",value=data_val,key=f"agenda_date_{aid}",format="DD/MM/YYYY"); item["data"]=data_ag.isoformat()
+                with ar[4]: item["hora"]=st.text_input("Hora",value=str(item.get("hora") or "08:00"),key=f"agenda_time_{aid}",max_chars=5,placeholder="08:00")
+                with ar[5]: item["status"]=st.selectbox("Status",status_options,index=status_options.index(status),format_func=lambda x:status_labels[x],key=f"agenda_status_{aid}")
+                with ar[6]:
+                    mod=item.get("modalidade","presencial") if item.get("modalidade","presencial") in modalidade_options else "presencial"
+                    item["modalidade"]=st.selectbox("Modalidade",modalidade_options,index=modalidade_options.index(mod),format_func=lambda x:modalidade_labels[x],key=f"agenda_mod_{aid}")
+                with ar[7]: item["titulo"]=st.text_input("Compromisso",value=str(item.get("titulo") or "Relacionamento"),key=f"agenda_title_{aid}",max_chars=120)
+                with ar[8]:
+                    st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
+                    if st.button("🗑",key=f"agenda_del_{aid}",use_container_width=True): st.session_state["agenda_pendente_exclusao_v290"]=aid; st.rerun()
+                ab1,ab2,ab3=st.columns([1.5,1.5,1.4])
+                with ab1: item["sistema"]=st.text_input("Sistema",value=str(item.get("sistema") or ""),key=f"agenda_system_{aid}",placeholder="Sistema de Arrecadação Tributária")
+                with ab2: item["entidade"]=st.text_input("Entidade",value=str(item.get("entidade") or ""),key=f"agenda_entity_{aid}",placeholder="Município de Aracoiaba")
+                with ab3: item["responsavel"]=st.text_input("Responsável",value=str(item.get("responsavel") or ""),key=f"agenda_resp_{aid}",placeholder="Thiago Silva")
+                ac1,ac2=st.columns([2.4,1.6])
+                with ac1: item["local"]=st.text_input("Local",value=str(item.get("local") or ""),key=f"agenda_local_{aid}",placeholder="Av. Independência - Aracoiaba, CE")
+                with ac2:
+                    item["url"]=st.text_input("Link do compromisso (opcional)",value=str(item.get("url") or ""),key=f"agenda_url_{aid}",placeholder="https://...")
+                    if item["url"].strip(): st.caption("O compromisso ficará clicável e abrirá em nova aba." if url_valida(item["url"]) else "Link inválido: será exibido sem clique.")
+                st.caption(f"Exibição na faixa: **{'ativa' if item in agenda_ativa_ticker(ticker) else 'não ativa'}**.")
+                if pending_agenda_delete == aid:
+                    st.warning(f"Excluir o compromisso **{item.get('titulo') or 'sem título'}**?"); ec1,ec2=st.columns(2)
+                    with ec1:
+                        if st.button("Cancelar",key=f"agenda_cancel_del_{aid}",use_container_width=True): st.session_state["agenda_pendente_exclusao_v290"]=None; st.rerun()
+                    with ec2:
+                        if st.button("Confirmar exclusão",key=f"agenda_confirm_del_{aid}",type="primary",use_container_width=True): ticker["agenda"]=[a for a in ticker["agenda"] if a.get("id")!=aid]; st.session_state["agenda_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
 
     # Salva somente se houve alteração efetiva.
     salvar_config(config)
@@ -2212,7 +2317,7 @@ else:
             #stage{position:fixed;left:0;width:100%;background:#fff;overflow:hidden;transition:top .18s ease,height .18s ease,bottom .18s ease}body.bar-top #stage{top:calc(var(--toolbar-h) + var(--progress-h));height:calc(100vh - var(--toolbar-h) - var(--progress-h) - var(--ticker-h))}body.bar-bottom #stage{top:0;height:calc(100vh - var(--toolbar-h) - var(--progress-h) - var(--ticker-h))}body.controls-hidden #stage{top:0!important;height:calc(100vh - var(--ticker-h))!important;bottom:auto!important}
             .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;transform-origin:0 0;will-change:transform}.focus-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#F59E0B;color:#fff;font-size:.79em;font-weight:850;letter-spacing:.2px}.focus-chip.hidden-item{display:none!important}
             .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap;justify-content:center}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:750}.overlay-btn.primary{background:#0E5285;color:#fff;border-color:#0E5285}.blocked-wrap{width:min(920px,94vw);display:grid;grid-template-columns:minmax(190px,290px) minmax(0,1fr);gap:28px;align-items:center;background:#fff;border:1px solid #D7E5F0;border-radius:18px;padding:28px 32px;box-shadow:0 16px 40px rgba(14,82,133,.12);text-align:left}.blocked-mascot{width:100%;max-height:330px;object-fit:contain;display:block}.blocked-copy h2{margin:0 0 8px;color:#0E5285;font-size:24px;line-height:1.15}.blocked-copy p{margin:0 0 14px;color:#52677A;font-size:14px;line-height:1.5}.blocked-details{display:grid;gap:7px;margin:15px 0;padding:13px 14px;background:#F3F7FB;border-radius:10px;color:#475569;font-size:12px}.blocked-details b{color:#16324A}.blocked-url{word-break:break-all}.blocked-reason{color:#8A5A00}.blocked-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#FFF4D6;color:#8A5A00;font-weight:800;font-size:11px;margin-bottom:9px}.blocked-fallback-icon{font-size:76px;line-height:1}.blocked-actions{display:flex;gap:9px;flex-wrap:wrap}.blocked-actions a{text-decoration:none}.blocked-countdown{font-size:12px;color:#64748B;margin-top:10px}@media(max-width:720px){.blocked-wrap{grid-template-columns:1fr;text-align:center;padding:20px}.blocked-mascot{max-height:210px}.blocked-actions{justify-content:center}}
-            #news-ticker{position:fixed;left:0;bottom:0;width:100%;height:var(--ticker-h);z-index:9998;background:var(--blue);color:#fff;display:none;align-items:center;overflow:hidden;border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -2px 7px rgba(0,0,0,.13);font-size:calc(12px * var(--scale))}body.ticker-on #news-ticker{display:flex}.ticker-label{height:100%;display:flex;align-items:center;gap:7px;padding:0 13px;background:var(--blue-dark);font-weight:850;white-space:nowrap;flex:none;z-index:2;box-shadow:4px 0 10px rgba(9,61,99,.28)}.ticker-led{width:7px;height:7px;border-radius:50%;background:#59D38C;box-shadow:0 0 0 2px rgba(89,211,140,.15);flex:none}.ticker-viewport{height:100%;flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;position:relative}.ticker-track{display:flex;align-items:center;width:max-content;height:100%;will-change:transform;animation:ticker-scroll var(--ticker-duration,30s) linear infinite}.ticker-group{display:flex;align-items:center;height:100%;white-space:nowrap;flex:none}.ticker-item{height:100%;display:inline-flex;align-items:center;gap:7px;padding:0 15px;color:#F8FBFE;text-decoration:none;font-weight:600;border-right:1px solid rgba(255,255,255,.14);transition:background .12s ease}.ticker-item[href]{cursor:pointer}.ticker-item[href]:hover{background:rgba(255,255,255,.13);color:#fff}.ticker-category{display:inline-flex;align-items:center;padding:2px 6px;border-radius:999px;font-size:.78em;font-weight:900;letter-spacing:.18px}.ticker-category.novo{background:#DDF4FF;color:#075985}.ticker-category.melhoria{background:#DCFCE7;color:#166534}.ticker-category.aviso{background:#FEF3C7;color:#92400E}.ticker-category.importante{background:#FEE2E2;color:#991B1B}.ticker-system{font-weight:850;color:#fff}.ticker-link{opacity:.85;font-size:.9em}.ticker-hidden-temp{opacity:.82}.ticker-viewport.pause-hover:hover .ticker-track{animation-play-state:paused}@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--ticker-distance, 600px)))}}body.bar-bottom #diag{bottom:calc(50px + var(--ticker-h))!important}body.bar-top #restart-notice{bottom:calc(10px + var(--ticker-h))!important}body.bar-bottom #reveal-strip{bottom:var(--ticker-h)!important}@media(max-width:720px){.ticker-label{padding:0 8px}.ticker-label-text{display:none}.ticker-item{padding:0 11px}}
+            #news-ticker{position:fixed;left:0;bottom:0;width:100%;height:var(--ticker-h);z-index:9998;background:var(--blue);color:#fff;display:none;align-items:center;overflow:hidden;border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -2px 8px rgba(0,0,0,.16);font-size:var(--ticker-font,19px);transition:background .28s ease}#news-ticker.agenda-mode{background:#0B7A75}body.ticker-on #news-ticker{display:flex}.ticker-label{height:100%;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--blue-dark);font-weight:900;white-space:nowrap;flex:none;z-index:2;box-shadow:4px 0 10px rgba(9,61,99,.28);transition:background .28s ease;font-size:.95em}#news-ticker.agenda-mode .ticker-label{background:#075A56}.ticker-led{width:9px;height:9px;border-radius:50%;background:#59D38C;box-shadow:0 0 0 2px rgba(89,211,140,.16);flex:none}#news-ticker.agenda-mode .ticker-led{background:#FFD166;box-shadow:0 0 0 2px rgba(255,209,102,.18)}.ticker-viewport{height:100%;flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;position:relative}.ticker-track{display:flex;align-items:center;width:max-content;height:100%;will-change:transform;animation:ticker-scroll var(--ticker-duration,30s) linear infinite}.ticker-group{display:flex;align-items:center;height:100%;white-space:nowrap;flex:none}.ticker-item{height:100%;display:inline-flex;align-items:center;gap:9px;padding:0 20px;color:#F8FBFE;text-decoration:none;font-weight:650;border-right:1px solid rgba(255,255,255,.17);transition:background .12s ease}.ticker-item[href]{cursor:pointer}.ticker-item[href]:hover{background:rgba(255,255,255,.13);color:#fff}.ticker-category,.ticker-agenda-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:.72em;font-weight:900;letter-spacing:.2px}.ticker-category.novo{background:#DDF4FF;color:#075985}.ticker-category.melhoria{background:#DCFCE7;color:#166534}.ticker-category.aviso{background:#FEF3C7;color:#92400E}.ticker-category.importante{background:#FEE2E2;color:#991B1B}.ticker-agenda-badge{background:#E6FFFA;color:#075A56}.ticker-agenda-mode{background:#FEF3C7;color:#7C4A03}.ticker-system{font-weight:900;color:#fff}.ticker-link{opacity:.9;font-size:.9em}.ticker-viewport.pause-hover:hover .ticker-track{animation-play-state:paused}@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--ticker-distance, 600px)))}}body.bar-bottom #diag{bottom:calc(50px + var(--ticker-h))!important}body.bar-top #restart-notice{bottom:calc(10px + var(--ticker-h))!important}body.bar-bottom #reveal-strip{bottom:var(--ticker-h)!important}@media(max-width:720px){#news-ticker{font-size:15px}.ticker-label{padding:0 9px}.ticker-label-text{display:none}.ticker-item{padding:0 12px}}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
             body.kiosk.controls-hidden{cursor:none}#reveal-strip{position:fixed;left:0;width:100%;height:4px;z-index:10015;opacity:0;pointer-events:none;background:linear-gradient(90deg,#0E5285,#54A3D8,#0E5285);transition:opacity .15s ease}body.bar-top #reveal-strip{top:0}body.bar-bottom #reveal-strip{bottom:0}body.controls-hidden #reveal-strip{opacity:.9;pointer-events:auto}
@@ -2248,7 +2353,7 @@ else:
         </div>
         <div id="reveal-strip" title="Mostrar controles"></div>
         <div id="stage"></div>
-        <div id="news-ticker" aria-label="Atualizações S&S"><div class="ticker-label"><span class="ticker-led"></span><span class="ticker-label-text" id="ticker-label-text">ATUALIZAÇÕES S&S</span></div><div class="ticker-viewport" id="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div></div>
+        <div id="news-ticker" aria-label="Faixas corporativas S&S"><div class="ticker-label"><span class="ticker-led"></span><span class="ticker-label-text" id="ticker-label-text">ATUALIZAÇÕES S&S</span></div><div class="ticker-viewport" id="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div></div>
         <div id="restart-notice"></div>
         <div id="diag">
             <h4>Diagnóstico do monitoramento</h4>
@@ -2277,6 +2382,7 @@ else:
 
             document.documentElement.style.setProperty('--scale', String(settings.uiScale / 100));
             document.documentElement.style.setProperty('--fade', `${settings.transitionMs}ms`);
+            document.documentElement.style.setProperty('--ticker-font', `${Math.max(14,Math.min(24,parseInt(tickerSettings.font_size||19,10)))}px`);
             document.body.classList.toggle('bar-top', settings.toolbarPosition !== 'bottom');
             document.body.classList.toggle('bar-bottom', settings.toolbarPosition === 'bottom');
 
@@ -2296,6 +2402,8 @@ else:
             let manualFocusPanelId = null;
             let tickerTemporarilyHidden = false;
             let tickerHasActiveNews = false;
+            let tickerCurrentMode = 'news';
+            let tickerModeTimer = null;
             let pendingGeneralReload = false;
             let appStartedAt = Date.now();
             let lastHeartbeat = Date.now();
@@ -2367,6 +2475,15 @@ else:
                     return !!(String(n.titulo||'').trim() || String(n.mensagem||'').trim());
                 });
             }
+            function tickerActiveAgenda(){
+                if(!tickerSettings || !tickerSettings.enabled || tickerSettings.agenda_enabled===false || !Array.isArray(tickerSettings.agenda))return [];
+                const today=todayLocalIso();
+                return tickerSettings.agenda.filter(a=>{
+                    if(!a || a.ativo===false || String(a.status||'agendado')!=='agendado')return false;
+                    if(a.data && String(a.data)<today)return false;
+                    return !!['titulo','sistema','entidade','responsavel','local'].some(k=>String(a[k]||'').trim());
+                }).sort((a,b)=>`${a.data||''} ${a.hora||''}`.localeCompare(`${b.data||''} ${b.hora||''}`));
+            }
             function tickerCategoryLabel(cat){ return ({novo:'NOVO',melhoria:'MELHORIA',aviso:'AVISO',importante:'IMPORTANTE'})[cat]||'MELHORIA'; }
             function tickerItemNode(n){
                 const hasLink=/^https?:\/\//i.test(String(n.url||'').trim());
@@ -2378,39 +2495,73 @@ else:
                 if(hasLink){const icon=document.createElement('span');icon.className='ticker-link';icon.textContent='↗';el.appendChild(icon);}
                 return el;
             }
+            function agendaDateLabel(iso){
+                const today=todayLocalIso(); if(String(iso||'')===today)return 'HOJE';
+                const parts=String(iso||'').split('-'); return parts.length===3?`${parts[2]}/${parts[1]}`:String(iso||'');
+            }
+            function agendaItemNode(a){
+                const hasLink=/^https?:\/\//i.test(String(a.url||'').trim());
+                const el=document.createElement(hasLink?'a':'span');el.className='ticker-item';
+                if(hasLink){el.href=a.url;el.target='_blank';el.rel='noopener noreferrer';el.title='Abrir compromisso em nova aba';}
+                const time=document.createElement('span');time.className='ticker-agenda-badge';time.textContent=`${agendaDateLabel(a.data)} ${String(a.hora||'').trim()}`.trim();el.appendChild(time);
+                if(String(a.modalidade||'').trim()){const mod=document.createElement('span');mod.className='ticker-agenda-badge ticker-agenda-mode';mod.textContent=String(a.modalidade).toUpperCase();el.appendChild(mod);}
+                const title=String(a.titulo||'Compromisso').trim();
+                const details=[]; if(title)details.push(title); if(a.sistema)details.push(String(a.sistema)); if(a.entidade)details.push(String(a.entidade)); if(a.responsavel)details.push(`Responsável: ${a.responsavel}`); if(a.local)details.push(String(a.local));
+                const text=document.createElement('span');text.textContent=details.join(' · ');el.appendChild(text);
+                if(hasLink){const icon=document.createElement('span');icon.className='ticker-link';icon.textContent='↗';el.appendChild(icon);}
+                return el;
+            }
+            function tickerChannels(){
+                const news=tickerActiveNews(), agenda=tickerActiveAgenda(), channels=[];
+                if(news.length)channels.push({mode:'news',items:news,seconds:Math.max(5,parseInt(tickerSettings.news_seconds||30,10))});
+                if(agenda.length)channels.push({mode:'agenda',items:agenda,seconds:Math.max(5,parseInt(tickerSettings.agenda_seconds||30,10))});
+                return channels;
+            }
             function updateTickerLayout(visible){
-                const height=visible?Math.max(28,Math.min(50,parseInt(tickerSettings.height||34,10))):0;
+                const height=visible?Math.max(36,Math.min(64,parseInt(tickerSettings.height||46,10))):0;
                 document.documentElement.style.setProperty('--ticker-h',`${height}px`);
+                document.documentElement.style.setProperty('--ticker-font',`${Math.max(14,Math.min(24,parseInt(tickerSettings.font_size||19,10)))}px`);
                 document.body.classList.toggle('ticker-on',visible);
                 if(newsTicker)newsTicker.style.display=visible?'flex':'none';
                 requestAnimationFrame(()=>updateFocus(Math.max(0,targetEndMs-Date.now()),true));
             }
-            function renderTicker(){
+            function scheduleTickerMode(channels){
+                clearTimeout(tickerModeTimer); tickerModeTimer=null;
+                if(channels.length<2 || tickerTemporarilyHidden)return;
+                const current=channels.find(c=>c.mode===tickerCurrentMode)||channels[0];
+                tickerModeTimer=setTimeout(()=>{
+                    const idx=channels.findIndex(c=>c.mode===tickerCurrentMode);
+                    tickerCurrentMode=channels[(idx+1)%channels.length].mode;
+                    renderTicker(true);
+                },current.seconds*1000);
+            }
+            function renderTicker(reschedule=true){
                 if(!newsTicker||!tickerTrack||!tickerViewport)return;
-                const active=tickerActiveNews(); tickerHasActiveNews=active.length>0 && tickerSettings.enabled!==false;
+                const channels=tickerChannels(); tickerHasActiveNews=channels.length>0 && tickerSettings.enabled!==false;
                 const visible=tickerHasActiveNews && !tickerTemporarilyHidden;
-                tickerLabelText.textContent=String(tickerSettings.label||'ATUALIZAÇÕES S&S');
+                if(!channels.some(c=>c.mode===tickerCurrentMode))tickerCurrentMode=channels[0]?.mode||'news';
+                const channel=channels.find(c=>c.mode===tickerCurrentMode)||channels[0];
                 tickerViewport.classList.toggle('pause-hover',tickerSettings.pause_on_hover!==false);
                 if(tickerBtn){tickerBtn.style.display=tickerHasActiveNews?'flex':'none';tickerBtn.textContent=tickerTemporarilyHidden?'▤ Mostrar faixa':'▤ Ocultar faixa';}
-                if(!visible){tickerTrack.innerHTML='';updateTickerLayout(false);return;}
+                if(!visible || !channel){tickerTrack.innerHTML='';clearTimeout(tickerModeTimer);updateTickerLayout(false);return;}
+                const isAgenda=channel.mode==='agenda';newsTicker.classList.toggle('agenda-mode',isAgenda);
+                tickerLabelText.textContent=isAgenda?String(tickerSettings.agenda_label||'AGENDA S&S'):String(tickerSettings.label||'ATUALIZAÇÕES S&S');
                 tickerTrack.innerHTML='';
-                const buildGroup=()=>{const g=document.createElement('div');g.className='ticker-group';active.forEach(n=>g.appendChild(tickerItemNode(n)));return g;};
+                const buildGroup=()=>{const g=document.createElement('div');g.className='ticker-group';channel.items.forEach(item=>g.appendChild(isAgenda?agendaItemNode(item):tickerItemNode(item)));return g;};
                 const first=buildGroup();tickerTrack.appendChild(first);updateTickerLayout(true);
                 requestAnimationFrame(()=>{
                     let distance=Math.max(1,Math.ceil(first.getBoundingClientRect().width));
-                    const minCoverage=Math.max(window.innerWidth*2.2,distance*2);
-                    let count=Math.max(2,Math.ceil(minCoverage/distance)+1);
+                    const minCoverage=Math.max(window.innerWidth*2.2,distance*2);let count=Math.max(2,Math.ceil(minCoverage/distance)+1);
                     for(let i=1;i<count;i++)tickerTrack.appendChild(buildGroup());
-                    const pxPerSecond=({slow:35,normal:55,fast:80})[tickerSettings.speed]||55;
-                    const duration=Math.max(8,distance/pxPerSecond);
-                    tickerTrack.style.setProperty('--ticker-distance',`${distance}px`);
-                    tickerTrack.style.setProperty('--ticker-duration',`${duration}s`);
-                    tickerTrack.style.animation='none'; void tickerTrack.offsetWidth; tickerTrack.style.animation='ticker-scroll var(--ticker-duration) linear infinite';
+                    const pxPerSecond=({slow:35,normal:55,fast:80})[tickerSettings.speed]||55;const duration=Math.max(8,distance/pxPerSecond);
+                    tickerTrack.style.setProperty('--ticker-distance',`${distance}px`);tickerTrack.style.setProperty('--ticker-duration',`${duration}s`);
+                    tickerTrack.style.animation='none';void tickerTrack.offsetWidth;tickerTrack.style.animation='ticker-scroll var(--ticker-duration) linear infinite';
                 });
+                if(reschedule)scheduleTickerMode(channels);
             }
             function alternarTickerTemporario(){
                 if(!tickerHasActiveNews)return;
-                tickerTemporarilyHidden=!tickerTemporarilyHidden; renderTicker(); log(`Faixa de atualizações ${tickerTemporarilyHidden?'ocultada':'exibida'} temporariamente`);
+                tickerTemporarilyHidden=!tickerTemporarilyHidden;renderTicker(true);log(`Faixa corporativa ${tickerTemporarilyHidden?'ocultada':'exibida'} temporariamente`);
             }
 
             function showOverlayActions(item,message){
@@ -2742,7 +2893,7 @@ else:
                 else { const away=visibilityHiddenAt?Date.now()-visibilityHiddenAt:0; visibilityHiddenAt=null; log(`Aba retomada após ${Math.round(away/1000)}s`); if(!paused && Date.now()>=targetEndMs)mudarTela(1); else lastHeartbeat=Date.now(); }
             });
 
-            window.addEventListener('resize',()=>{ updateFocus(Math.max(0,targetEndMs-Date.now()),true); renderTicker(); });
+            window.addEventListener('resize',()=>{ updateFocus(Math.max(0,targetEndMs-Date.now()),true); renderTicker(false); });
             document.addEventListener('mousemove',showControls,{passive:true}); document.addEventListener('touchstart',showControls,{passive:true});
             document.addEventListener('click',(e)=>{ if(moreMenu && !moreMenu.contains(e.target) && e.target!==moreBtn)closeMoreMenu(); });
             if(revealStrip){ revealStrip.addEventListener('mouseenter',showControls); revealStrip.addEventListener('touchstart',showControls,{passive:true}); }
