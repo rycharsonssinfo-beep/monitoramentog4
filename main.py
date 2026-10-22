@@ -8,9 +8,13 @@ import shutil
 import tempfile
 import time
 import uuid
+import ssl
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -24,13 +28,17 @@ import streamlit.components.v1 as components
 # 2.5.0: Modo Monitor Profissional - tela útil total, barra simplificada, menu secundário e auto-ocultação refinada
 # 2.6.0: Modo Foco - zoom configurável por painel nos segundos finais, com coordenadas X/Y e presets
 # 2.6.1: Calibração Visual do Foco - clique no painel para definir X/Y e testar o zoom antes de salvar
+# 2.7.0: Tratamento de sites incompatíveis com iframe - detecção preventiva + fallback visual S&S com mascote
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.6.1"
-CONFIG_VERSION = 4
+APP_VERSION = "2.7.0"
+CONFIG_VERSION = 5
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+MASCOT_ALERT_PATH = ASSETS_DIR / "mascote_alerta.png"
+APP_EMBED_ORIGIN = "https://monitoramentog4.streamlit.app"
 
 st.set_page_config(
     page_title=f"Painel de Monitoramento {APP_VERSION}",
@@ -63,6 +71,7 @@ def painel_padrao(nome, link, tempo, reload_enabled=True, ativo=True, tipo="norm
         "focus_y": 52,
         "focus_transition_ms": 600,
         "focus_preset": "sim_right" if tipo == "sim" else "custom",
+        "iframe_mode": "auto",
     }
 
 
@@ -126,6 +135,142 @@ def url_valida(url):
         return parsed.scheme in ("http", "https") and bool(parsed.netloc)
     except Exception:
         return False
+
+
+def _mascot_alert_data_uri():
+    try:
+        if MASCOT_ALERT_PATH.exists():
+            raw = base64.b64encode(MASCOT_ALERT_PATH.read_bytes()).decode("ascii")
+            return f"data:image/png;base64,{raw}"
+    except Exception:
+        pass
+    return ""
+
+
+def _iframe_policy_from_headers(headers, final_url=""):
+    xfo = str(headers.get("X-Frame-Options", "") or "").strip()
+    csp = str(headers.get("Content-Security-Policy", "") or "").strip()
+    reasons = []
+
+    if xfo:
+        xfo_low = xfo.lower()
+        if "deny" in xfo_low:
+            reasons.append("X-Frame-Options: DENY")
+        elif "sameorigin" in xfo_low:
+            reasons.append("X-Frame-Options: SAMEORIGIN")
+        elif "allow-from" in xfo_low and APP_EMBED_ORIGIN.lower() not in xfo_low:
+            reasons.append(f"X-Frame-Options: {xfo}")
+
+    if csp:
+        directives = [d.strip() for d in csp.split(";") if d.strip()]
+        frame_ancestors = next((d for d in directives if d.lower().startswith("frame-ancestors")), "")
+        if frame_ancestors:
+            sources = frame_ancestors.split()[1:]
+            sources_low = [src.lower() for src in sources]
+            app_origin = APP_EMBED_ORIGIN.lower()
+            allowed = (
+                "*" in sources_low
+                or app_origin in sources_low
+                or any(src.endswith("streamlit.app") and app_origin.endswith(src.lstrip("*.")) for src in sources_low if src.startswith("*."))
+            )
+            if "'none'" in sources_low or (not allowed and sources_low):
+                reasons.append(f"CSP: {frame_ancestors}")
+
+    return {
+        "blocked": bool(reasons),
+        "status": "blocked" if reasons else "allowed",
+        "reason": " · ".join(reasons) if reasons else "Nenhum bloqueio de iframe identificado nos cabeçalhos.",
+        "x_frame_options": xfo,
+        "content_security_policy": csp,
+        "final_url": final_url,
+    }
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def detectar_bloqueio_iframe(url):
+    """Verificação preventiva. Só marca como bloqueado quando os cabeçalhos confirmam a restrição."""
+    url = str(url or "").strip()
+    if not url_valida(url):
+        return {"blocked": False, "status": "unknown", "reason": "URL inválida ou incompleta.", "final_url": url}
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; S&S-Monitor/2.7; +https://monitoramentog4.streamlit.app)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.6",
+    }
+
+    # HEAD primeiro; alguns servidores não aceitam HEAD, então fazemos GET mínimo como fallback.
+    attempts = [("HEAD", None), ("GET", "bytes=0-1024")]
+    last_error = ""
+    for method, range_header in attempts:
+        req_headers = dict(headers)
+        if range_header:
+            req_headers["Range"] = range_header
+        req = Request(url, headers=req_headers, method=method)
+        try:
+            with urlopen(req, timeout=5, context=ssl.create_default_context()) as resp:
+                result = _iframe_policy_from_headers(resp.headers, getattr(resp, "url", url))
+                result["http_status"] = getattr(resp, "status", None)
+                return result
+        except HTTPError as exc:
+            # Mesmo um 401/403 costuma trazer os cabeçalhos de segurança que precisamos analisar.
+            result = _iframe_policy_from_headers(exc.headers or {}, getattr(exc, "url", url))
+            result["http_status"] = getattr(exc, "code", None)
+            if result.get("blocked"):
+                return result
+            last_error = f"HTTP {getattr(exc, 'code', '')}".strip()
+            if method == "GET":
+                result.update({"status": "unknown", "reason": f"Não foi possível confirmar a compatibilidade ({last_error})."})
+                return result
+        except (URLError, TimeoutError, ssl.SSLError, OSError) as exc:
+            last_error = str(getattr(exc, "reason", exc))
+            continue
+        except Exception as exc:
+            last_error = str(exc)
+            continue
+
+    return {
+        "blocked": False,
+        "status": "unknown",
+        "reason": f"Não foi possível verificar os cabeçalhos do site: {last_error or 'sem resposta' }.",
+        "final_url": url,
+    }
+
+
+def verificar_paineis_iframe(paineis):
+    """Executa os testes automáticos em paralelo para não atrasar o início da apresentação."""
+    resultados = {}
+    automaticos = [p for p in paineis if p.get("iframe_mode", "auto") == "auto" and url_valida(p.get("link", ""))]
+    if automaticos:
+        workers = min(6, max(1, len(automaticos)))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(detectar_bloqueio_iframe, p.get("link", "")): p.get("id") for p in automaticos}
+            for future in as_completed(futures):
+                pid = futures[future]
+                try:
+                    resultados[pid] = future.result()
+                except Exception as exc:
+                    resultados[pid] = {"blocked": False, "status": "unknown", "reason": f"Falha na verificação: {exc}"}
+
+    for p in paineis:
+        mode = p.get("iframe_mode", "auto")
+        if mode == "fallback":
+            resultados[p.get("id")] = {
+                "blocked": True,
+                "status": "manual",
+                "reason": "Painel configurado para usar o aviso personalizado em vez do iframe.",
+                "final_url": p.get("link", ""),
+            }
+        elif mode == "force_iframe":
+            resultados[p.get("id")] = {
+                "blocked": False,
+                "status": "forced",
+                "reason": "Abertura em iframe forçada pela configuração do painel.",
+                "final_url": p.get("link", ""),
+            }
+        else:
+            resultados.setdefault(p.get("id"), {"blocked": False, "status": "unknown", "reason": "Compatibilidade não confirmada."})
+    return resultados
 
 
 def _clamp_int(value, default, minimum, maximum):
@@ -272,6 +417,7 @@ def normalizar_config(data):
                     "focus_y": _clamp_int(p.get("focus_y", 52 if panel_type == "sim" else 50), 52 if panel_type == "sim" else 50, 0, 100),
                     "focus_transition_ms": _clamp_int(p.get("focus_transition_ms", 600), 600, 0, 2000),
                     "focus_preset": focus_preset,
+                    "iframe_mode": str(p.get("iframe_mode", "auto")) if str(p.get("iframe_mode", "auto")) in {"auto", "force_iframe", "fallback"} else "auto",
                 }
             )
 
@@ -997,6 +1143,11 @@ if not st.session_state.iniciado:
             if painel.get("focus_enabled", False)
             else ''
         )
+        iframe_badge = (
+            '<span class="badge badge-gray">AVISO S&S</span>'
+            if painel.get("iframe_mode", "auto") == "fallback"
+            else ''
+        )
 
         with st.container(border=True):
             st.markdown(
@@ -1006,7 +1157,7 @@ if not st.session_state.iniciado:
                         <span class="panel-number">{i+1:02d}</span>
                         <span class="panel-headline-name">{nome_cabecalho}</span>
                     </div>
-                    <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}{focus_badge}</div>
+                    <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}{focus_badge}{iframe_badge}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -1130,6 +1281,36 @@ if not st.session_state.iniciado:
                     st.info("Com **F5 OFF**, este painel é mantido carregado automaticamente. Ao sair e voltar para ele, o monitoramento reutiliza o mesmo iframe e não executa F5.")
                 elif painel["preserve_session"]:
                     st.markdown('<span class="badge badge-green">PAINEL MANTIDO ABERTO</span>', unsafe_allow_html=True)
+
+                st.markdown("---")
+                st.markdown("**Compatibilidade de incorporação**")
+                st.caption("Controla o tratamento quando um site impede abertura dentro do monitor por política de segurança do próprio servidor.")
+                iframe_modes = ["auto", "force_iframe", "fallback"]
+                iframe_labels = {
+                    "auto": "Automática · recomendada",
+                    "force_iframe": "Forçar iframe",
+                    "fallback": "Sempre mostrar aviso S&S",
+                }
+                current_iframe_mode = painel.get("iframe_mode", "auto")
+                if current_iframe_mode not in iframe_modes:
+                    current_iframe_mode = "auto"
+                compat_c1, compat_c2 = st.columns([1.45, 3.55])
+                with compat_c1:
+                    painel["iframe_mode"] = st.selectbox(
+                        "Tratamento do site",
+                        iframe_modes,
+                        index=iframe_modes.index(current_iframe_mode),
+                        format_func=lambda x: iframe_labels[x],
+                        key=f"iframe_mode_{pid}",
+                        help="Automática verifica X-Frame-Options e CSP. Forçar iframe ignora a verificação. Sempre mostrar aviso é útil quando o navegador bloqueia o site mas a verificação automática não consegue confirmar.",
+                    )
+                with compat_c2:
+                    if painel["iframe_mode"] == "auto":
+                        st.info("O monitor verificará os cabeçalhos do site. Se o bloqueio for confirmado, exibirá o mascote e manterá normalmente o tempo de rotação do painel.")
+                    elif painel["iframe_mode"] == "force_iframe":
+                        st.warning("O monitor tentará abrir este endereço normalmente, mesmo que haja indícios de bloqueio. Use apenas se a detecção automática gerar falso positivo.")
+                    else:
+                        st.info("Este painel exibirá diretamente o aviso personalizado S&S, sem tentar incorporar a página.")
 
                 st.markdown("---")
                 st.markdown("**Modo Foco**")
@@ -1579,7 +1760,8 @@ else:
                     return;
                 }
 
-                if (msg.action === "settings" || msg.action === "reload") {
+                if (msg.action === "settings" || msg.action === "reload" || msg.action === "recheck_iframe") {
+                    setTriggerValue("panel_id", msg.panelId || "");
                     setTriggerValue("action", msg.action);
                 }
             };
@@ -1613,9 +1795,23 @@ else:
         st.query_params["iniciado"] = "true"
         st.rerun()
 
+    if bridge_action == "recheck_iframe":
+        detectar_bloqueio_iframe.clear()
+        st.session_state.iniciado = True
+        st.query_params["perfil"] = active_profile_id
+        st.query_params["iniciado"] = "true"
+        st.rerun()
+
+    iframe_checks = verificar_paineis_iframe(paineis_ativos)
+    paineis_payload = []
+    for painel_item in paineis_ativos:
+        item = copy.deepcopy(painel_item)
+        item["iframe_check"] = iframe_checks.get(item.get("id"), {"blocked": False, "status": "unknown", "reason": "Compatibilidade não verificada."})
+        paineis_payload.append(item)
+
     # Base64 evita injetar strings de usuário diretamente dentro do JavaScript.
     payload_b64 = b64_json({
-        "panels": paineis_ativos,
+        "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "settings": {
             "generalReloadMs": int(perfil.get("horas_reload_geral", 0)) * 3600 * 1000,
@@ -1629,6 +1825,7 @@ else:
             "showClock": bool(perfil.get("show_clock", True)),
             "showDots": bool(perfil.get("show_dots", True)),
             "showStatus": bool(perfil.get("show_status", True)),
+            "mascotAlert": _mascot_alert_data_uri(),
         },
     })
 
@@ -1654,7 +1851,7 @@ else:
             #progress-container{width:100%;height:var(--progress-h);background:var(--blue-dark);overflow:hidden}body.bar-bottom #progress-container{order:-1}#control-shell{display:flex;flex-direction:column}#progress{width:100%;height:100%;background:var(--blue-light);transform-origin:left;transform:scaleX(1)}
             #stage{position:fixed;left:0;width:100%;background:#fff;overflow:hidden;transition:top .18s ease,height .18s ease,bottom .18s ease}body.bar-top #stage{top:calc(var(--toolbar-h) + var(--progress-h));height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.bar-bottom #stage{top:0;height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.controls-hidden #stage{top:0!important;height:100vh!important;bottom:auto!important}
             .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;transform-origin:0 0;will-change:transform}.focus-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#F59E0B;color:#fff;font-size:.79em;font-weight:850;letter-spacing:.2px}.focus-chip.hidden-item{display:none!important}
-            .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:7px;padding:7px 10px;cursor:pointer;font-weight:700}
+            .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap;justify-content:center}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:750}.overlay-btn.primary{background:#0E5285;color:#fff;border-color:#0E5285}.blocked-wrap{width:min(920px,94vw);display:grid;grid-template-columns:minmax(190px,290px) minmax(0,1fr);gap:28px;align-items:center;background:#fff;border:1px solid #D7E5F0;border-radius:18px;padding:28px 32px;box-shadow:0 16px 40px rgba(14,82,133,.12);text-align:left}.blocked-mascot{width:100%;max-height:330px;object-fit:contain;display:block}.blocked-copy h2{margin:0 0 8px;color:#0E5285;font-size:24px;line-height:1.15}.blocked-copy p{margin:0 0 14px;color:#52677A;font-size:14px;line-height:1.5}.blocked-details{display:grid;gap:7px;margin:15px 0;padding:13px 14px;background:#F3F7FB;border-radius:10px;color:#475569;font-size:12px}.blocked-details b{color:#16324A}.blocked-url{word-break:break-all}.blocked-reason{color:#8A5A00}.blocked-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#FFF4D6;color:#8A5A00;font-weight:800;font-size:11px;margin-bottom:9px}.blocked-fallback-icon{font-size:76px;line-height:1}.blocked-actions{display:flex;gap:9px;flex-wrap:wrap}.blocked-actions a{text-decoration:none}.blocked-countdown{font-size:12px;color:#64748B;margin-top:10px}@media(max-width:720px){.blocked-wrap{grid-template-columns:1fr;text-align:center;padding:20px}.blocked-mascot{max-height:210px}.blocked-actions{justify-content:center}}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
             body.kiosk.controls-hidden{cursor:none}#reveal-strip{position:fixed;left:0;width:100%;height:4px;z-index:10015;opacity:0;pointer-events:none;background:linear-gradient(90deg,#0E5285,#54A3D8,#0E5285);transition:opacity .15s ease}body.bar-top #reveal-strip{top:0}body.bar-bottom #reveal-strip{bottom:0}body.controls-hidden #reveal-strip{opacity:.9;pointer-events:auto}
@@ -1793,15 +1990,66 @@ else:
                 item.overlay.querySelector('[data-action="skip"]').onclick=()=>mudarTela(1);
             }
 
+            function blockedFallbackHtml(p){
+                const check=p.iframe_check||{};
+                const mascot=settings.mascotAlert
+                    ? `<img class="blocked-mascot" src="${settings.mascotAlert}" alt="Mascote S&S de alerta">`
+                    : `<div class="blocked-fallback-icon">⚠️</div>`;
+                const reason=escapeHtml(check.reason||'O site não permite abertura dentro de outro sistema.');
+                return `<div class="blocked-wrap">
+                    <div>${mascot}</div>
+                    <div class="blocked-copy">
+                        <div class="blocked-badge">⚠ Site incompatível com incorporação</div>
+                        <h2>Este painel não pode ser exibido aqui</h2>
+                        <p>O endereço configurado impede que outro site o abra dentro de um iframe. A rotação continua normalmente e seguirá para o próximo painel ao fim do tempo configurado.</p>
+                        <div class="blocked-details">
+                            <div><b>Painel:</b> ${escapeHtml(p.nome)}</div>
+                            <div class="blocked-url"><b>URL:</b> ${escapeHtml(p.link)}</div>
+                            <div class="blocked-reason"><b>Motivo:</b> ${reason}</div>
+                        </div>
+                        <div class="blocked-actions">
+                            <a class="overlay-btn primary" href="${escapeHtml(p.link)}" target="_blank" rel="noopener noreferrer">Abrir em nova aba ↗</a>
+                            <button class="overlay-btn" data-action="recheck">Verificar novamente</button>
+                            <button class="overlay-btn" data-action="skip">Próximo painel →</button>
+                        </div>
+                        <div class="blocked-countdown">Este aviso respeita o mesmo tempo de exibição configurado para o painel.</div>
+                    </div>
+                </div>`;
+            }
+
+            function showBlockedFallback(item){
+                if(!item)return;
+                item.overlay.classList.remove('hidden');
+                item.overlay.innerHTML=blockedFallbackHtml(item.panel);
+                item.overlay.querySelector('[data-action="recheck"]').onclick=()=>{
+                    log(`Solicitando nova verificação de iframe: ${item.panel.nome}`);
+                    enviarAcaoHost('recheck_iframe', item.panel.id);
+                };
+                item.overlay.querySelector('[data-action="skip"]').onclick=()=>mudarTela(1);
+                item.loadedAt=Date.now();
+                item.blocked=true;
+            }
+
             function createPanelFrame(i,role='preload'){
                 const p=panels[i]; if(!p)return null;
                 if(pool.has(p.id))return pool.get(p.id);
                 const container=document.createElement('div'); container.className=`iframe-panel ${role}`; container.dataset.panelId=p.id;
-                const overlay=document.createElement('div'); overlay.className='loading-overlay'; overlay.innerHTML=`<strong>Carregando ${escapeHtml(p.nome)}...</strong><small>Preparando o painel de monitoramento.</small>`;
+                const overlay=document.createElement('div'); overlay.className='loading-overlay';
+                const confirmedBlocked=!!(p.iframe_check && p.iframe_check.blocked);
+                const item={container,iframe:null,overlay,panel:p,createdAt:Date.now(),loadedAt:0,loadTimeout:null,blocked:confirmedBlocked};
+                container.appendChild(overlay); stage.appendChild(container); pool.set(p.id,item);
+
+                if(confirmedBlocked){
+                    showBlockedFallback(item);
+                    log(`Iframe bloqueado: ${p.nome} · ${(p.iframe_check&&p.iframe_check.reason)||'política de segurança'}`);
+                    return item;
+                }
+
+                overlay.innerHTML=`<strong>Carregando ${escapeHtml(p.nome)}...</strong><small>Preparando o painel de monitoramento.</small>`;
                 const iframe=document.createElement('iframe'); iframe.allow='fullscreen'; iframe.referrerPolicy='no-referrer-when-downgrade';
-                const item={container,iframe,overlay,panel:p,createdAt:Date.now(),loadedAt:0,loadTimeout:null};
+                item.iframe=iframe;
                 iframe.addEventListener('load',()=>{ clearTimeout(item.loadTimeout); item.loadedAt=Date.now(); overlay.classList.add('hidden'); log(`Navegação concluída: ${p.nome}`); });
-                container.appendChild(iframe); container.appendChild(overlay); stage.appendChild(container); pool.set(p.id,item);
+                container.insertBefore(iframe,overlay);
                 iframe.src=p.link;
                 item.loadTimeout=setTimeout(()=>{ if(!overlay.classList.contains('hidden')){ showOverlayActions(item,`O carregamento de ${p.nome} está demorando.`); log(`Aviso de carregamento: ${p.nome}`); } },18000);
                 return item;
@@ -1809,6 +2057,11 @@ else:
 
             function reloadItem(item,manual=false){
                 if(!item)return;
+                if(item.blocked || !item.iframe){
+                    showBlockedFallback(item);
+                    log(`Atualização solicitada em painel incompatível: ${item.panel.nome}`);
+                    return;
+                }
                 clearTimeout(item.loadTimeout);
                 item.overlay.classList.remove('hidden');
                 item.overlay.innerHTML=`<strong>Atualizando ${escapeHtml(item.panel.nome)}...</strong><small>${manual?'Atualização manual solicitada.':'Atualização automática do painel.'}</small>`;
@@ -1855,7 +2108,8 @@ else:
 
             function renderFocusButton(){
                 const p=panels[index];
-                const enabled=focusEnabled(p);
+                const blocked=!!(p.iframe_check&&p.iframe_check.blocked);
+                const enabled=focusEnabled(p)&&!blocked;
                 if(!focusBtn)return;
                 focusBtn.disabled=!enabled;
                 focusBtn.style.opacity=enabled?'1':'.45';
@@ -1864,7 +2118,7 @@ else:
                 focusBtn.innerHTML=manual?'◎ Sair do foco':'◎ Foco agora';
                 focusBtn.title=enabled
                     ? `Testar o foco configurado: ${p.focus_zoom||175}% em X=${p.focus_x||50}% / Y=${p.focus_y||50}%`
-                    : 'Ative o Modo Foco nas configurações avançadas deste painel.';
+                    : (blocked ? 'Modo Foco indisponível porque este site não permite incorporação.' : 'Ative o Modo Foco nas configurações avançadas deste painel.');
             }
 
             function updateFocus(remainingMs, forceRecalc=false){
@@ -1940,10 +2194,10 @@ else:
 
             function renderDots(){ dots.innerHTML=''; panels.forEach((p,i)=>{ const d=document.createElement('span'); d.className='dot'+(i===index?' active':''); d.title=p.nome; d.onclick=()=>{index=i;afterIndexChange('Indicador');}; dots.appendChild(d); }); }
             function renderReloadButton(){ const p=panels[index], on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 temporário nesta apresentação. * indica valor diferente da configuração salva.'; }
-            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); renderFocusButton(); localStorage.setItem(indexKey,p.id); }
+            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); renderFocusButton(); if(p.iframe_check&&p.iframe_check.blocked)runtimeStatus.textContent='Iframe bloqueado'; localStorage.setItem(indexKey,p.id); }
 
             function stopTimers(){ clearInterval(timer); clearInterval(intervalReloadTimer); clearTimeout(preloadTimer); timer=null; intervalReloadTimer=null; preloadTimer=null; }
-            function setupIntervalReload(){ clearInterval(intervalReloadTimer); intervalReloadTimer=null; const p=panels[index]; if(!effectiveReload(p)||p.reload_strategy!=='interval')return; const every=Math.max(5,parseInt(p.reload_interval||60,10)); intervalReloadTimer=setInterval(()=>{ if(!paused && panels[index].id===p.id && effectiveReload(p)){ const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,false); } },every*1000); runtimeStatus.textContent=`F5 ${every}s`; }
+            function setupIntervalReload(){ clearInterval(intervalReloadTimer); intervalReloadTimer=null; const p=panels[index]; if(p.iframe_check&&p.iframe_check.blocked){ runtimeStatus.textContent='Iframe bloqueado'; return; } if(!effectiveReload(p)||p.reload_strategy!=='interval')return; const every=Math.max(5,parseInt(p.reload_interval||60,10)); intervalReloadTimer=setInterval(()=>{ if(!paused && panels[index].id===p.id && effectiveReload(p)){ const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,false); } },every*1000); runtimeStatus.textContent=`F5 ${every}s`; }
 
             function startTimerWith(ms){
                 clearInterval(timer); if(paused)return;
@@ -1996,11 +2250,12 @@ else:
             function alternarModoTV(force=null){ kioskMode=force===null?!kioskMode:!!force; document.body.classList.toggle('kiosk',kioskMode); kioskBtn.classList.toggle('active',kioskMode); kioskBtn.innerHTML=kioskMode?'▣ Modo TV ativado':'▣ Modo TV'; if(kioskMode&&!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{}); showControls(); log(`Modo TV ${kioskMode?'ativado':'desativado'}`); }
             function toggleDiag(){ diag.classList.toggle('open'); showControls(); updateDiag(); }
 
-            function enviarAcaoHost(action){
+            function enviarAcaoHost(action,panelId=''){
                 const message={
                     source:'monitoramentog4',
                     action:action,
                     profileId:profile.id,
+                    panelId:panelId,
                     sentAt:Date.now()
                 };
 
