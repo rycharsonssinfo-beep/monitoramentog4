@@ -20,7 +20,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 2.6.1
+# Painel de Monitoramento 2.8.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -30,11 +30,12 @@ import streamlit.components.v1 as components
 # 2.6.1: Calibração Visual do Foco - clique no painel para definir X/Y e testar o zoom antes de salvar
 # 2.7.0: Tratamento de sites incompatíveis com iframe - detecção preventiva + fallback visual S&S com mascote
 # 2.7.1: mascote de alerta incorporado ao main.py; não depende mais da pasta assets no deploy
+# 2.8.0: News Ticker S&S - faixa global de atualizações, cadastro manual, validade e links clicáveis
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "2.7.1"
-CONFIG_VERSION = 5
+APP_VERSION = "2.8.0"
+CONFIG_VERSION = 6
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -77,6 +78,119 @@ def painel_padrao(nome, link, tempo, reload_enabled=True, ativo=True, tipo="norm
         "focus_preset": "sim_right" if tipo == "sim" else "custom",
         "iframe_mode": "auto",
     }
+
+
+def noticia_padrao():
+    hoje = datetime.now().date().isoformat()
+    return {
+        "id": novo_id("news_"),
+        "sistema": "Geral",
+        "categoria": "melhoria",
+        "titulo": "Nova atualização disponível",
+        "mensagem": "",
+        "url": "",
+        "inicio": hoje,
+        "fim": "",
+        "ativo": True,
+    }
+
+
+def ticker_padrao():
+    return {
+        "enabled": True,
+        "label": "ATUALIZAÇÕES S&S",
+        "speed": "normal",
+        "height": 34,
+        "pause_on_hover": True,
+        "show_category": True,
+        "show_system": True,
+        "news": [],
+    }
+
+
+def _data_iso_valida(value):
+    if not value:
+        return ""
+    try:
+        return datetime.strptime(str(value)[:10], "%Y-%m-%d").date().isoformat()
+    except Exception:
+        return ""
+
+
+def _data_from_iso(value, fallback=None):
+    try:
+        return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return fallback or datetime.now().date()
+
+
+def normalizar_ticker(raw):
+    default = ticker_padrao()
+    if not isinstance(raw, dict):
+        return default
+
+    speed = str(raw.get("speed", "normal"))
+    if speed not in {"slow", "normal", "fast"}:
+        speed = "normal"
+
+    news = []
+    seen = set()
+    raw_news = raw.get("news") if isinstance(raw.get("news"), list) else []
+    categorias = {"novo", "melhoria", "aviso", "importante"}
+    for item in raw_news:
+        if not isinstance(item, dict):
+            continue
+        nid = str(item.get("id") or novo_id("news_"))
+        if nid in seen:
+            nid = novo_id("news_")
+        seen.add(nid)
+        categoria = str(item.get("categoria") or "melhoria").lower()
+        if categoria not in categorias:
+            categoria = "melhoria"
+        inicio = _data_iso_valida(item.get("inicio")) or datetime.now().date().isoformat()
+        fim = _data_iso_valida(item.get("fim"))
+        news.append({
+            "id": nid,
+            "sistema": str(item.get("sistema") or "Geral").strip()[:80],
+            "categoria": categoria,
+            "titulo": str(item.get("titulo") or "").strip()[:160],
+            "mensagem": str(item.get("mensagem") or "").strip()[:700],
+            "url": str(item.get("url") or "").strip()[:1000],
+            "inicio": inicio,
+            "fim": fim,
+            "ativo": bool(item.get("ativo", True)),
+        })
+
+    return {
+        "enabled": bool(raw.get("enabled", True)),
+        "label": str(raw.get("label") or "ATUALIZAÇÕES S&S").strip()[:60] or "ATUALIZAÇÕES S&S",
+        "speed": speed,
+        "height": _clamp_int(raw.get("height", 34), 34, 28, 50),
+        "pause_on_hover": bool(raw.get("pause_on_hover", True)),
+        "show_category": bool(raw.get("show_category", True)),
+        "show_system": bool(raw.get("show_system", True)),
+        "news": news,
+    }
+
+
+def noticias_ativas_ticker(ticker, dia=None):
+    if not isinstance(ticker, dict) or not ticker.get("enabled", True):
+        return []
+    dia = dia or datetime.now().date()
+    ativos = []
+    for item in ticker.get("news", []):
+        if not item.get("ativo", True):
+            continue
+        inicio = _data_from_iso(item.get("inicio"), dia)
+        fim = _data_from_iso(item.get("fim"), None) if item.get("fim") else None
+        if dia < inicio:
+            continue
+        if fim and dia > fim:
+            continue
+        if not (str(item.get("titulo") or "").strip() or str(item.get("mensagem") or "").strip()):
+            continue
+        ativos.append(item)
+    return ativos
 
 
 def perfil_padrao(nome="Suporte"):
@@ -125,6 +239,7 @@ DEFAULT_CONFIG = {
     "version": CONFIG_VERSION,
     "default_profile_id": _DEFAULT_PROFILE_ID,
     "profiles": {_DEFAULT_PROFILE_ID: _DEFAULT_PROFILE},
+    "ticker": ticker_padrao(),
 }
 
 
@@ -356,7 +471,7 @@ def migrar_config_legada(data):
         return copy.deepcopy(DEFAULT_CONFIG)
 
     default_id = name_to_id.get(str(old_active)) or next(iter(new_profiles))
-    return {"version": CONFIG_VERSION, "default_profile_id": default_id, "profiles": new_profiles}
+    return {"version": CONFIG_VERSION, "default_profile_id": default_id, "profiles": new_profiles, "ticker": normalizar_ticker(data.get("ticker"))}
 
 
 def normalizar_config(data):
@@ -455,7 +570,8 @@ def normalizar_config(data):
     if default_id not in normalized_profiles:
         default_id = next(iter(normalized_profiles))
 
-    return {"version": CONFIG_VERSION, "default_profile_id": default_id, "profiles": normalized_profiles}
+    ticker = normalizar_ticker(data.get("ticker"))
+    return {"version": CONFIG_VERSION, "default_profile_id": default_id, "profiles": normalized_profiles, "ticker": ticker}
 
 
 def validar_config_importada(data):
@@ -492,6 +608,16 @@ def validar_config_importada(data):
                 avisos.append(f"URL aparentemente inválida em {nome}: {link[:60]}")
     if total_panels == 0:
         avisos.append("A configuração importada não possui painéis cadastrados.")
+
+    ticker = data.get("ticker")
+    if isinstance(ticker, dict):
+        news = ticker.get("news") if isinstance(ticker.get("news"), list) else []
+        for item in news:
+            if not isinstance(item, dict):
+                continue
+            link = str(item.get("url") or "").strip()
+            if link and not url_valida(link):
+                avisos.append(f"Link de notícia aparentemente inválido: {link[:60]}")
     return erros, avisos
 
 
@@ -848,6 +974,11 @@ st.markdown(
         .compact-hint { color:#64748B; font-size:11px; margin-top:-5px; }
         .panel-divider { height:1px; background:#EEF3F7; margin:4px 0 8px; }
         .profile-url { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; padding:8px 10px; border-radius:8px; }
+        .ticker-preview { display:flex;align-items:center;overflow:hidden;height:36px;border-radius:9px;background:#0E5285;color:#fff;margin:8px 0 10px;border:1px solid #093D63;box-shadow:0 2px 7px rgba(14,82,133,.12);font-size:11px; }
+        .ticker-preview-label { height:100%;display:flex;align-items:center;gap:6px;padding:0 12px;background:#093D63;font-weight:850;white-space:nowrap;flex:none; }
+        .ticker-preview-label::before { content:'●';color:#59D38C;font-size:9px; }
+        .ticker-preview-items { white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 12px;color:#F8FBFE; }
+        .news-headline {display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}.news-title{font-weight:780;color:#244157;font-size:12.5px}.news-meta{display:flex;gap:5px;flex-wrap:wrap}
         .block-container { padding-bottom:100px!important; }
         @media(max-width:900px){
             .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -1499,6 +1630,224 @@ if not st.session_state.iniciado:
                         st.toast("Painel excluído.")
                         st.rerun()
 
+    # =========================================================
+    # NEWS TICKER S&S - faixa corporativa global
+    # =========================================================
+    ticker = config.setdefault("ticker", ticker_padrao())
+    ticker["news"] = ticker.get("news", []) if isinstance(ticker.get("news"), list) else []
+
+    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        th1, th2 = st.columns([3.6, 1])
+        with th1:
+            st.markdown('<div class="section-title">Faixa de atualizações · News Ticker S&S</div>', unsafe_allow_html=True)
+            st.caption("Faixa corporativa global exibida durante toda a rotação. As notícias podem abrir um comunicado ou página de atualização em uma nova aba.")
+        with th2:
+            ticker["enabled"] = st.toggle(
+                "Exibir faixa",
+                value=bool(ticker.get("enabled", True)),
+                key="ticker_enabled_v280",
+                help="Se não existir nenhuma notícia ativa no período, a faixa some automaticamente mesmo estando ligada.",
+            )
+
+        tc1, tc2, tc3, tc4 = st.columns([1.35, 1.1, 1, 1.25])
+        with tc1:
+            ticker["label"] = st.text_input(
+                "Identificação fixa",
+                value=str(ticker.get("label") or "ATUALIZAÇÕES S&S"),
+                key="ticker_label_v280",
+                max_chars=60,
+            )
+        with tc2:
+            speed_options = ["slow", "normal", "fast"]
+            speed_current = ticker.get("speed", "normal") if ticker.get("speed", "normal") in speed_options else "normal"
+            ticker["speed"] = st.selectbox(
+                "Velocidade",
+                speed_options,
+                index=speed_options.index(speed_current),
+                format_func=lambda x: {"slow": "Lenta", "normal": "Normal", "fast": "Rápida"}[x],
+                key="ticker_speed_v280",
+            )
+        with tc3:
+            ticker["height"] = st.number_input(
+                "Altura (px)",
+                min_value=28,
+                max_value=50,
+                value=int(ticker.get("height", 34)),
+                step=1,
+                key="ticker_height_v280",
+            )
+        with tc4:
+            ticker["pause_on_hover"] = st.toggle(
+                "Pausar ao passar o mouse",
+                value=bool(ticker.get("pause_on_hover", True)),
+                key="ticker_pause_hover_v280",
+            )
+
+        to1, to2, to3 = st.columns([1, 1, 2.3])
+        with to1:
+            ticker["show_category"] = st.toggle(
+                "Mostrar categoria",
+                value=bool(ticker.get("show_category", True)),
+                key="ticker_show_category_v280",
+            )
+        with to2:
+            ticker["show_system"] = st.toggle(
+                "Mostrar sistema",
+                value=bool(ticker.get("show_system", True)),
+                key="ticker_show_system_v280",
+            )
+        with to3:
+            st.caption("Links válidos ficam clicáveis na faixa e sempre abrem em uma nova aba, sem interromper o monitoramento.")
+
+        active_preview = noticias_ativas_ticker(ticker)
+        if ticker.get("enabled", True) and active_preview:
+            parts = []
+            cat_labels = {"novo": "NOVO", "melhoria": "MELHORIA", "aviso": "AVISO", "importante": "IMPORTANTE"}
+            for item in active_preview[:6]:
+                bits = []
+                if ticker.get("show_category", True):
+                    bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
+                if ticker.get("show_system", True) and item.get("sistema"):
+                    bits.append(str(item.get("sistema")))
+                title = str(item.get("titulo") or "").strip()
+                msg = str(item.get("mensagem") or "").strip()
+                text = " — ".join([b for b in bits if b])
+                content = title + ((": " + msg) if title and msg else msg)
+                if text and content:
+                    text += " — " + content
+                elif content:
+                    text = content
+                if item.get("url") and url_valida(item.get("url")):
+                    text += " ↗"
+                parts.append(html.escape(text))
+            preview_text = "  •  ".join(parts)
+            st.markdown(
+                f'<div class="ticker-preview"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{preview_text}</div></div>',
+                unsafe_allow_html=True,
+            )
+        elif ticker.get("enabled", True):
+            st.info("A faixa está ligada, mas não há notícia ativa para a data atual. Nesse caso ela não ocupará espaço no monitoramento.")
+        else:
+            st.caption("A faixa está desativada.")
+
+        add_left, add_right = st.columns([4, 1])
+        with add_left:
+            st.markdown("**Notícias cadastradas**")
+            st.caption("Cadastre agora manualmente. A estrutura já fica preparada para futuramente receber as mesmas informações diretamente do portal.")
+        with add_right:
+            if st.button("＋ Adicionar notícia", use_container_width=True, key="add_news_v280"):
+                ticker["news"].append(noticia_padrao())
+                salvar_config(config, force=True)
+                st.toast("Notícia adicionada.")
+                st.rerun()
+
+        pending_news_delete = st.session_state.get("news_pendente_exclusao_v280")
+        category_options = ["novo", "melhoria", "aviso", "importante"]
+        category_labels = {"novo": "Novo", "melhoria": "Melhoria", "aviso": "Aviso", "importante": "Importante"}
+
+        for ni, news in enumerate(ticker.get("news", [])):
+            nid = news.get("id") or novo_id("news_")
+            news["id"] = nid
+            cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
+            state_badge = '<span class="badge badge-blue">ATIVA</span>' if news.get("ativo", True) else '<span class="badge badge-gray">INATIVA</span>'
+            cat_class = "badge-amber" if cat in {"aviso", "importante"} else ("badge-green" if cat == "melhoria" else "badge-blue")
+            link_badge = '<span class="badge badge-green">LINK</span>' if news.get("url") and url_valida(news.get("url")) else ''
+            headline = html.escape(str(news.get("titulo") or news.get("mensagem") or "Notícia sem título")[:100])
+
+            with st.container(border=True):
+                st.markdown(
+                    f'<div class="news-headline"><div class="news-title">{ni+1:02d} · {headline}</div><div class="news-meta">{state_badge}<span class="badge {cat_class}">{category_labels[cat].upper()}</span>{link_badge}</div></div>',
+                    unsafe_allow_html=True,
+                )
+
+                nr = st.columns([0.46, 0.46, 1.0, 1.35, 1.25, 3.0, 0.9, 0.85])
+                with nr[0]:
+                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                    if st.button("▲", key=f"news_up_{nid}", disabled=ni == 0, use_container_width=True, help="Mover notícia para cima"):
+                        ticker["news"][ni - 1], ticker["news"][ni] = ticker["news"][ni], ticker["news"][ni - 1]
+                        salvar_config(config, force=True); st.rerun()
+                with nr[1]:
+                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                    if st.button("▼", key=f"news_down_{nid}", disabled=ni == len(ticker["news"]) - 1, use_container_width=True, help="Mover notícia para baixo"):
+                        ticker["news"][ni + 1], ticker["news"][ni] = ticker["news"][ni], ticker["news"][ni + 1]
+                        salvar_config(config, force=True); st.rerun()
+                with nr[2]:
+                    news["ativo"] = st.toggle("Exibir", value=bool(news.get("ativo", True)), key=f"news_active_{nid}")
+                with nr[3]:
+                    news["sistema"] = st.text_input("Sistema", value=str(news.get("sistema") or "Geral"), key=f"news_system_{nid}")
+                with nr[4]:
+                    current_cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
+                    news["categoria"] = st.selectbox("Categoria", category_options, index=category_options.index(current_cat), format_func=lambda x: category_labels[x], key=f"news_cat_{nid}")
+                with nr[5]:
+                    news["titulo"] = st.text_input("Título curto", value=str(news.get("titulo") or ""), key=f"news_title_{nid}", max_chars=160)
+                with nr[6]:
+                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                    if st.button("⧉", key=f"news_dup_{nid}", use_container_width=True, help="Duplicar notícia"):
+                        clone = copy.deepcopy(news); clone["id"] = novo_id("news_"); clone["titulo"] = (clone.get("titulo") or "Notícia") + " - Cópia"
+                        ticker["news"].insert(ni + 1, clone); salvar_config(config, force=True); st.rerun()
+                with nr[7]:
+                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                    if st.button("🗑", key=f"news_del_{nid}", use_container_width=True, help="Excluir notícia"):
+                        st.session_state["news_pendente_exclusao_v280"] = nid; st.rerun()
+
+                nb1, nb2 = st.columns([3.2, 2.1])
+                with nb1:
+                    news["mensagem"] = st.text_area(
+                        "Mensagem",
+                        value=str(news.get("mensagem") or ""),
+                        key=f"news_msg_{nid}",
+                        height=74,
+                        max_chars=700,
+                        placeholder="Ex.: Disponibilizadas melhorias no envio dos eventos do eSocial.",
+                    )
+                with nb2:
+                    news["url"] = st.text_input(
+                        "Link da atualização (opcional)",
+                        value=str(news.get("url") or ""),
+                        key=f"news_url_{nid}",
+                        placeholder="https://...",
+                    )
+                    if news["url"].strip():
+                        if url_valida(news["url"]):
+                            st.markdown('<span class="status-ok">✓ Link clicável · abrirá em nova aba</span>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<span class="status-warn">⚠ Link inválido · a notícia será exibida sem clique</span>', unsafe_allow_html=True)
+
+                nd1, nd2, nd3 = st.columns([1.2, 1.15, 2.95])
+                start_value = _data_from_iso(news.get("inicio"), datetime.now().date())
+                with nd1:
+                    start_date = st.date_input("Início da exibição", value=start_value, key=f"news_start_{nid}", format="DD/MM/YYYY")
+                    news["inicio"] = start_date.isoformat()
+                no_end_default = not bool(news.get("fim"))
+                with nd2:
+                    sem_fim = st.toggle("Sem data final", value=no_end_default, key=f"news_no_end_{nid}")
+                    if sem_fim:
+                        news["fim"] = ""
+                    else:
+                        end_default = _data_from_iso(news.get("fim"), start_date)
+                        end_date = st.date_input("Fim da exibição", value=end_default, key=f"news_end_{nid}", format="DD/MM/YYYY")
+                        news["fim"] = end_date.isoformat()
+                with nd3:
+                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                    if news.get("fim") and _data_from_iso(news.get("fim"), start_date) < start_date:
+                        st.warning("A data final está anterior à data inicial; essa notícia não será exibida nesse período.")
+                    else:
+                        status_periodo = "ativa hoje" if news in noticias_ativas_ticker(ticker) else "fora do período atual ou desativada"
+                        st.caption(f"Situação da notícia: **{status_periodo}**.")
+
+                if pending_news_delete == nid:
+                    st.warning(f"Excluir a notícia **{news.get('titulo') or 'sem título'}**?")
+                    dc1, dc2 = st.columns(2)
+                    with dc1:
+                        if st.button("Cancelar", key=f"news_cancel_del_{nid}", use_container_width=True):
+                            st.session_state["news_pendente_exclusao_v280"] = None; st.rerun()
+                    with dc2:
+                        if st.button("Confirmar exclusão", key=f"news_confirm_del_{nid}", type="primary", use_container_width=True):
+                            ticker["news"] = [n for n in ticker["news"] if n.get("id") != nid]
+                            st.session_state["news_pendente_exclusao_v280"] = None
+                            salvar_config(config, force=True); st.toast("Notícia excluída."); st.rerun()
+
     # Salva somente se houve alteração efetiva.
     salvar_config(config)
 
@@ -1640,6 +1989,8 @@ if not st.session_state.iniciado:
             **2.2 – Estabilidade e Operação:** perfil por URL/monitor, IDs permanentes, F5 temporário sem sobrescrever configuração, preservação independente de sessão, pré-carregamento inteligente, timer por horário-alvo, watchdog, status de conexão, reinício no fim do ciclo, diagnóstico expandido e gravação atômica com backup.
 
             **2.3 – Experiência e Visual:** modo compacto/detalhado, barra superior/inferior, escala para TV, indicadores/relógio opcionais, transição configurável, badges de estado e refinamento completo na paleta `#0E5285`.
+
+            **2.8 – News Ticker S&S:** faixa corporativa global, notícias manuais com categoria, sistema, período de validade, link clicável em nova aba e ocultação automática quando não houver conteúdo ativo.
 
             **2.4 – Primeiro Uso:** linguagem mais simples, guia inicial em 3 passos, resumo mais autoexplicativo, prévia da ordem de rotação, cards numerados, estados visuais claros, controles com tooltips, visualização compacta/detalhada e ação “Iniciar monitoramento” sempre acessível.
 
@@ -1821,6 +2172,7 @@ else:
     payload_b64 = b64_json({
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
+        "ticker": copy.deepcopy(config.get("ticker", ticker_padrao())),
         "settings": {
             "generalReloadMs": int(perfil.get("horas_reload_geral", 0)) * 3600 * 1000,
             "autoHide": bool(perfil.get("auto_ocultar_controles", True)),
@@ -1845,11 +2197,11 @@ else:
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <style>
             :root{
-                --blue:#0E5285;--blue-dark:#093D63;--blue-light:#54A3D8;--toolbar-h:40px;--progress-h:3px;--scale:1;--fade:220ms;
+                --blue:#0E5285;--blue-dark:#093D63;--blue-light:#54A3D8;--toolbar-h:40px;--progress-h:3px;--ticker-h:0px;--scale:1;--fade:220ms;
             }
             *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
             #control-shell{position:fixed;left:0;width:100%;z-index:10000;transition:transform .18s ease,opacity .18s ease;transform-origin:center;}
-            body.bar-top #control-shell{top:0} body.bar-bottom #control-shell{bottom:0}
+            body.bar-top #control-shell{top:0} body.bar-bottom #control-shell{bottom:var(--ticker-h)}
             body.bar-top #control-shell.hidden{transform:translateY(calc(-1*(var(--toolbar-h) + var(--progress-h))));opacity:0;pointer-events:none}
             body.bar-bottom #control-shell.hidden{transform:translateY(calc(var(--toolbar-h) + var(--progress-h)));opacity:0;pointer-events:none}
             #toolbar{height:var(--toolbar-h);background:var(--blue);color:#fff;display:grid;grid-template-columns:minmax(260px,1.35fr) minmax(150px,.65fr) auto;align-items:center;gap:12px;padding:0 10px 0 12px;box-shadow:0 2px 7px rgba(0,0,0,.18);font-size:calc(12px * var(--scale))}
@@ -1857,9 +2209,10 @@ else:
             #panel-name{overflow:hidden;text-overflow:ellipsis;font-weight:800}#panel-order{color:#C9E0F1;font-size:.92em;flex-shrink:0}.toolbar-center{display:flex;align-items:center;justify-content:center;gap:9px;color:#EAF3FA;font-size:.92em}#dots{display:flex;gap:5px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;border:1px solid rgba(255,255,255,.68);background:transparent;opacity:.8;cursor:pointer}.dot.active{background:#fff;opacity:1}#countdown{min-width:54px;text-align:center;font-weight:850;font-variant-numeric:tabular-nums;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:3px 8px}
             .toolbar-right{display:flex;align-items:center;justify-content:flex-end;gap:4px}.btn{height:30px;min-width:31px;padding:0 8px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:.91em;font-weight:720;display:inline-flex;align-items:center;justify-content:center;gap:4px;user-select:none}.btn:hover{background:rgba(255,255,255,.18)}.btn.active{background:#1C70A9;border-color:#8CC4E8}.btn.off{background:#334155;border-color:#94A3B8}.btn.warn{background:#92400e;border-color:#fbbf24}.btn.pause{background:#7f1d1d;border-color:#f87171}.btn.settings-btn{min-width:34px;padding:0 10px}.status-text{font-size:.88em;color:#DCEEFF;white-space:nowrap}.hidden-item{display:none!important}#clock{min-width:50px;text-align:right;font-weight:760;color:#DCEEFF}.more-wrap{position:relative;display:inline-flex}.more-menu{position:absolute;right:0;top:calc(100% + 7px);min-width:190px;display:none;flex-direction:column;padding:6px;background:#fff;border:1px solid #C7D9E7;border-radius:9px;box-shadow:0 10px 28px rgba(15,23,42,.22);z-index:10050}.more-menu.open{display:flex}body.bar-bottom .more-menu{top:auto;bottom:calc(100% + 7px)}.menu-item{width:100%;border:0;background:transparent;color:#16324A;border-radius:6px;padding:8px 10px;text-align:left;cursor:pointer;font-size:12px;font-weight:650;display:flex;align-items:center;gap:8px}.menu-item:hover{background:#EAF3FA;color:#0E5285}.menu-item.active{background:#EAF3FA;color:#0E5285}
             #progress-container{width:100%;height:var(--progress-h);background:var(--blue-dark);overflow:hidden}body.bar-bottom #progress-container{order:-1}#control-shell{display:flex;flex-direction:column}#progress{width:100%;height:100%;background:var(--blue-light);transform-origin:left;transform:scaleX(1)}
-            #stage{position:fixed;left:0;width:100%;background:#fff;overflow:hidden;transition:top .18s ease,height .18s ease,bottom .18s ease}body.bar-top #stage{top:calc(var(--toolbar-h) + var(--progress-h));height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.bar-bottom #stage{top:0;height:calc(100vh - var(--toolbar-h) - var(--progress-h))}body.controls-hidden #stage{top:0!important;height:100vh!important;bottom:auto!important}
+            #stage{position:fixed;left:0;width:100%;background:#fff;overflow:hidden;transition:top .18s ease,height .18s ease,bottom .18s ease}body.bar-top #stage{top:calc(var(--toolbar-h) + var(--progress-h));height:calc(100vh - var(--toolbar-h) - var(--progress-h) - var(--ticker-h))}body.bar-bottom #stage{top:0;height:calc(100vh - var(--toolbar-h) - var(--progress-h) - var(--ticker-h))}body.controls-hidden #stage{top:0!important;height:calc(100vh - var(--ticker-h))!important;bottom:auto!important}
             .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;transform-origin:0 0;will-change:transform}.focus-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#F59E0B;color:#fff;font-size:.79em;font-weight:850;letter-spacing:.2px}.focus-chip.hidden-item{display:none!important}
             .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap;justify-content:center}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:750}.overlay-btn.primary{background:#0E5285;color:#fff;border-color:#0E5285}.blocked-wrap{width:min(920px,94vw);display:grid;grid-template-columns:minmax(190px,290px) minmax(0,1fr);gap:28px;align-items:center;background:#fff;border:1px solid #D7E5F0;border-radius:18px;padding:28px 32px;box-shadow:0 16px 40px rgba(14,82,133,.12);text-align:left}.blocked-mascot{width:100%;max-height:330px;object-fit:contain;display:block}.blocked-copy h2{margin:0 0 8px;color:#0E5285;font-size:24px;line-height:1.15}.blocked-copy p{margin:0 0 14px;color:#52677A;font-size:14px;line-height:1.5}.blocked-details{display:grid;gap:7px;margin:15px 0;padding:13px 14px;background:#F3F7FB;border-radius:10px;color:#475569;font-size:12px}.blocked-details b{color:#16324A}.blocked-url{word-break:break-all}.blocked-reason{color:#8A5A00}.blocked-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#FFF4D6;color:#8A5A00;font-weight:800;font-size:11px;margin-bottom:9px}.blocked-fallback-icon{font-size:76px;line-height:1}.blocked-actions{display:flex;gap:9px;flex-wrap:wrap}.blocked-actions a{text-decoration:none}.blocked-countdown{font-size:12px;color:#64748B;margin-top:10px}@media(max-width:720px){.blocked-wrap{grid-template-columns:1fr;text-align:center;padding:20px}.blocked-mascot{max-height:210px}.blocked-actions{justify-content:center}}
+            #news-ticker{position:fixed;left:0;bottom:0;width:100%;height:var(--ticker-h);z-index:9998;background:var(--blue);color:#fff;display:none;align-items:center;overflow:hidden;border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -2px 7px rgba(0,0,0,.13);font-size:calc(12px * var(--scale))}body.ticker-on #news-ticker{display:flex}.ticker-label{height:100%;display:flex;align-items:center;gap:7px;padding:0 13px;background:var(--blue-dark);font-weight:850;white-space:nowrap;flex:none;z-index:2;box-shadow:4px 0 10px rgba(9,61,99,.28)}.ticker-led{width:7px;height:7px;border-radius:50%;background:#59D38C;box-shadow:0 0 0 2px rgba(89,211,140,.15);flex:none}.ticker-viewport{height:100%;flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;position:relative}.ticker-track{display:flex;align-items:center;width:max-content;height:100%;will-change:transform;animation:ticker-scroll var(--ticker-duration,30s) linear infinite}.ticker-group{display:flex;align-items:center;height:100%;white-space:nowrap;flex:none}.ticker-item{height:100%;display:inline-flex;align-items:center;gap:7px;padding:0 15px;color:#F8FBFE;text-decoration:none;font-weight:600;border-right:1px solid rgba(255,255,255,.14);transition:background .12s ease}.ticker-item[href]{cursor:pointer}.ticker-item[href]:hover{background:rgba(255,255,255,.13);color:#fff}.ticker-category{display:inline-flex;align-items:center;padding:2px 6px;border-radius:999px;font-size:.78em;font-weight:900;letter-spacing:.18px}.ticker-category.novo{background:#DDF4FF;color:#075985}.ticker-category.melhoria{background:#DCFCE7;color:#166534}.ticker-category.aviso{background:#FEF3C7;color:#92400E}.ticker-category.importante{background:#FEE2E2;color:#991B1B}.ticker-system{font-weight:850;color:#fff}.ticker-link{opacity:.85;font-size:.9em}.ticker-hidden-temp{opacity:.82}.ticker-viewport.pause-hover:hover .ticker-track{animation-play-state:paused}@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--ticker-distance, 600px)))}}body.bar-bottom #diag{bottom:calc(50px + var(--ticker-h))!important}body.bar-top #restart-notice{bottom:calc(10px + var(--ticker-h))!important}body.bar-bottom #reveal-strip{bottom:var(--ticker-h)!important}@media(max-width:720px){.ticker-label{padding:0 8px}.ticker-label-text{display:none}.ticker-item{padding:0 11px}}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
             body.kiosk.controls-hidden{cursor:none}#reveal-strip{position:fixed;left:0;width:100%;height:4px;z-index:10015;opacity:0;pointer-events:none;background:linear-gradient(90deg,#0E5285,#54A3D8,#0E5285);transition:opacity .15s ease}body.bar-top #reveal-strip{top:0}body.bar-bottom #reveal-strip{bottom:0}body.controls-hidden #reveal-strip{opacity:.9;pointer-events:auto}
@@ -1882,6 +2235,7 @@ else:
                         <div class="more-menu" id="more-menu">
                             <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
                             <button class="menu-item" id="focus-btn" onclick="alternarFocoManual(); closeMoreMenu();" title="Testar ou sair do Modo Foco neste painel">◎ Foco agora</button>
+                            <button class="menu-item" id="ticker-btn" onclick="alternarTickerTemporario(); closeMoreMenu();" title="Mostrar ou ocultar temporariamente a faixa de atualizações">▤ Ocultar faixa</button>
                             <button class="menu-item" id="kiosk-btn" onclick="alternarModoTV(); closeMoreMenu();" title="Modo TV (K)">▣ Modo TV</button>
                             <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
                         </div>
@@ -1894,6 +2248,7 @@ else:
         </div>
         <div id="reveal-strip" title="Mostrar controles"></div>
         <div id="stage"></div>
+        <div id="news-ticker" aria-label="Atualizações S&S"><div class="ticker-label"><span class="ticker-led"></span><span class="ticker-label-text" id="ticker-label-text">ATUALIZAÇÕES S&S</span></div><div class="ticker-viewport" id="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div></div>
         <div id="restart-notice"></div>
         <div id="diag">
             <h4>Diagnóstico do monitoramento</h4>
@@ -1918,6 +2273,7 @@ else:
             const panels = payload.panels;
             const profile = payload.profile;
             const settings = payload.settings;
+            const tickerSettings = payload.ticker || {enabled:false, news:[]};
 
             document.documentElement.style.setProperty('--scale', String(settings.uiScale / 100));
             document.documentElement.style.setProperty('--fade', `${settings.transitionMs}ms`);
@@ -1938,6 +2294,8 @@ else:
             let logs = [];
             let runtimeReloadOverrides = {}; // nunca persistido: nova sessão = configuração salva
             let manualFocusPanelId = null;
+            let tickerTemporarilyHidden = false;
+            let tickerHasActiveNews = false;
             let pendingGeneralReload = false;
             let appStartedAt = Date.now();
             let lastHeartbeat = Date.now();
@@ -1969,6 +2327,11 @@ else:
             const networkStatus = document.getElementById('network-status');
             const stateDot = document.getElementById('state-dot');
             const restartNotice = document.getElementById('restart-notice');
+            const newsTicker = document.getElementById('news-ticker');
+            const tickerViewport = document.getElementById('ticker-viewport');
+            const tickerTrack = document.getElementById('ticker-track');
+            const tickerLabelText = document.getElementById('ticker-label-text');
+            const tickerBtn = document.getElementById('ticker-btn');
 
             const indexKey = `monitor_v23_panel_${profile.id}`;
             const savedPanelId = localStorage.getItem(indexKey);
@@ -1990,6 +2353,65 @@ else:
             function getPanelById(id){ return panels.find(p=>p.id===id); }
             function effectiveReload(p){ return typeof runtimeReloadOverrides[p.id]==='boolean' ? runtimeReloadOverrides[p.id] : !!p.reload_enabled; }
             function setState(kind){ stateDot.classList.remove('offline','recovering'); if(kind==='offline')stateDot.classList.add('offline'); if(kind==='recovering')stateDot.classList.add('recovering'); }
+
+            function todayLocalIso(){
+                const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`;
+            }
+            function tickerActiveNews(){
+                if(!tickerSettings || !tickerSettings.enabled || !Array.isArray(tickerSettings.news))return [];
+                const today=todayLocalIso();
+                return tickerSettings.news.filter(n=>{
+                    if(!n || n.ativo===false)return false;
+                    if(n.inicio && String(n.inicio)>today)return false;
+                    if(n.fim && String(n.fim)<today)return false;
+                    return !!(String(n.titulo||'').trim() || String(n.mensagem||'').trim());
+                });
+            }
+            function tickerCategoryLabel(cat){ return ({novo:'NOVO',melhoria:'MELHORIA',aviso:'AVISO',importante:'IMPORTANTE'})[cat]||'MELHORIA'; }
+            function tickerItemNode(n){
+                const hasLink=/^https?:\/\//i.test(String(n.url||'').trim());
+                const el=document.createElement(hasLink?'a':'span'); el.className='ticker-item';
+                if(hasLink){el.href=n.url;el.target='_blank';el.rel='noopener noreferrer';el.title='Abrir atualização em nova aba';}
+                if(tickerSettings.show_category!==false){const badge=document.createElement('span');badge.className=`ticker-category ${n.categoria||'melhoria'}`;badge.textContent=tickerCategoryLabel(n.categoria);el.appendChild(badge);}
+                if(tickerSettings.show_system!==false && String(n.sistema||'').trim()){const sys=document.createElement('span');sys.className='ticker-system';sys.textContent=String(n.sistema).trim();el.appendChild(sys);}
+                const text=document.createElement('span'); const title=String(n.titulo||'').trim(), msg=String(n.mensagem||'').trim(); text.textContent=title+(title&&msg?`: ${msg}`:msg); el.appendChild(text);
+                if(hasLink){const icon=document.createElement('span');icon.className='ticker-link';icon.textContent='↗';el.appendChild(icon);}
+                return el;
+            }
+            function updateTickerLayout(visible){
+                const height=visible?Math.max(28,Math.min(50,parseInt(tickerSettings.height||34,10))):0;
+                document.documentElement.style.setProperty('--ticker-h',`${height}px`);
+                document.body.classList.toggle('ticker-on',visible);
+                if(newsTicker)newsTicker.style.display=visible?'flex':'none';
+                requestAnimationFrame(()=>updateFocus(Math.max(0,targetEndMs-Date.now()),true));
+            }
+            function renderTicker(){
+                if(!newsTicker||!tickerTrack||!tickerViewport)return;
+                const active=tickerActiveNews(); tickerHasActiveNews=active.length>0 && tickerSettings.enabled!==false;
+                const visible=tickerHasActiveNews && !tickerTemporarilyHidden;
+                tickerLabelText.textContent=String(tickerSettings.label||'ATUALIZAÇÕES S&S');
+                tickerViewport.classList.toggle('pause-hover',tickerSettings.pause_on_hover!==false);
+                if(tickerBtn){tickerBtn.style.display=tickerHasActiveNews?'flex':'none';tickerBtn.textContent=tickerTemporarilyHidden?'▤ Mostrar faixa':'▤ Ocultar faixa';}
+                if(!visible){tickerTrack.innerHTML='';updateTickerLayout(false);return;}
+                tickerTrack.innerHTML='';
+                const buildGroup=()=>{const g=document.createElement('div');g.className='ticker-group';active.forEach(n=>g.appendChild(tickerItemNode(n)));return g;};
+                const first=buildGroup();tickerTrack.appendChild(first);updateTickerLayout(true);
+                requestAnimationFrame(()=>{
+                    let distance=Math.max(1,Math.ceil(first.getBoundingClientRect().width));
+                    const minCoverage=Math.max(window.innerWidth*2.2,distance*2);
+                    let count=Math.max(2,Math.ceil(minCoverage/distance)+1);
+                    for(let i=1;i<count;i++)tickerTrack.appendChild(buildGroup());
+                    const pxPerSecond=({slow:35,normal:55,fast:80})[tickerSettings.speed]||55;
+                    const duration=Math.max(8,distance/pxPerSecond);
+                    tickerTrack.style.setProperty('--ticker-distance',`${distance}px`);
+                    tickerTrack.style.setProperty('--ticker-duration',`${duration}s`);
+                    tickerTrack.style.animation='none'; void tickerTrack.offsetWidth; tickerTrack.style.animation='ticker-scroll var(--ticker-duration) linear infinite';
+                });
+            }
+            function alternarTickerTemporario(){
+                if(!tickerHasActiveNews)return;
+                tickerTemporarilyHidden=!tickerTemporarilyHidden; renderTicker(); log(`Faixa de atualizações ${tickerTemporarilyHidden?'ocultada':'exibida'} temporariamente`);
+            }
 
             function showOverlayActions(item,message){
                 item.overlay.classList.remove('hidden');
@@ -2320,7 +2742,7 @@ else:
                 else { const away=visibilityHiddenAt?Date.now()-visibilityHiddenAt:0; visibilityHiddenAt=null; log(`Aba retomada após ${Math.round(away/1000)}s`); if(!paused && Date.now()>=targetEndMs)mudarTela(1); else lastHeartbeat=Date.now(); }
             });
 
-            window.addEventListener('resize',()=>{ updateFocus(Math.max(0,targetEndMs-Date.now()),true); });
+            window.addEventListener('resize',()=>{ updateFocus(Math.max(0,targetEndMs-Date.now()),true); renderTicker(); });
             document.addEventListener('mousemove',showControls,{passive:true}); document.addEventListener('touchstart',showControls,{passive:true});
             document.addEventListener('click',(e)=>{ if(moreMenu && !moreMenu.contains(e.target) && e.target!==moreBtn)closeMoreMenu(); });
             if(revealStrip){ revealStrip.addEventListener('mouseenter',showControls); revealStrip.addEventListener('touchstart',showControls,{passive:true}); }
@@ -2328,6 +2750,7 @@ else:
 
             if(settings.generalReloadMs>0){ setTimeout(()=>{ pendingGeneralReload=true; restartNotice.style.display='block'; restartNotice.textContent='Reinício programado: a aplicação será reiniciada ao fim do painel atual.'; runtimeStatus.textContent='Reinício pendente'; log('Reinício geral aguardando o fim do painel atual'); },settings.generalReloadMs); }
 
+            renderTicker();
             updateClock(); setInterval(updateClock,1000); setInterval(updateDiag,1000); updateNetwork(); startWatchdog();
             log(`Aplicação iniciada - perfil ${profile.nome}`); log(`Painéis ativos: ${panels.length}`); afterIndexChange('Inicial'); showControls();
             if(settings.kioskDefault)setTimeout(()=>alternarModoTV(true),600);
