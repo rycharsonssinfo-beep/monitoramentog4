@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.3.2
+# Painel de Monitoramento 3.3.3
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -38,12 +38,13 @@ import streamlit.components.v1 as components
 # 3.0.0: Integração S&S Conecta - login autenticado, coleta automática de Atualizações/Agenda e cache seguro
 # 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
 # 3.3.0: Alertas SIM por status - verde, laranja e aviso vermelho de pendências a partir do dia configurado
+# 3.3.3: polling SIM híbrido - servidor Streamlit + navegador, sem recarregar os iframes
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.3.2"
+APP_VERSION = "3.3.3"
 CONFIG_VERSION = 12
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -914,6 +915,42 @@ def _sim_alert_mascots_data():
     else:
         data["deadline"] = data["complete"]
     return data
+
+
+def buscar_sim_submissions_servidor(panel_url):
+    """Busca o JSON do Monitor SIM no backend do Streamlit.
+
+    Esta leitura funciona como segunda via para contornar bloqueios CORS do
+    navegador. O frontend continua tentando a consulta direta normalmente.
+    """
+    try:
+        parsed = urlparse(str(panel_url or "").strip())
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return {"ok": False, "error": "URL do Monitor SIM inválida", "data": None}
+        api_url = f"{parsed.scheme}://{parsed.netloc}/sim_submissions"
+        req = Request(
+            api_url,
+            headers={
+                "User-Agent": f"SS-Monitor/{APP_VERSION}",
+                "Accept": "application/json,text/plain,*/*",
+                "Cache-Control": "no-cache",
+            },
+            method="GET",
+        )
+        with urlopen(req, timeout=8, context=ssl.create_default_context()) as resp:
+            status = int(getattr(resp, "status", 200) or 200)
+            raw = resp.read()
+            if status < 200 or status >= 300:
+                return {"ok": False, "error": f"HTTP {status}", "data": None}
+            try:
+                data = json.loads(raw.decode("utf-8", errors="replace"))
+            except Exception:
+                return {"ok": False, "error": "Resposta do SIM não é JSON válido", "data": None}
+            return {"ok": True, "error": "", "data": data, "url": api_url, "fetched_at": datetime.now().isoformat()}
+    except HTTPError as exc:
+        return {"ok": False, "error": f"HTTP {getattr(exc, 'code', '')}".strip(), "data": None}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:180], "data": None}
 
 
 def _iframe_policy_from_headers(headers, final_url=""):
@@ -3030,6 +3067,51 @@ else:
         st.query_params["iniciado"] = "true"
         st.rerun()
 
+    # Canal de atualização do SIM pelo backend do Streamlit.
+    # Components V2 executa no DOM principal e consegue encaminhar a leitura
+    # para o iframe de apresentação via postMessage, sem recarregá-lo.
+    sim_status_broadcaster = st.components.v2.component(
+        "sim_status_broadcaster_v333",
+        html="<span aria-hidden=\"true\"></span>",
+        css=":host { display: none !important; }",
+        js=r"""
+        export default function(component) {
+            const { data } = component;
+            if (!data) return;
+            const frames = document.querySelectorAll('iframe[title="streamlit.components.v1.html"]');
+            frames.forEach((frame) => {
+                try {
+                    frame.contentWindow.postMessage({
+                        source: 'sim-monitor',
+                        submissions: data.submissions || null,
+                        sourceLabel: data.sourceLabel || 'servidor Streamlit',
+                        serverError: data.error || ''
+                    }, '*');
+                } catch (e) {}
+            });
+        }
+        """,
+    )
+
+    sim_panel_for_server = next((p for p in paineis_ativos if p.get("tipo") == "sim"), None)
+    sim_poll_cfg = normalizar_sim_alerts(config.get("sim_alerts"))
+    sim_server_interval = max(5, min(120, int(sim_poll_cfg.get("poll_seconds", 15))))
+
+    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and hasattr(st, "fragment"):
+        @st.fragment(run_every=sim_server_interval)
+        def _sim_server_poll_fragment():
+            result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""))
+            sim_status_broadcaster(
+                key=f"sim_status_broadcaster_{active_profile_id}",
+                data={
+                    "submissions": result.get("data") if result.get("ok") else None,
+                    "sourceLabel": "servidor Streamlit",
+                    "error": result.get("error", ""),
+                },
+            )
+
+        _sim_server_poll_fragment()
+
     iframe_checks = verificar_paineis_iframe(paineis_ativos)
     paineis_payload = []
     for painel_item in paineis_ativos:
@@ -3372,8 +3454,8 @@ else:
             }
             function simDeliveryKey(d){ return `${simNorm(d.municipio)}|${simNorm(d.entidade)}`; }
             function simDeliveredStatus(status){ return ['entregue','no_prazo'].includes(simNorm(status).replace(/\s+/g,'_')); }
-            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v33_${profile.id}_${ano}_${mes}`; }
-            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v33_${profile.id}_${ano}_${mes}`; }
+            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v333_${profile.id}_${ano}_${mes}`; }
+            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v333_${profile.id}_${ano}_${mes}`; }
             function loadJsonObject(key){
                 try{ const raw=localStorage.getItem(key); const obj=raw?JSON.parse(raw):null; return obj&&typeof obj==='object'&&!Array.isArray(obj)?obj:null; }catch(e){ return null; }
             }
@@ -3666,7 +3748,7 @@ else:
             }
             function resetSimDeliveryBaseline(){
                 try{
-                    const prefixes=[`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const prefixes=[`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
                     const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
                 }catch(e){}
                 setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
@@ -3678,9 +3760,16 @@ else:
             window.addEventListener('message',(event)=>{
                 const msg=event.data;
                 if(!msg || msg.source!=='sim-monitor')return;
-                if(msg.submissions){ const result=buildSimMunicipalityStates(msg.submissions,msg.deliveries||[]); processSimMunicipalityStates(result,'bridge'); }
-                else if(msg.municipalities && msg.ano && msg.mes){ processSimMunicipalityStates({states:msg.municipalities,ano:msg.ano,mes:msg.mes},'bridge'); }
-                else if(msg.delivery)enqueueSimAlert(msg.delivery);
+                if(msg.submissions){
+                    const result=buildSimMunicipalityStates(msg.submissions,msg.deliveries||[]);
+                    processSimMunicipalityStates(result,String(msg.sourceLabel||'bridge'));
+                }else if(msg.municipalities && msg.ano && msg.mes){
+                    processSimMunicipalityStates({states:msg.municipalities,ano:msg.ano,mes:msg.mes},'bridge');
+                }else if(msg.delivery){
+                    enqueueSimAlert(msg.delivery);
+                }else if(msg.serverError && simPollStatus!=='ativo'){
+                    setSimPollStatus('servidor indisponível',String(msg.serverError).slice(0,100));
+                }
             });
 
             function showOverlayActions(item,message){
