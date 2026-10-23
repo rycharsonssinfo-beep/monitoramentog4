@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.3.5
+# Painel de Monitoramento 3.3.6
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -39,6 +39,7 @@ import streamlit.components.v1 as components
 # 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
 # 3.3.0: Alertas SIM por status - verde, laranja e aviso vermelho de pendências a partir do dia configurado
 # 3.3.5: API oficial Monitoramento SIM - /api/login + /api/sim_submissions, Secrets e reenvio confiável de alertas
+# 3.3.6: Alertas por progresso de entidades - detecta aumento de entregas mesmo quando o município permanece laranja
 # 3.3.4: Detecção redundante de transições SIM no backend + broadcast resiliente para todos os iframes
 # 3.3.3: polling SIM híbrido - servidor Streamlit + navegador, sem recarregar os iframes
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
@@ -46,7 +47,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.3.5"
+APP_VERSION = "3.3.6"
 CONFIG_VERSION = 12
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -1091,55 +1092,104 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
     if not states or not ano or not mes:
         return []
 
-    baseline_key = f"_sim_server_baseline_v335_{profile_id}_{ano}_{mes}"
-    notified_key = f"_sim_server_notified_v335_{profile_id}_{ano}_{mes}"
-    pending_key = f"_sim_server_pending_v335_{profile_id}_{ano}_{mes}"
+    # v3.3.6 guarda progresso (quantidade entregue), não apenas a cor/status.
+    # Isso permite detectar uma nova entrega mesmo quando o município continua laranja.
+    baseline_key = f"_sim_server_baseline_v336_{profile_id}_{ano}_{mes}"
+    notified_key = f"_sim_server_notified_v336_{profile_id}_{ano}_{mes}"
+    pending_key = f"_sim_server_pending_v336_{profile_id}_{ano}_{mes}"
     previous = st.session_state.get(baseline_key)
     notified = set(st.session_state.get(notified_key, []))
     pending = st.session_state.get(pending_key, {})
     if not isinstance(pending, dict):
         pending = {}
     now_ts = time.time()
-    pending = {k: v for k, v in pending.items() if isinstance(v, dict) and now_ts - float(v.get("created_at", 0)) <= 120}
-    current = {str(item.get("key")): str(item.get("state")) for item in states}
+    pending = {
+        k: v for k, v in pending.items()
+        if isinstance(v, dict) and now_ts - float(v.get("created_at", 0)) <= 180
+    }
+
+    current = {
+        str(item.get("key")): {
+            "state": str(item.get("state") or "pending"),
+            "delivered": int(item.get("delivered") or 0),
+            "total": int(item.get("total") or 0),
+        }
+        for item in states
+    }
     competencia = f"{int(mes):02d}/{ano}"
 
     def add_alert(item, alert_type):
-        prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
-        alert_key = f"{prefix}|{ano}-{mes}|{item.get('key')}"
-        if alert_key in notified:
-            return
         total = int(item.get("total") or 0)
         delivered = int(item.get("delivered") or 0)
+        prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
+
+        # Laranja pode ocorrer várias vezes na mesma competência: 1/3, 2/3 etc.
+        # Verde e vermelho continuam únicos por município/competência.
+        if alert_type == "partial":
+            alert_key = f"{prefix}|{ano}-{mes}|{item.get('key')}|{delivered}-{total}"
+        else:
+            alert_key = f"{prefix}|{ano}-{mes}|{item.get('key')}"
+        if alert_key in notified:
+            return False
+
         if alert_type == "complete":
             resumo = f"{total} {'entidade entregue' if total == 1 else 'entidades entregues'} · Competência {competencia}"
         elif alert_type == "partial":
             resumo = f"{delivered} de {total} entidades entregues · Competência {competencia}"
         else:
-            resumo = (f"A entidade monitorada ainda não entregou · Competência {competencia}" if total == 1
-                      else f"Nenhuma das {total} entidades monitoradas entregou · Competência {competencia}")
-        alert = {"alert_key": alert_key, "alert_type": alert_type, "municipio": item.get("municipio") or "Município",
-                 "entidade": resumo, "ano": ano, "mes": mes}
+            resumo = (
+                f"A entidade monitorada ainda não entregou · Competência {competencia}"
+                if total == 1
+                else f"Nenhuma das {total} entidades monitoradas entregou · Competência {competencia}"
+            )
+
+        alert = {
+            "alert_key": alert_key,
+            "alert_type": alert_type,
+            "municipio": item.get("municipio") or "Município",
+            "entidade": resumo,
+            "ano": ano,
+            "mes": mes,
+            "delivered": delivered,
+            "total": total,
+        }
         pending[alert_key] = {"created_at": now_ts, "alert": alert}
         notified.add(alert_key)
+        return True
 
     notify_initial = bool(cfg.get("notify_initial", False))
     if previous is None:
         if notify_initial:
             for item in states:
-                if item.get("state") == "complete":
+                state = item.get("state")
+                if state == "complete":
                     add_alert(item, "complete")
-                elif item.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
+                elif state == "partial" and bool(cfg.get("partial_enabled", True)):
                     add_alert(item, "partial")
     else:
         for item in states:
             key = str(item.get("key"))
-            old = previous.get(key)
-            state = item.get("state")
-            if state == "complete" and old != "complete":
+            old = previous.get(key) if isinstance(previous, dict) else None
+            if isinstance(old, str):
+                old = {"state": old, "delivered": 0, "total": 0}
+            old = old if isinstance(old, dict) else {"state": "pending", "delivered": 0, "total": 0}
+
+            old_state = str(old.get("state") or "pending")
+            old_delivered = int(old.get("delivered") or 0)
+            new_state = str(item.get("state") or "pending")
+            new_delivered = int(item.get("delivered") or 0)
+
+            # Qualquer avanço real de entidades entregues gera evento.
+            # Se completou, prioriza o verde; se ainda não completou, laranja.
+            if new_delivered > old_delivered:
+                if new_state == "complete":
+                    add_alert(item, "complete")
+                elif new_state == "partial" and bool(cfg.get("partial_enabled", True)):
+                    add_alert(item, "partial")
+            # Segurança adicional: se o município tornou-se verde por qualquer motivo,
+            # não deixamos a transição passar em branco.
+            elif new_state == "complete" and old_state != "complete":
                 add_alert(item, "complete")
-            elif state == "partial" and old not in {"partial", "complete"} and bool(cfg.get("partial_enabled", True)):
-                add_alert(item, "partial")
 
     deadline_day = max(1, min(31, int(cfg.get("deadline_day", 28) or 28)))
     if bool(cfg.get("deadline_enabled", True)) and datetime.now().day >= deadline_day:
@@ -1150,7 +1200,10 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
     st.session_state[baseline_key] = current
     st.session_state[notified_key] = sorted(notified)
     st.session_state[pending_key] = pending
-    return [entry.get("alert") for entry in pending.values() if isinstance(entry, dict) and isinstance(entry.get("alert"), dict)]
+    return [
+        entry.get("alert") for entry in pending.values()
+        if isinstance(entry, dict) and isinstance(entry.get("alert"), dict)
+    ]
 
 def buscar_sim_submissions_servidor(panel_url, cfg):
     credentials = _sim_api_credentials()
@@ -3175,7 +3228,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.3.5 – API oficial SIM:** autenticação via `/api/login`, consulta autenticada de `/api/sim_submissions`, competência configurável e reenvio confiável dos alertas por até 2 minutos.
+            **3.3.6 – Alertas por progresso:** além da API oficial, o monitor compara a quantidade de entidades entregues. Novas entregas geram alerta mesmo quando o município continua laranja; a última entrega gera o alerta verde.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3351,6 +3404,7 @@ else:
                     sourceLabel: data.sourceLabel || 'API oficial · servidor Streamlit',
                     serverError: data.error || '',
                     serverCounts: data.counts || null,
+                    serverAlerts: data.alerts || [],
                     ano: data.ano || null,
                     mes: data.mes || null
                 };
@@ -4045,9 +4099,13 @@ else:
                 if(msg.serverCounts){
                     const c=msg.serverCounts||{};
                     const comp=(msg.mes&&msg.ano)?` · ${String(msg.mes).padStart(2,'0')}/${msg.ano}`:'';
-                    setSimPollStatus('ativo',`${c.complete||0} verde · ${c.partial||0} laranja · ${c.pending||0} vermelho · API oficial${comp}`);
+                    const aq=Array.isArray(msg.serverAlerts)?msg.serverAlerts.length:0;
+                    setSimPollStatus('ativo',`${c.complete||0} verde · ${c.partial||0} laranja · ${c.pending||0} vermelho · API oficial${comp}${aq?` · ${aq} alerta(s) pendente(s)`:''}`);
                 }else if(msg.serverError){
                     setSimPollStatus('erro',String(msg.serverError).slice(0,140));
+                }
+                if(Array.isArray(msg.serverAlerts)){
+                    for(const alert of msg.serverAlerts) enqueueSimAlert(alert);
                 }
                 if(msg.delivery)enqueueSimAlert(msg.delivery);
             });
