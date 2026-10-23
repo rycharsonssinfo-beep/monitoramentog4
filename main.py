@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.3.4
+# Painel de Monitoramento 3.3.5
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -38,6 +38,7 @@ import streamlit.components.v1 as components
 # 3.0.0: Integração S&S Conecta - login autenticado, coleta automática de Atualizações/Agenda e cache seguro
 # 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
 # 3.3.0: Alertas SIM por status - verde, laranja e aviso vermelho de pendências a partir do dia configurado
+# 3.3.5: API oficial Monitoramento SIM - /api/login + /api/sim_submissions, Secrets e reenvio confiável de alertas
 # 3.3.4: Detecção redundante de transições SIM no backend + broadcast resiliente para todos os iframes
 # 3.3.3: polling SIM híbrido - servidor Streamlit + navegador, sem recarregar os iframes
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
@@ -45,7 +46,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.3.4"
+APP_VERSION = "3.3.5"
 CONFIG_VERSION = 12
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -150,6 +151,9 @@ def sim_alerts_padrao():
         "audio_green": True,
         "audio_partial": True,
         "audio_deadline": True,
+        "competence_mode": "previous_month",
+        "manual_year": datetime.now().year,
+        "manual_month": max(1, datetime.now().month - 1),
         "title_template": "SIM do município {municipio} entregue",
         "partial_title_template": "SIM do município {municipio} parcialmente entregue",
         "deadline_title_template": "SIM do município {municipio} ainda não foi entregue",
@@ -184,6 +188,9 @@ def normalizar_sim_alerts(raw):
         "audio_green": bool(raw.get("audio_green", True)),
         "audio_partial": bool(raw.get("audio_partial", True)),
         "audio_deadline": bool(raw.get("audio_deadline", True)),
+        "competence_mode": str(raw.get("competence_mode") or "previous_month") if str(raw.get("competence_mode") or "previous_month") in {"previous_month", "manual"} else "previous_month",
+        "manual_year": _clamp_int(raw.get("manual_year", datetime.now().year), datetime.now().year, 2020, 2100),
+        "manual_month": _clamp_int(raw.get("manual_month", max(1, datetime.now().month - 1)), max(1, datetime.now().month - 1), 1, 12),
         "title_template": _template("title_template"),
         "partial_title_template": _template("partial_title_template"),
         "deadline_title_template": _template("deadline_title_template"),
@@ -929,10 +936,76 @@ def _sim_server_rows(data):
     return []
 
 
-def _sim_server_delivered(status):
-    value = str(status or "").strip().lower().replace(" ", "_")
-    return value in {"entregue", "no_prazo"}
+def _sim_api_credentials():
+    try:
+        section = st.secrets.get("sim_api", {})
+    except Exception:
+        section = {}
+    try:
+        email = str(section.get("email") or section.get("usuario") or "").strip()
+        senha = str(section.get("senha") or section.get("password") or "").strip()
+        api_key = str(section.get("api_key") or section.get("x_api_key") or "").strip()
+    except Exception:
+        email = senha = api_key = ""
+    return {"email": email, "senha": senha, "api_key": api_key, "configured": bool(email and senha and api_key)}
 
+
+def _sim_api_competencia(cfg):
+    cfg = normalizar_sim_alerts(cfg)
+    if cfg.get("competence_mode") == "manual":
+        return int(cfg.get("manual_year") or datetime.now().year), int(cfg.get("manual_month") or 1)
+    first_this_month = datetime.now().date().replace(day=1)
+    previous = first_this_month - timedelta(days=1)
+    return previous.year, previous.month
+
+
+def _sim_api_token(base_url, credentials, force_refresh=False):
+    email = credentials.get("email", "")
+    senha = credentials.get("senha", "")
+    cache_id = hashlib.sha256(f"{base_url}|{email}".encode("utf-8")).hexdigest()[:16]
+    cache_key = f"_sim_api_token_v335_{cache_id}"
+    cached = st.session_state.get(cache_key)
+    now_ts = time.time()
+    if not force_refresh and isinstance(cached, dict) and cached.get("token") and float(cached.get("expires_at", 0)) > now_ts + 120:
+        return cached.get("token"), ""
+
+    login_url = f"{base_url.rstrip('/')}/api/login"
+    payload = json.dumps({"user": {"email": email, "password": senha}}, ensure_ascii=False).encode("utf-8")
+    req = Request(login_url, data=payload, headers={
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": f"SS-Monitor/{APP_VERSION}",
+    }, method="POST")
+    try:
+        with urlopen(req, timeout=10, context=ssl.create_default_context()) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            try:
+                body = json.loads(raw) if raw else {}
+            except Exception:
+                body = {}
+            token = str(body.get("token") or "").strip()
+            auth_header = str(resp.headers.get("Authorization") or "").strip()
+            if not token and auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1].strip()
+            if not token:
+                return "", "Login respondeu sem token"
+            st.session_state[cache_key] = {"token": token, "expires_at": now_ts + (9.5 * 3600)}
+            return token, ""
+    except HTTPError as exc:
+        if getattr(exc, "code", None) == 401:
+            return "", "Login SIM recusado (HTTP 401)"
+        return "", f"Login SIM HTTP {getattr(exc, 'code', '')}".strip()
+    except Exception as exc:
+        return "", f"Falha no login SIM: {str(exc)[:140]}"
+
+
+def _sim_server_delivered(row):
+    if not isinstance(row, dict):
+        return False
+    if str(row.get("data_envio") or "").strip():
+        return True
+    value = str(row.get("status") or "").strip().lower().replace(" ", "_")
+    return value in {"entregue", "no_prazo", "enviado", "confirmado", "ok", "true", "1"}
 
 def _sim_server_municipio_name(records):
     descriptions = []
@@ -994,7 +1067,7 @@ def agrupar_sim_submissions_servidor(data):
     states = []
     for key, records in groups.items():
         total = len(records)
-        delivered = sum(1 for r in records if _sim_server_delivered(r.get("status")))
+        delivered = sum(1 for r in records if _sim_server_delivered(r))
         state = "complete" if total and delivered == total else "partial" if delivered else "pending"
         first = (records[0].get("monitored_entity") or {}) if records else {}
         municipio = _sim_server_municipio_name(records) or f"Município {first.get('cod_municipio') or key}"
@@ -1018,13 +1091,18 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
     if not states or not ano or not mes:
         return []
 
-    baseline_key = f"_sim_server_baseline_v334_{profile_id}_{ano}_{mes}"
-    notified_key = f"_sim_server_notified_v334_{profile_id}_{ano}_{mes}"
+    baseline_key = f"_sim_server_baseline_v335_{profile_id}_{ano}_{mes}"
+    notified_key = f"_sim_server_notified_v335_{profile_id}_{ano}_{mes}"
+    pending_key = f"_sim_server_pending_v335_{profile_id}_{ano}_{mes}"
     previous = st.session_state.get(baseline_key)
     notified = set(st.session_state.get(notified_key, []))
+    pending = st.session_state.get(pending_key, {})
+    if not isinstance(pending, dict):
+        pending = {}
+    now_ts = time.time()
+    pending = {k: v for k, v in pending.items() if isinstance(v, dict) and now_ts - float(v.get("created_at", 0)) <= 120}
     current = {str(item.get("key")): str(item.get("state")) for item in states}
     competencia = f"{int(mes):02d}/{ano}"
-    alerts = []
 
     def add_alert(item, alert_type):
         prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
@@ -1040,14 +1118,9 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
         else:
             resumo = (f"A entidade monitorada ainda não entregou · Competência {competencia}" if total == 1
                       else f"Nenhuma das {total} entidades monitoradas entregou · Competência {competencia}")
-        alerts.append({
-            "alert_key": alert_key,
-            "alert_type": alert_type,
-            "municipio": item.get("municipio") or "Município",
-            "entidade": resumo,
-            "ano": ano,
-            "mes": mes,
-        })
+        alert = {"alert_key": alert_key, "alert_type": alert_type, "municipio": item.get("municipio") or "Município",
+                 "entidade": resumo, "ano": ano, "mes": mes}
+        pending[alert_key] = {"created_at": now_ts, "alert": alert}
         notified.add(alert_key)
 
     notify_initial = bool(cfg.get("notify_initial", False))
@@ -1076,44 +1149,44 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
 
     st.session_state[baseline_key] = current
     st.session_state[notified_key] = sorted(notified)
-    return alerts
+    st.session_state[pending_key] = pending
+    return [entry.get("alert") for entry in pending.values() if isinstance(entry, dict) and isinstance(entry.get("alert"), dict)]
 
-
-def buscar_sim_submissions_servidor(panel_url):
-    """Busca o JSON do Monitor SIM no backend do Streamlit.
-
-    Esta leitura funciona como segunda via para contornar bloqueios CORS do
-    navegador. O frontend continua tentando a consulta direta normalmente.
-    """
+def buscar_sim_submissions_servidor(panel_url, cfg):
+    credentials = _sim_api_credentials()
+    if not credentials.get("configured"):
+        return {"ok": False, "error": "Secrets da API SIM não configurados", "data": None, "setup_required": True}
     try:
         parsed = urlparse(str(panel_url or "").strip())
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             return {"ok": False, "error": "URL do Monitor SIM inválida", "data": None}
-        api_url = f"{parsed.scheme}://{parsed.netloc}/sim_submissions"
-        req = Request(
-            api_url,
-            headers={
-                "User-Agent": f"SS-Monitor/{APP_VERSION}",
-                "Accept": "application/json,text/plain,*/*",
-                "Cache-Control": "no-cache",
-            },
-            method="GET",
-        )
-        with urlopen(req, timeout=8, context=ssl.create_default_context()) as resp:
-            status = int(getattr(resp, "status", 200) or 200)
-            raw = resp.read()
-            if status < 200 or status >= 300:
-                return {"ok": False, "error": f"HTTP {status}", "data": None}
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        ano, mes = _sim_api_competencia(cfg)
+        query = urlencode({"ano": ano, "mes": mes, "monitorado": "true"})
+        api_url = f"{base_url}/api/sim_submissions?{query}"
+        for attempt in range(2):
+            token, login_error = _sim_api_token(base_url, credentials, force_refresh=attempt > 0)
+            if not token:
+                return {"ok": False, "error": login_error or "Não foi possível obter token SIM", "data": None}
+            req = Request(api_url, headers={
+                "User-Agent": f"SS-Monitor/{APP_VERSION}", "Accept": "application/json", "Cache-Control": "no-cache",
+                "X-API-KEY": credentials.get("api_key", ""), "Authorization": f"Bearer {token}",
+            }, method="GET")
             try:
-                data = json.loads(raw.decode("utf-8", errors="replace"))
-            except Exception:
-                return {"ok": False, "error": "Resposta do SIM não é JSON válido", "data": None}
-            return {"ok": True, "error": "", "data": data, "url": api_url, "fetched_at": datetime.now().isoformat()}
-    except HTTPError as exc:
-        return {"ok": False, "error": f"HTTP {getattr(exc, 'code', '')}".strip(), "data": None}
+                with urlopen(req, timeout=10, context=ssl.create_default_context()) as resp:
+                    raw = resp.read()
+                    try:
+                        data = json.loads(raw.decode("utf-8", errors="replace"))
+                    except Exception:
+                        return {"ok": False, "error": "Resposta da API SIM não é JSON válido", "data": None}
+                    return {"ok": True, "error": "", "data": data, "url": api_url, "ano": ano, "mes": mes, "fetched_at": datetime.now().isoformat()}
+            except HTTPError as exc:
+                if getattr(exc, "code", None) == 401 and attempt == 0:
+                    continue
+                return {"ok": False, "error": f"API SIM HTTP {getattr(exc, 'code', '')}".strip(), "data": None}
+        return {"ok": False, "error": "API SIM recusou a autenticação após renovar o token", "data": None}
     except Exception as exc:
         return {"ok": False, "error": str(exc)[:180], "data": None}
-
 
 def _iframe_policy_from_headers(headers, final_url=""):
     xfo = str(headers.get("X-Frame-Options", "") or "").strip()
@@ -2825,6 +2898,36 @@ if not st.session_state.iniciado:
                 help="Deixe desligado para usar os municípios já verdes/laranjas apenas como referência ao iniciar o monitor.",
             )
 
+        st.markdown("**Conexão com a API oficial do Monitoramento SIM**")
+        sim_api_credentials = _sim_api_credentials()
+        api1, api2, api3 = st.columns([1.4, 1.4, 2.2])
+        with api1:
+            mode = str(sim_alerts.get("competence_mode") or "previous_month")
+            sim_alerts["competence_mode"] = st.selectbox(
+                "Competência consultada", ["previous_month", "manual"],
+                index=0 if mode != "manual" else 1,
+                format_func=lambda x: "Automática · mês anterior" if x == "previous_month" else "Manual",
+                key="sim_api_competence_mode_v335",
+            )
+        with api2:
+            if sim_alerts.get("competence_mode") == "manual":
+                mc1, mc2 = st.columns(2)
+                with mc1:
+                    sim_alerts["manual_month"] = st.number_input("Mês", 1, 12, int(sim_alerts.get("manual_month", 1)), 1, key="sim_api_manual_month_v335")
+                with mc2:
+                    sim_alerts["manual_year"] = st.number_input("Ano", 2020, 2100, int(sim_alerts.get("manual_year", datetime.now().year)), 1, key="sim_api_manual_year_v335")
+            else:
+                api_year, api_month = _sim_api_competencia(sim_alerts)
+                st.metric("Competência", f"{api_month:02d}/{api_year}")
+        with api3:
+            if sim_api_credentials.get("configured"):
+                st.success("API SIM configurada nos Secrets. Token é obtido e renovado automaticamente.")
+            else:
+                st.warning("Configure `[sim_api]` nos Secrets para ativar a leitura oficial do Monitor SIM.")
+        if not sim_api_credentials.get("configured"):
+            st.code('[sim_api]\nemail = "SEU_EMAIL"\nsenha = "SUA_SENHA"\napi_key = "CHAVE_DA_API"', language="toml")
+        st.caption("A aplicação faz login no backend e consulta `/api/sim_submissions` com `monitorado=true`. A chave e a senha não são gravadas no JSON da aplicação.")
+
         st.markdown("**Som dos alertas**")
         snd1, snd2, snd3, snd4, snd5 = st.columns([1.25, 1.6, 1.0, 1.0, 1.0])
         with snd1:
@@ -2911,7 +3014,7 @@ if not st.session_state.iniciado:
             if "{municipio}" not in str(value or ""):
                 st.warning(f"O texto do alerta **{label}** precisa conter **{{municipio}}**. O padrão será usado até a correção.")
 
-        st.caption("Fonte: **sim_submissions**. `entregue` e `no_prazo` contam como entregues; `nao_entregue` conta como pendente. O agrupamento é feito por município/IBGE.")
+        st.caption("Fonte: **API oficial `/api/sim_submissions`**. Uma entidade conta como entregue quando `data_envio` está preenchida ou quando o status indica entrega. O agrupamento é feito por município/IBGE.")
         st.info("No menu ⋮ ficam disponíveis testes separados para **verde**, **laranja** e **vermelho**, além de **Reiniciar leitura SIM**.")
 
     # Salva somente se houve alteração efetiva.
@@ -3072,7 +3175,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.2 – Alertas SIM validados:** a notificação agora agrupa `sim_submissions` por município e só comemora quando todas as entidades estão `entregue` ou `no_prazo`; estados parciais não disparam o alerta.
+            **3.3.5 – API oficial SIM:** autenticação via `/api/login`, consulta autenticada de `/api/sim_submissions`, competência configurável e reenvio confiável dos alertas por até 2 minutos.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3245,9 +3348,11 @@ else:
                 const frames = Array.from(document.querySelectorAll('iframe'));
                 const statusMessage = {
                     source: 'sim-monitor',
-                    submissions: data.submissions || null,
-                    sourceLabel: data.sourceLabel || 'servidor Streamlit',
-                    serverError: data.error || ''
+                    sourceLabel: data.sourceLabel || 'API oficial · servidor Streamlit',
+                    serverError: data.error || '',
+                    serverCounts: data.counts || null,
+                    ano: data.ano || null,
+                    mes: data.mes || null
                 };
                 frames.forEach((frame) => {
                     try { frame.contentWindow && frame.contentWindow.postMessage(statusMessage, '*'); } catch (e) {}
@@ -3280,18 +3385,22 @@ else:
     if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and hasattr(st, "fragment"):
         @st.fragment(run_every=sim_server_interval)
         def _sim_server_poll_fragment():
-            result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""))
+            result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
             alerts = []
+            grouped = {"states": [], "ano": None, "mes": None}
             if result.get("ok"):
                 grouped = agrupar_sim_submissions_servidor(result.get("data"))
                 alerts = detectar_alertas_sim_servidor(grouped, sim_poll_cfg, active_profile_id)
+            counts = {
+                "complete": sum(1 for x in grouped.get("states", []) if x.get("state") == "complete"),
+                "partial": sum(1 for x in grouped.get("states", []) if x.get("state") == "partial"),
+                "pending": sum(1 for x in grouped.get("states", []) if x.get("state") == "pending"),
+            }
             sim_status_broadcaster(
                 key=f"sim_status_broadcaster_{active_profile_id}",
                 data={
-                    "submissions": result.get("data") if result.get("ok") else None,
-                    "alerts": alerts,
-                    "sourceLabel": "servidor Streamlit",
-                    "error": result.get("error", ""),
+                    "alerts": alerts, "counts": counts, "ano": grouped.get("ano"), "mes": grouped.get("mes"),
+                    "sourceLabel": "API oficial · servidor Streamlit", "error": result.get("error", ""),
                 },
             )
 
@@ -3456,6 +3565,7 @@ else:
             let tickerCurrentMode = 'news';
             let tickerModeTimer = null;
             let simAlertQueue = [];
+            let simAlertSeenSession = new Set();
             let simAlertActive = false;
             let simAlertHideTimer = null;
             let simPollTimer = null;
@@ -3810,7 +3920,9 @@ else:
                 if(!simAlertSettings.enabled && !force)return;
                 if(!delivery || !String(delivery.municipio||'').trim())return;
                 const key=String(delivery.alert_key||simDeliveryKey(delivery));
+                if(!force && simAlertSeenSession.has(key))return;
                 if(simAlertQueue.some(x=>String(x.alert_key||simDeliveryKey(x))===key))return;
+                if(!force)simAlertSeenSession.add(key);
                 simAlertQueue.push({...delivery,alert_key:key,force});
                 showNextSimAlert();
             }
@@ -3902,27 +4014,12 @@ else:
             async function pollSimDeliveries(){
                 if(!simAlertSettings.enabled)return;
                 const p=simPanel(); if(!p){setSimPollStatus('sem painel','Monitor SIM não encontrado');return;}
-                const recent=currentSimFrameDeliveries();
-                const api=simApiUrl(p); if(!api){setSimPollStatus('erro','não foi possível montar a URL de sim_submissions');return;}
-                try{
-                    const resp=await fetch(api,{method:'GET',credentials:'include',cache:'no-store',redirect:'follow',headers:{'Accept':'application/json'}});
-                    if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-                    const data=await resp.json();
-                    const result=buildSimMunicipalityStates(data,recent);
-                    if(result.states.length){processSimMunicipalityStates(result,'sim_submissions');return;}
-                    setSimPollStatus('sem dados','sim_submissions respondeu sem entidades monitoradas');
-                }catch(e){
-                    const msg=String(e&&e.message||e||'falha').slice(0,110);
-                    setSimPollStatus('bloqueado',`sim_submissions indisponível no navegador (${msg})`);
-                }
+                if(simPollStatus==='aguardando')setSimPollStatus('aguardando','API oficial · aguardando leitura do servidor');
             }
             function startSimDeliveryPolling(){
                 clearInterval(simPollTimer); simPollTimer=null;
                 if(!simAlertSettings.enabled){setSimPollStatus('desativado');return;}
-                const every=Math.max(5,Math.min(120,parseInt(simAlertSettings.poll_seconds||15,10)));
-                setTimeout(pollSimDeliveries,1800);
-                simPollTimer=setInterval(pollSimDeliveries,every*1000);
-                setSimPollStatus('aguardando',`validação municipal a cada ${every}s`);
+                setSimPollStatus('aguardando','API oficial · servidor Streamlit');
             }
             function testarAlertaSIM(type='complete'){
                 const p=simPanel();
@@ -3933,7 +4030,7 @@ else:
             }
             function resetSimDeliveryBaseline(){
                 try{
-                    const prefixes=[`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const prefixes=[`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v335_${profile.id}_`,`monitor_sim_municipality_notified_v335_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
                     const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
                 }catch(e){}
                 setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
@@ -3945,27 +4042,16 @@ else:
             window.addEventListener('message',(event)=>{
                 const msg=event.data;
                 if(!msg || msg.source!=='sim-monitor')return;
-                if(msg.submissions){
-                    const result=buildSimMunicipalityStates(msg.submissions,msg.deliveries||[]);
-                    processSimMunicipalityStates(result,String(msg.sourceLabel||'bridge'));
-                }else if(msg.municipalities && msg.ano && msg.mes){
-                    processSimMunicipalityStates({states:msg.municipalities,ano:msg.ano,mes:msg.mes},'bridge');
-                }else if(msg.delivery){
-                    const d=msg.delivery||{};
-                    if(d.ano && d.mes && d.alert_key){
-                        const persisted=loadJsonSet(simNotifiedKey(d.ano,d.mes));
-                        if(!persisted.has(String(d.alert_key))){
-                            persisted.add(String(d.alert_key));
-                            saveJsonSet(simNotifiedKey(d.ano,d.mes),persisted);
-                            enqueueSimAlert(d);
-                        }
-                    }else{
-                        enqueueSimAlert(d);
-                    }
-                }else if(msg.serverError && simPollStatus!=='ativo'){
-                    setSimPollStatus('servidor indisponível',String(msg.serverError).slice(0,100));
+                if(msg.serverCounts){
+                    const c=msg.serverCounts||{};
+                    const comp=(msg.mes&&msg.ano)?` · ${String(msg.mes).padStart(2,'0')}/${msg.ano}`:'';
+                    setSimPollStatus('ativo',`${c.complete||0} verde · ${c.partial||0} laranja · ${c.pending||0} vermelho · API oficial${comp}`);
+                }else if(msg.serverError){
+                    setSimPollStatus('erro',String(msg.serverError).slice(0,140));
                 }
+                if(msg.delivery)enqueueSimAlert(msg.delivery);
             });
+
 
             function showOverlayActions(item,message){
                 item.overlay.classList.remove('hidden');
