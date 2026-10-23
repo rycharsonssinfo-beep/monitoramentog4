@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.1.0
+# Painel de Monitoramento 3.3.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -37,11 +37,12 @@ import streamlit.components.v1 as components
 # 2.9.0: Ticker alternado - Atualizações S&S + Agenda S&S, tempos configuráveis e modo TV ampliado
 # 3.0.0: Integração S&S Conecta - login autenticado, coleta automática de Atualizações/Agenda e cache seguro
 # 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
+# 3.3.0: Alertas SIM por status - verde, laranja e aviso vermelho de pendências a partir do dia configurado
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.2.0"
-CONFIG_VERSION = 10
+APP_VERSION = "3.3.0"
+CONFIG_VERSION = 11
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -134,7 +135,12 @@ def sim_alerts_padrao():
         "poll_seconds": 15,
         "show_entity": True,
         "notify_initial": False,
+        "partial_enabled": True,
+        "deadline_enabled": True,
+        "deadline_day": 28,
         "title_template": "SIM do município {municipio} entregue",
+        "partial_title_template": "SIM do município {municipio} parcialmente entregue",
+        "deadline_title_template": "SIM do município {municipio} ainda não foi entregue",
     }
 
 
@@ -146,9 +152,11 @@ def normalizar_sim_alerts(raw):
     # Migração automática da v3.1: a antiga fonte Últimas Entregas passa a ser apenas apoio visual.
     if source not in {"municipality_status"}:
         source = "municipality_status"
-    title_template = str(raw.get("title_template") or default["title_template"]).strip()[:160]
-    if "{municipio}" not in title_template:
-        title_template = default["title_template"]
+
+    def _template(name):
+        value = str(raw.get(name) or default[name]).strip()[:180]
+        return value if "{municipio}" in value else default[name]
+
     return {
         "enabled": bool(raw.get("enabled", True)),
         "source": source,
@@ -156,7 +164,12 @@ def normalizar_sim_alerts(raw):
         "poll_seconds": _clamp_int(raw.get("poll_seconds", 15), 15, 5, 120),
         "show_entity": bool(raw.get("show_entity", True)),
         "notify_initial": bool(raw.get("notify_initial", False)),
-        "title_template": title_template,
+        "partial_enabled": bool(raw.get("partial_enabled", True)),
+        "deadline_enabled": bool(raw.get("deadline_enabled", True)),
+        "deadline_day": _clamp_int(raw.get("deadline_day", 28), 28, 1, 31),
+        "title_template": _template("title_template"),
+        "partial_title_template": _template("partial_title_template"),
+        "deadline_title_template": _template("deadline_title_template"),
     }
 
 
@@ -2546,56 +2559,105 @@ if not st.session_state.iniciado:
                         if st.button("Confirmar exclusão",key=f"agenda_confirm_del_{aid}",type="primary",use_container_width=True): ticker["agenda"]=[a for a in ticker["agenda"] if a.get("id")!=aid]; st.session_state["agenda_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
 
     # =========================================================
-    # ALERTAS DE ÚLTIMAS ENTREGAS SIM
+    # ALERTAS DE STATUS SIM
     # =========================================================
     sim_alerts = config.setdefault("sim_alerts", sim_alerts_padrao())
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
     with st.container(border=True):
         sa1, sa2 = st.columns([3.7, 1])
         with sa1:
-            st.markdown('<div class="section-title">Alertas de Entrega SIM</div>', unsafe_allow_html=True)
-            st.caption("Exibe a notificação com o mascote somente quando todas as entidades monitoradas de um município estiverem entregues. A validação usa os mesmos registros de sim_submissions que alimentam o status do mapa.")
+            st.markdown('<div class="section-title">Alertas de Status SIM</div>', unsafe_allow_html=True)
+            st.caption("Valida os registros de sim_submissions por município. Verde = todas as entidades entregaram; laranja = entrega parcial; vermelho = nenhuma entidade entregou.")
         with sa2:
             sim_alerts["enabled"] = st.toggle(
                 "Exibir alertas SIM",
                 value=bool(sim_alerts.get("enabled", True)),
-                key="sim_alert_enabled_v320",
+                key="sim_alert_enabled_v330",
             )
 
         sac1, sac2, sac3, sac4 = st.columns([1.15, 1.15, 1.15, 2.55])
         with sac1:
             sim_alerts["display_seconds"] = st.number_input(
                 "Tempo na tela (s)", 3, 30, int(sim_alerts.get("display_seconds", 8)), 1,
-                key="sim_alert_display_v320",
+                key="sim_alert_display_v330",
             )
         with sac2:
             sim_alerts["poll_seconds"] = st.number_input(
                 "Verificar a cada (s)", 5, 120, int(sim_alerts.get("poll_seconds", 15)), 5,
-                key="sim_alert_poll_v320",
+                key="sim_alert_poll_v330",
             )
         with sac3:
             sim_alerts["show_entity"] = st.toggle(
-                "Mostrar resumo da validação", value=bool(sim_alerts.get("show_entity", True)), key="sim_alert_entity_v320"
+                "Mostrar resumo da validação", value=bool(sim_alerts.get("show_entity", True)), key="sim_alert_entity_v330"
             )
         with sac4:
             sim_alerts["notify_initial"] = st.toggle(
-                "Notificar municípios já completos na primeira leitura",
+                "Notificar status já existentes na primeira leitura",
                 value=bool(sim_alerts.get("notify_initial", False)),
-                key="sim_alert_initial_v320",
-                help="Deixe desligado para que os municípios que já estavam 100% entregues ao iniciar o monitor sejam usados somente como referência.",
+                key="sim_alert_initial_v330",
+                help="Deixe desligado para usar os municípios já verdes/laranjas apenas como referência ao iniciar o monitor.",
             )
 
+        st.markdown("**Alertas verde e laranja**")
+        vg1, vg2 = st.columns([1, 3])
+        with vg1:
+            sim_alerts["partial_enabled"] = st.toggle(
+                "Alertar entrega parcial (laranja)",
+                value=bool(sim_alerts.get("partial_enabled", True)),
+                key="sim_alert_partial_enabled_v330",
+            )
+        with vg2:
+            st.caption("O alerta laranja dispara quando o município sai de vermelho e passa a ter pelo menos uma entidade entregue, mas ainda existem pendências.")
+
         sim_alerts["title_template"] = st.text_input(
-            "Texto principal",
+            "Texto do alerta verde",
             value=str(sim_alerts.get("title_template") or "SIM do município {municipio} entregue"),
-            key="sim_alert_template_v320",
+            key="sim_alert_template_green_v330",
             help="Use {municipio} onde deseja inserir automaticamente o nome do município.",
-            max_chars=160,
+            max_chars=180,
         )
-        if "{municipio}" not in str(sim_alerts.get("title_template") or ""):
-            st.warning("O texto precisa conter **{municipio}**. O padrão será usado até a correção.")
-        st.caption("Fonte de validação: **sim_submissions**. `entregue` e `no_prazo` contam como entregues; `nao_entregue` conta como pendente. O município só dispara o alerta quando 100% das entidades monitoradas estiverem entregues.")
-        st.info("No menu ⋮ permanecem **Testar alerta SIM** e **Reiniciar leitura SIM**. O segundo limpa a referência local dos status municipais e permite recriar a linha de base na próxima consulta.")
+        sim_alerts["partial_title_template"] = st.text_input(
+            "Texto do alerta laranja",
+            value=str(sim_alerts.get("partial_title_template") or "SIM do município {municipio} parcialmente entregue"),
+            key="sim_alert_template_orange_v330",
+            help="Use {municipio} onde deseja inserir automaticamente o nome do município.",
+            max_chars=180,
+        )
+
+        st.markdown("**Alerta de pendências a partir do dia 28**")
+        rd1, rd2, rd3 = st.columns([1.1, 1.0, 2.9])
+        with rd1:
+            sim_alerts["deadline_enabled"] = st.toggle(
+                "Emitir alerta vermelho",
+                value=bool(sim_alerts.get("deadline_enabled", True)),
+                key="sim_alert_deadline_enabled_v330",
+            )
+        with rd2:
+            sim_alerts["deadline_day"] = st.number_input(
+                "A partir do dia", 1, 31, int(sim_alerts.get("deadline_day", 28)), 1,
+                key="sim_alert_deadline_day_v330",
+            )
+        with rd3:
+            st.caption("A partir do dia configurado, cada município monitorado que continuar totalmente vermelho recebe um alerta de pendência uma única vez por competência neste navegador.")
+
+        sim_alerts["deadline_title_template"] = st.text_input(
+            "Texto do alerta vermelho",
+            value=str(sim_alerts.get("deadline_title_template") or "SIM do município {municipio} ainda não foi entregue"),
+            key="sim_alert_template_red_v330",
+            help="Use {municipio} onde deseja inserir automaticamente o nome do município.",
+            max_chars=180,
+        )
+
+        for label, value in [
+            ("verde", sim_alerts.get("title_template")),
+            ("laranja", sim_alerts.get("partial_title_template")),
+            ("vermelho", sim_alerts.get("deadline_title_template")),
+        ]:
+            if "{municipio}" not in str(value or ""):
+                st.warning(f"O texto do alerta **{label}** precisa conter **{{municipio}}**. O padrão será usado até a correção.")
+
+        st.caption("Fonte: **sim_submissions**. `entregue` e `no_prazo` contam como entregues; `nao_entregue` conta como pendente. O agrupamento é feito por município/IBGE.")
+        st.info("No menu ⋮ ficam disponíveis testes separados para **verde**, **laranja** e **vermelho**, além de **Reiniciar leitura SIM**.")
 
     # Salva somente se houve alteração efetiva.
     salvar_config(config)
@@ -2965,7 +3027,7 @@ else:
             .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;transform-origin:0 0;will-change:transform}.focus-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#F59E0B;color:#fff;font-size:.79em;font-weight:850;letter-spacing:.2px}.focus-chip.hidden-item{display:none!important}
             .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap;justify-content:center}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:750}.overlay-btn.primary{background:#0E5285;color:#fff;border-color:#0E5285}.blocked-wrap{width:min(920px,94vw);display:grid;grid-template-columns:minmax(190px,290px) minmax(0,1fr);gap:28px;align-items:center;background:#fff;border:1px solid #D7E5F0;border-radius:18px;padding:28px 32px;box-shadow:0 16px 40px rgba(14,82,133,.12);text-align:left}.blocked-mascot{width:100%;max-height:330px;object-fit:contain;display:block}.blocked-copy h2{margin:0 0 8px;color:#0E5285;font-size:24px;line-height:1.15}.blocked-copy p{margin:0 0 14px;color:#52677A;font-size:14px;line-height:1.5}.blocked-details{display:grid;gap:7px;margin:15px 0;padding:13px 14px;background:#F3F7FB;border-radius:10px;color:#475569;font-size:12px}.blocked-details b{color:#16324A}.blocked-url{word-break:break-all}.blocked-reason{color:#8A5A00}.blocked-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#FFF4D6;color:#8A5A00;font-weight:800;font-size:11px;margin-bottom:9px}.blocked-fallback-icon{font-size:76px;line-height:1}.blocked-actions{display:flex;gap:9px;flex-wrap:wrap}.blocked-actions a{text-decoration:none}.blocked-countdown{font-size:12px;color:#64748B;margin-top:10px}@media(max-width:720px){.blocked-wrap{grid-template-columns:1fr;text-align:center;padding:20px}.blocked-mascot{max-height:210px}.blocked-actions{justify-content:center}}
             #news-ticker{position:fixed;left:0;bottom:0;width:100%;height:var(--ticker-h);z-index:9998;background:var(--blue);color:#fff;display:none;align-items:center;overflow:hidden;border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -2px 8px rgba(0,0,0,.16);font-size:var(--ticker-font,19px);transition:background .28s ease}#news-ticker.agenda-mode{background:#0B7A75}body.ticker-on #news-ticker{display:flex}.ticker-label{height:100%;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--blue-dark);font-weight:900;white-space:nowrap;flex:none;z-index:2;box-shadow:4px 0 10px rgba(9,61,99,.28);transition:background .28s ease;font-size:.95em}#news-ticker.agenda-mode .ticker-label{background:#075A56}.ticker-led{width:9px;height:9px;border-radius:50%;background:#59D38C;box-shadow:0 0 0 2px rgba(89,211,140,.16);flex:none}#news-ticker.agenda-mode .ticker-led{background:#FFD166;box-shadow:0 0 0 2px rgba(255,209,102,.18)}.ticker-viewport{height:100%;flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;position:relative}.ticker-track{display:flex;align-items:center;width:max-content;height:100%;will-change:transform;animation:ticker-scroll var(--ticker-duration,30s) linear infinite}.ticker-group{display:flex;align-items:center;height:100%;white-space:nowrap;flex:none}.ticker-item{height:100%;display:inline-flex;align-items:center;gap:9px;padding:0 20px;color:#F8FBFE;text-decoration:none;font-weight:650;border-right:1px solid rgba(255,255,255,.17);transition:background .12s ease}.ticker-item[href]{cursor:pointer}.ticker-item[href]:hover{background:rgba(255,255,255,.13);color:#fff}.ticker-category,.ticker-agenda-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:.72em;font-weight:900;letter-spacing:.2px}.ticker-category.novo{background:#DDF4FF;color:#075985}.ticker-category.melhoria{background:#DCFCE7;color:#166534}.ticker-category.aviso{background:#FEF3C7;color:#92400E}.ticker-category.importante,.ticker-category.correcao{background:#FEE2E2;color:#991B1B}.ticker-agenda-badge{background:#E6FFFA;color:#075A56}.ticker-agenda-mode{background:#FEF3C7;color:#7C4A03}.ticker-system{font-weight:900;color:#fff}.ticker-link{opacity:.9;font-size:.9em}.ticker-viewport.pause-hover:hover .ticker-track{animation-play-state:paused}@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--ticker-distance, 600px)))}}body.bar-bottom #diag{bottom:calc(50px + var(--ticker-h))!important}body.bar-top #restart-notice{bottom:calc(10px + var(--ticker-h))!important}body.bar-bottom #reveal-strip{bottom:var(--ticker-h)!important}@media(max-width:720px){#news-ticker{font-size:15px}.ticker-label{padding:0 9px}.ticker-label-text{display:none}.ticker-item{padding:0 12px}}
-            #sim-delivery-alert{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:34px;background:radial-gradient(circle at center,rgba(13,101,74,.38),rgba(3,18,31,.78));backdrop-filter:blur(3px);pointer-events:none;opacity:0}.sim-alert-show{display:flex!important;animation:simAlertBackdrop .34s ease forwards}.sim-alert-card{width:min(1180px,94vw);min-height:min(560px,78vh);display:grid;grid-template-columns:minmax(280px,430px) minmax(0,1fr);align-items:center;gap:28px;padding:34px 42px;border-radius:28px;border:3px solid rgba(74,222,128,.78);background:linear-gradient(135deg,rgba(250,255,252,.98),rgba(233,252,240,.98));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(74,222,128,.12);transform:scale(.92) translateY(18px);opacity:0;animation:simAlertCard .42s cubic-bezier(.2,.8,.2,1) .05s forwards}.sim-alert-mascot{width:100%;max-height:500px;object-fit:contain;filter:drop-shadow(0 18px 22px rgba(15,23,42,.16))}.sim-alert-kicker{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;border-radius:999px;background:#DCFCE7;color:#166534;border:1px solid #86EFAC;font-size:15px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}.sim-alert-copy h1{margin:15px 0 12px;font-size:clamp(38px,4.2vw,68px);line-height:1.03;letter-spacing:-1.6px;color:#064E3B;font-weight:950}.sim-alert-entity{margin:0;font-size:clamp(20px,2vw,30px);font-weight:780;color:#0F766E}.sim-alert-source{margin-top:20px;display:flex;align-items:center;gap:8px;color:#527065;font-size:15px;font-weight:650}.sim-alert-source::before{content:'●';color:#22C55E;font-size:12px}.sim-alert-progress{height:6px;background:#BBF7D0;border-radius:999px;overflow:hidden;margin-top:25px}.sim-alert-progress>span{display:block;height:100%;width:100%;background:#16A34A;transform-origin:left;animation:simAlertProgress var(--sim-alert-duration,8s) linear forwards}@keyframes simAlertBackdrop{to{opacity:1}}@keyframes simAlertCard{to{transform:scale(1) translateY(0);opacity:1}}@keyframes simAlertProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}@media(max-width:780px){#sim-delivery-alert{padding:14px}.sim-alert-card{grid-template-columns:1fr;gap:8px;padding:20px;text-align:center;min-height:auto}.sim-alert-mascot{max-height:240px}.sim-alert-copy h1{font-size:34px}.sim-alert-source{justify-content:center}}
+            #sim-delivery-alert{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:34px;background:radial-gradient(circle at center,rgba(13,101,74,.38),rgba(3,18,31,.78));backdrop-filter:blur(3px);pointer-events:none;opacity:0}.sim-alert-show{display:flex!important;animation:simAlertBackdrop .34s ease forwards}.sim-alert-card{width:min(1180px,94vw);min-height:min(560px,78vh);display:grid;grid-template-columns:minmax(280px,430px) minmax(0,1fr);align-items:center;gap:28px;padding:34px 42px;border-radius:28px;border:3px solid rgba(74,222,128,.78);background:linear-gradient(135deg,rgba(250,255,252,.98),rgba(233,252,240,.98));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(74,222,128,.12);transform:scale(.92) translateY(18px);opacity:0;animation:simAlertCard .42s cubic-bezier(.2,.8,.2,1) .05s forwards}.sim-alert-mascot{width:100%;max-height:500px;object-fit:contain;filter:drop-shadow(0 18px 22px rgba(15,23,42,.16))}.sim-alert-kicker{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;border-radius:999px;background:#DCFCE7;color:#166534;border:1px solid #86EFAC;font-size:15px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}.sim-alert-copy h1{margin:15px 0 12px;font-size:clamp(38px,4.2vw,68px);line-height:1.03;letter-spacing:-1.6px;color:#064E3B;font-weight:950}.sim-alert-entity{margin:0;font-size:clamp(20px,2vw,30px);font-weight:780;color:#0F766E}.sim-alert-source{margin-top:20px;display:flex;align-items:center;gap:8px;color:#527065;font-size:15px;font-weight:650}.sim-alert-source::before{content:'●';color:#22C55E;font-size:12px}.sim-alert-progress{height:6px;background:#BBF7D0;border-radius:999px;overflow:hidden;margin-top:25px}.sim-alert-progress>span{display:block;height:100%;width:100%;background:#16A34A;transform-origin:left;animation:simAlertProgress var(--sim-alert-duration,8s) linear forwards}#sim-delivery-alert.sim-alert-orange{background:radial-gradient(circle at center,rgba(217,119,6,.34),rgba(37,24,5,.80))}#sim-delivery-alert.sim-alert-orange .sim-alert-card{border-color:rgba(245,158,11,.82);background:linear-gradient(135deg,rgba(255,253,247,.99),rgba(255,247,225,.99));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(245,158,11,.14)}#sim-delivery-alert.sim-alert-orange .sim-alert-kicker{background:#FEF3C7;color:#92400E;border-color:#FCD34D}#sim-delivery-alert.sim-alert-orange .sim-alert-copy h1{color:#92400E}#sim-delivery-alert.sim-alert-orange .sim-alert-entity{color:#B45309}#sim-delivery-alert.sim-alert-orange .sim-alert-source{color:#7C5A2B}#sim-delivery-alert.sim-alert-orange .sim-alert-source::before{color:#F59E0B}#sim-delivery-alert.sim-alert-orange .sim-alert-progress{background:#FDE68A}#sim-delivery-alert.sim-alert-orange .sim-alert-progress>span{background:#D97706}#sim-delivery-alert.sim-alert-red{background:radial-gradient(circle at center,rgba(185,28,28,.34),rgba(31,8,8,.82))}#sim-delivery-alert.sim-alert-red .sim-alert-card{border-color:rgba(239,68,68,.82);background:linear-gradient(135deg,rgba(255,251,251,.99),rgba(254,235,235,.99));box-shadow:0 30px 90px rgba(0,0,0,.38),0 0 0 8px rgba(239,68,68,.14)}#sim-delivery-alert.sim-alert-red .sim-alert-kicker{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5}#sim-delivery-alert.sim-alert-red .sim-alert-copy h1{color:#991B1B}#sim-delivery-alert.sim-alert-red .sim-alert-entity{color:#B91C1C}#sim-delivery-alert.sim-alert-red .sim-alert-source{color:#7F1D1D}#sim-delivery-alert.sim-alert-red .sim-alert-source::before{color:#EF4444}#sim-delivery-alert.sim-alert-red .sim-alert-progress{background:#FECACA}#sim-delivery-alert.sim-alert-red .sim-alert-progress>span{background:#DC2626}@keyframes simAlertBackdrop{to{opacity:1}}@keyframes simAlertCard{to{transform:scale(1) translateY(0);opacity:1}}@keyframes simAlertProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}@media(max-width:780px){#sim-delivery-alert{padding:14px}.sim-alert-card{grid-template-columns:1fr;gap:8px;padding:20px;text-align:center;min-height:auto}.sim-alert-mascot{max-height:240px}.sim-alert-copy h1{font-size:34px}.sim-alert-source{justify-content:center}}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
             body.kiosk.controls-hidden{cursor:none}#reveal-strip{position:fixed;left:0;width:100%;height:4px;z-index:10015;opacity:0;pointer-events:none;background:linear-gradient(90deg,#0E5285,#54A3D8,#0E5285);transition:opacity .15s ease}body.bar-top #reveal-strip{top:0}body.bar-bottom #reveal-strip{bottom:0}body.controls-hidden #reveal-strip{opacity:.9;pointer-events:auto}
@@ -2989,8 +3051,10 @@ else:
                             <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
                             <button class="menu-item" id="focus-btn" onclick="alternarFocoManual(); closeMoreMenu();" title="Testar ou sair do Modo Foco neste painel">◎ Foco agora</button>
                             <button class="menu-item" id="ticker-btn" onclick="alternarTickerTemporario(); closeMoreMenu();" title="Mostrar ou ocultar temporariamente a faixa de atualizações">▤ Ocultar faixa</button>
-                            <button class="menu-item" id="sim-alert-test-btn" onclick="testarAlertaSIM(); closeMoreMenu();" title="Exibir uma notificação de teste do SIM">✓ Testar alerta SIM</button>
-                            <button class="menu-item" id="sim-alert-reset-btn" onclick="resetSimDeliveryBaseline(); closeMoreMenu();" title="Limpar a referência local de Últimas Entregas">↺ Reiniciar leitura SIM</button>
+                            <button class="menu-item" onclick="testarAlertaSIM('complete'); closeMoreMenu();" title="Exibir um alerta verde de teste">✓ Testar alerta verde</button>
+                            <button class="menu-item" onclick="testarAlertaSIM('partial'); closeMoreMenu();" title="Exibir um alerta laranja de teste">◐ Testar alerta laranja</button>
+                            <button class="menu-item" onclick="testarAlertaSIM('deadline'); closeMoreMenu();" title="Exibir um alerta vermelho de teste">⚠ Testar alerta vermelho</button>
+                            <button class="menu-item" id="sim-alert-reset-btn" onclick="resetSimDeliveryBaseline(); closeMoreMenu();" title="Limpar a referência local dos status municipais">↺ Reiniciar leitura SIM</button>
                             <button class="menu-item" id="kiosk-btn" onclick="alternarModoTV(); closeMoreMenu();" title="Modo TV (K)">▣ Modo TV</button>
                             <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
                         </div>
@@ -3008,10 +3072,10 @@ else:
             <div class="sim-alert-card">
                 <div><img id="sim-alert-mascot" class="sim-alert-mascot" alt="Mascote S&S comemorando entrega do SIM"></div>
                 <div class="sim-alert-copy">
-                    <div class="sim-alert-kicker">✓ Nova entrega registrada</div>
+                    <div id="sim-alert-kicker" class="sim-alert-kicker">✓ Entrega concluída</div>
                     <h1 id="sim-alert-title">SIM entregue</h1>
                     <p id="sim-alert-entity" class="sim-alert-entity"></p>
-                    <div class="sim-alert-source">Monitor SIM · Últimas Entregas</div>
+                    <div id="sim-alert-source" class="sim-alert-source">Monitor SIM · Status municipal</div>
                     <div class="sim-alert-progress"><span id="sim-alert-progress-bar"></span></div>
                 </div>
             </div>
@@ -3114,6 +3178,8 @@ else:
             const simAlertMascot = document.getElementById('sim-alert-mascot');
             const simAlertTitle = document.getElementById('sim-alert-title');
             const simAlertEntity = document.getElementById('sim-alert-entity');
+            const simAlertKicker = document.getElementById('sim-alert-kicker');
+            const simAlertSource = document.getElementById('sim-alert-source');
             const simAlertDiag = document.getElementById('d-sim-alert');
 
             const indexKey = `monitor_v23_panel_${profile.id}`;
@@ -3247,8 +3313,8 @@ else:
             }
             function simDeliveryKey(d){ return `${simNorm(d.municipio)}|${simNorm(d.entidade)}`; }
             function simDeliveredStatus(status){ return ['entregue','no_prazo'].includes(simNorm(status).replace(/\s+/g,'_')); }
-            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v32_${profile.id}_${ano}_${mes}`; }
-            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v32_${profile.id}_${ano}_${mes}`; }
+            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v33_${profile.id}_${ano}_${mes}`; }
+            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v33_${profile.id}_${ano}_${mes}`; }
             function loadJsonObject(key){
                 try{ const raw=localStorage.getItem(key); const obj=raw?JSON.parse(raw):null; return obj&&typeof obj==='object'&&!Array.isArray(obj)?obj:null; }catch(e){ return null; }
             }
@@ -3317,7 +3383,7 @@ else:
                 return '';
             }
             function buildSimMunicipalityStates(data,recent=[]){
-                let rows=simRowsFromPayload(data).filter(r=>r && r.monitored_entity && r.monitored_entity.monitorado!==false);
+                let rows=simRowsFromPayload(data).filter(r=>r && r.monitored_entity && r.monitored_entity.monitorado===true);
                 if(!rows.length)return {states:[],ano:null,mes:null};
                 const compCounts=new Map();
                 for(const r of rows){ const a=parseInt(r.ano,10),m=parseInt(r.mes,10); if(!a||!m)continue; const k=`${a}|${m}`; compCounts.set(k,(compCounts.get(k)||0)+1); }
@@ -3362,7 +3428,21 @@ else:
             function showNextSimAlert(){
                 if(simAlertActive || !simAlertQueue.length || !simDeliveryAlert)return;
                 const d=simAlertQueue.shift(); simAlertActive=true;
-                const template=String(simAlertSettings.title_template||'SIM do município {municipio} entregue');
+                const type=String(d.alert_type||'complete');
+                let template=String(simAlertSettings.title_template||'SIM do município {municipio} entregue');
+                let kicker='✓ Entrega concluída';
+                let source='Monitor SIM · Status municipal';
+                let cssClass='sim-alert-green';
+                if(type==='partial'){
+                    template=String(simAlertSettings.partial_title_template||'SIM do município {municipio} parcialmente entregue');
+                    kicker='◐ Entrega parcial'; source='Monitor SIM · Status municipal'; cssClass='sim-alert-orange';
+                }else if(type==='deadline'){
+                    template=String(simAlertSettings.deadline_title_template||'SIM do município {municipio} ainda não foi entregue');
+                    kicker='⚠ Pendência de envio'; source='Monitor SIM · Alerta de prazo'; cssClass='sim-alert-red';
+                }
+                simDeliveryAlert.classList.remove('sim-alert-green','sim-alert-orange','sim-alert-red');
+                simDeliveryAlert.classList.add(cssClass);
+                simAlertKicker.textContent=kicker; simAlertSource.textContent=source;
                 simAlertTitle.textContent=template.replaceAll('{municipio}',String(d.municipio||'').trim());
                 const showEntity=simAlertSettings.show_entity!==false && String(d.entidade||'').trim();
                 simAlertEntity.textContent=showEntity?String(d.entidade).trim():'';
@@ -3372,7 +3452,7 @@ else:
                 simDeliveryAlert.style.setProperty('--sim-alert-duration',`${seconds}s`);
                 const bar=document.getElementById('sim-alert-progress-bar'); if(bar){bar.style.animation='none';void bar.offsetWidth;bar.style.animation='simAlertProgress var(--sim-alert-duration) linear forwards';}
                 simDeliveryAlert.classList.add('sim-alert-show');
-                log(`Notificação SIM validada: ${d.municipio}${d.entidade?' · '+d.entidade:''}`);
+                log(`Notificação SIM ${type}: ${d.municipio}${d.entidade?' · '+d.entidade:''}`);
                 clearTimeout(simAlertHideTimer);
                 simAlertHideTimer=setTimeout(()=>{
                     simDeliveryAlert.classList.remove('sim-alert-show'); simAlertActive=false;
@@ -3386,26 +3466,41 @@ else:
                 const current=Object.fromEntries(states.map(s=>[String(s.key),String(s.state)]));
                 let previous=loadJsonObject(baselineKey); const notified=loadJsonSet(notifiedKey);
                 const complete=states.filter(s=>s.state==='complete').length, partial=states.filter(s=>s.state==='partial').length, pending=states.filter(s=>s.state==='pending').length;
+                const competencia=`${String(mes).padStart(2,'0')}/${ano}`;
+                const enqueueState=(s,type)=>{
+                    const prefix=type==='complete'?'green':type==='partial'?'orange':'red';
+                    const ak=`${prefix}|${ano}-${mes}|${s.key}`; if(notified.has(ak))return false;
+                    let resumo='';
+                    if(type==='complete') resumo=`${s.total} ${s.total===1?'entidade entregue':'entidades entregues'} · Competência ${competencia}`;
+                    else if(type==='partial') resumo=`${s.delivered} de ${s.total} entidades entregues · Competência ${competencia}`;
+                    else resumo=s.total===1?`A entidade monitorada ainda não entregou · Competência ${competencia}`:`Nenhuma das ${s.total} entidades monitoradas entregou · Competência ${competencia}`;
+                    enqueueSimAlert({alert_key:ak,alert_type:type,municipio:s.municipio,entidade:resumo}); notified.add(ak); return true;
+                };
+                let novos=0;
                 if(previous===null){
                     if(simAlertSettings.notify_initial===true){
-                        for(const s of states.filter(x=>x.state==='complete')){
-                            const ak=`${ano}-${mes}|${s.key}`; if(notified.has(ak))continue;
-                            enqueueSimAlert({alert_key:ak,municipio:s.municipio,entidade:`${s.total} ${s.total===1?'entidade entregue':'entidades entregues'} · Competência ${String(mes).padStart(2,'0')}/${ano}`}); notified.add(ak);
+                        for(const s of states){
+                            if(s.state==='complete' && enqueueState(s,'complete'))novos++;
+                            if(s.state==='partial' && simAlertSettings.partial_enabled!==false && enqueueState(s,'partial'))novos++;
                         }
                     }
-                    saveJsonObject(baselineKey,current); saveJsonSet(notifiedKey,notified);
-                    setSimPollStatus('ativo',`${complete} verde · ${partial} laranja · ${pending} vermelho · referência criada`);
-                    return true;
+                }else{
+                    for(const s of states){
+                        const prev=previous[String(s.key)];
+                        if(s.state==='complete' && prev!=='complete' && enqueueState(s,'complete'))novos++;
+                        else if(s.state==='partial' && prev!=='partial' && prev!=='complete' && simAlertSettings.partial_enabled!==false && enqueueState(s,'partial'))novos++;
+                    }
                 }
-                let novos=0;
-                for(const s of states){
-                    const prev=previous[String(s.key)]; if(s.state!=='complete' || prev==='complete')continue;
-                    const ak=`${ano}-${mes}|${s.key}`; if(notified.has(ak))continue;
-                    enqueueSimAlert({alert_key:ak,municipio:s.municipio,entidade:`${s.total} ${s.total===1?'entidade entregue':'entidades entregues'} · Competência ${String(mes).padStart(2,'0')}/${ano}`});
-                    notified.add(ak); novos++;
+
+                const deadlineDay=Math.max(1,Math.min(31,parseInt(simAlertSettings.deadline_day||28,10)));
+                const today=new Date();
+                if(simAlertSettings.deadline_enabled!==false && today.getDate()>=deadlineDay){
+                    for(const s of states.filter(x=>x.state==='pending')){ if(enqueueState(s,'deadline'))novos++; }
                 }
+
                 saveJsonObject(baselineKey,current); saveJsonSet(notifiedKey,notified);
-                setSimPollStatus('ativo',`${complete} verde · ${partial} laranja · ${pending} vermelho · ${source}${novos?` · ${novos} novo(s)`:''}`);
+                const refText=previous===null?' · referência criada':'';
+                setSimPollStatus('ativo',`${complete} verde · ${partial} laranja · ${pending} vermelho · ${source}${refText}${novos?` · ${novos} alerta(s) novo(s)`:''}`);
                 return true;
             }
             function simApiUrl(p){
@@ -3436,14 +3531,16 @@ else:
                 simPollTimer=setInterval(pollSimDeliveries,every*1000);
                 setSimPollStatus('aguardando',`validação municipal a cada ${every}s`);
             }
-            function testarAlertaSIM(){
+            function testarAlertaSIM(type='complete'){
                 const p=simPanel();
-                enqueueSimAlert({alert_key:`test-${Date.now()}`,municipio:'Município de Teste',entidade:'Todas as entidades entregues · Competência de teste'},true);
-                log(`Teste manual de alerta SIM${p?' · '+p.nome:''}`);
+                if(type==='partial') enqueueSimAlert({alert_key:`test-orange-${Date.now()}`,alert_type:'partial',municipio:'Município de Teste',entidade:'1 de 2 entidades entregues · Competência de teste'},true);
+                else if(type==='deadline') enqueueSimAlert({alert_key:`test-red-${Date.now()}`,alert_type:'deadline',municipio:'Município de Teste',entidade:'Nenhuma das 2 entidades monitoradas entregou · Competência de teste'},true);
+                else enqueueSimAlert({alert_key:`test-green-${Date.now()}`,alert_type:'complete',municipio:'Município de Teste',entidade:'2 entidades entregues · Competência de teste'},true);
+                log(`Teste manual de alerta SIM (${type})${p?' · '+p.nome:''}`);
             }
             function resetSimDeliveryBaseline(){
                 try{
-                    const prefixes=[`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const prefixes=[`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
                     const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
                 }catch(e){}
                 setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
