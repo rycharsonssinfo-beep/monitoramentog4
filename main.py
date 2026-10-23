@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.3.3
+# Painel de Monitoramento 3.3.4
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -38,13 +38,14 @@ import streamlit.components.v1 as components
 # 3.0.0: Integração S&S Conecta - login autenticado, coleta automática de Atualizações/Agenda e cache seguro
 # 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
 # 3.3.0: Alertas SIM por status - verde, laranja e aviso vermelho de pendências a partir do dia configurado
+# 3.3.4: Detecção redundante de transições SIM no backend + broadcast resiliente para todos os iframes
 # 3.3.3: polling SIM híbrido - servidor Streamlit + navegador, sem recarregar os iframes
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.3.3"
+APP_VERSION = "3.3.4"
 CONFIG_VERSION = 12
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -915,6 +916,167 @@ def _sim_alert_mascots_data():
     else:
         data["deadline"] = data["complete"]
     return data
+
+
+def _sim_server_rows(data):
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("results", "data", "items", "submissions"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return value
+    return []
+
+
+def _sim_server_delivered(status):
+    value = str(status or "").strip().lower().replace(" ", "_")
+    return value in {"entregue", "no_prazo"}
+
+
+def _sim_server_municipio_name(records):
+    descriptions = []
+    for row in records:
+        entity = row.get("monitored_entity") or {}
+        desc = re.sub(r"\s+", " ", str(entity.get("descricao") or "")).strip()
+        if desc:
+            descriptions.append(desc)
+
+    patterns = (
+        r"PREFEITURA\s+MUNICIPAL\s+DE\s+(.+)$",
+        r"C[ÂA]MARA\s+MUNICIPAL\s+DE\s+(.+)$",
+        r"MUNIC[IÍ]PIO\s+DE\s+(.+)$",
+        r"LEGISLATIVO\s+MUNICIPAL\s+DE\s+(.+)$",
+    )
+    for desc in descriptions:
+        for pattern in patterns:
+            match = re.search(pattern, desc, flags=re.IGNORECASE)
+            if match:
+                name = re.sub(r"\s+-\s+.*$", "", match.group(1)).strip()
+                if name and not name.isdigit():
+                    return name.title()
+    return ""
+
+
+def agrupar_sim_submissions_servidor(data):
+    rows = []
+    for row in _sim_server_rows(data):
+        if not isinstance(row, dict):
+            continue
+        entity = row.get("monitored_entity")
+        if not isinstance(entity, dict) or entity.get("monitorado") is not True:
+            continue
+        rows.append(row)
+    if not rows:
+        return {"states": [], "ano": None, "mes": None}
+
+    counts = {}
+    for row in rows:
+        try:
+            ano = int(row.get("ano"))
+            mes = int(row.get("mes"))
+        except Exception:
+            continue
+        if ano > 0 and 1 <= mes <= 12:
+            counts[(ano, mes)] = counts.get((ano, mes), 0) + 1
+    if not counts:
+        return {"states": [], "ano": None, "mes": None}
+    ano, mes = max(counts.items(), key=lambda item: item[1])[0]
+    rows = [r for r in rows if str(r.get("ano")) == str(ano) and str(r.get("mes")) == str(mes)]
+
+    groups = {}
+    for row in rows:
+        entity = row.get("monitored_entity") or {}
+        key = str(entity.get("cod_municipio_ibge") or entity.get("cod_municipio") or "").strip()
+        if key:
+            groups.setdefault(key, []).append(row)
+
+    states = []
+    for key, records in groups.items():
+        total = len(records)
+        delivered = sum(1 for r in records if _sim_server_delivered(r.get("status")))
+        state = "complete" if total and delivered == total else "partial" if delivered else "pending"
+        first = (records[0].get("monitored_entity") or {}) if records else {}
+        municipio = _sim_server_municipio_name(records) or f"Município {first.get('cod_municipio') or key}"
+        states.append({
+            "key": key,
+            "municipio": municipio,
+            "ibge": str(first.get("cod_municipio_ibge") or "").strip(),
+            "cod": str(first.get("cod_municipio") or "").strip(),
+            "ano": ano,
+            "mes": mes,
+            "total": total,
+            "delivered": delivered,
+            "state": state,
+        })
+    return {"states": states, "ano": ano, "mes": mes}
+
+
+def detectar_alertas_sim_servidor(result, cfg, profile_id):
+    states = result.get("states") or []
+    ano, mes = result.get("ano"), result.get("mes")
+    if not states or not ano or not mes:
+        return []
+
+    baseline_key = f"_sim_server_baseline_v334_{profile_id}_{ano}_{mes}"
+    notified_key = f"_sim_server_notified_v334_{profile_id}_{ano}_{mes}"
+    previous = st.session_state.get(baseline_key)
+    notified = set(st.session_state.get(notified_key, []))
+    current = {str(item.get("key")): str(item.get("state")) for item in states}
+    competencia = f"{int(mes):02d}/{ano}"
+    alerts = []
+
+    def add_alert(item, alert_type):
+        prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
+        alert_key = f"{prefix}|{ano}-{mes}|{item.get('key')}"
+        if alert_key in notified:
+            return
+        total = int(item.get("total") or 0)
+        delivered = int(item.get("delivered") or 0)
+        if alert_type == "complete":
+            resumo = f"{total} {'entidade entregue' if total == 1 else 'entidades entregues'} · Competência {competencia}"
+        elif alert_type == "partial":
+            resumo = f"{delivered} de {total} entidades entregues · Competência {competencia}"
+        else:
+            resumo = (f"A entidade monitorada ainda não entregou · Competência {competencia}" if total == 1
+                      else f"Nenhuma das {total} entidades monitoradas entregou · Competência {competencia}")
+        alerts.append({
+            "alert_key": alert_key,
+            "alert_type": alert_type,
+            "municipio": item.get("municipio") or "Município",
+            "entidade": resumo,
+            "ano": ano,
+            "mes": mes,
+        })
+        notified.add(alert_key)
+
+    notify_initial = bool(cfg.get("notify_initial", False))
+    if previous is None:
+        if notify_initial:
+            for item in states:
+                if item.get("state") == "complete":
+                    add_alert(item, "complete")
+                elif item.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
+                    add_alert(item, "partial")
+    else:
+        for item in states:
+            key = str(item.get("key"))
+            old = previous.get(key)
+            state = item.get("state")
+            if state == "complete" and old != "complete":
+                add_alert(item, "complete")
+            elif state == "partial" and old not in {"partial", "complete"} and bool(cfg.get("partial_enabled", True)):
+                add_alert(item, "partial")
+
+    deadline_day = max(1, min(31, int(cfg.get("deadline_day", 28) or 28)))
+    if bool(cfg.get("deadline_enabled", True)) and datetime.now().day >= deadline_day:
+        for item in states:
+            if item.get("state") == "pending":
+                add_alert(item, "deadline")
+
+    st.session_state[baseline_key] = current
+    st.session_state[notified_key] = sorted(notified)
+    return alerts
 
 
 def buscar_sim_submissions_servidor(panel_url):
@@ -3078,17 +3240,35 @@ else:
         export default function(component) {
             const { data } = component;
             if (!data) return;
-            const frames = document.querySelectorAll('iframe[title="streamlit.components.v1.html"]');
-            frames.forEach((frame) => {
-                try {
-                    frame.contentWindow.postMessage({
-                        source: 'sim-monitor',
-                        submissions: data.submissions || null,
-                        sourceLabel: data.sourceLabel || 'servidor Streamlit',
-                        serverError: data.error || ''
-                    }, '*');
-                } catch (e) {}
-            });
+
+            const broadcast = () => {
+                const frames = Array.from(document.querySelectorAll('iframe'));
+                const statusMessage = {
+                    source: 'sim-monitor',
+                    submissions: data.submissions || null,
+                    sourceLabel: data.sourceLabel || 'servidor Streamlit',
+                    serverError: data.error || ''
+                };
+                frames.forEach((frame) => {
+                    try { frame.contentWindow && frame.contentWindow.postMessage(statusMessage, '*'); } catch (e) {}
+                    for (const alert of (data.alerts || [])) {
+                        try {
+                            frame.contentWindow && frame.contentWindow.postMessage({
+                                source: 'sim-monitor',
+                                delivery: alert,
+                                sourceLabel: 'detecção servidor Streamlit'
+                            }, '*');
+                        } catch (e) {}
+                    }
+                });
+            };
+
+            // O iframe de apresentação pode ser montado depois do fragmento.
+            // Repetimos a entrega em janelas curtas para não perder a transição.
+            broadcast();
+            const t1 = setTimeout(broadcast, 250);
+            const t2 = setTimeout(broadcast, 1000);
+            return () => { clearTimeout(t1); clearTimeout(t2); };
         }
         """,
     )
@@ -3101,10 +3281,15 @@ else:
         @st.fragment(run_every=sim_server_interval)
         def _sim_server_poll_fragment():
             result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""))
+            alerts = []
+            if result.get("ok"):
+                grouped = agrupar_sim_submissions_servidor(result.get("data"))
+                alerts = detectar_alertas_sim_servidor(grouped, sim_poll_cfg, active_profile_id)
             sim_status_broadcaster(
                 key=f"sim_status_broadcaster_{active_profile_id}",
                 data={
                     "submissions": result.get("data") if result.get("ok") else None,
+                    "alerts": alerts,
                     "sourceLabel": "servidor Streamlit",
                     "error": result.get("error", ""),
                 },
@@ -3454,8 +3639,8 @@ else:
             }
             function simDeliveryKey(d){ return `${simNorm(d.municipio)}|${simNorm(d.entidade)}`; }
             function simDeliveredStatus(status){ return ['entregue','no_prazo'].includes(simNorm(status).replace(/\s+/g,'_')); }
-            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v333_${profile.id}_${ano}_${mes}`; }
-            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v333_${profile.id}_${ano}_${mes}`; }
+            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v334_${profile.id}_${ano}_${mes}`; }
+            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v334_${profile.id}_${ano}_${mes}`; }
             function loadJsonObject(key){
                 try{ const raw=localStorage.getItem(key); const obj=raw?JSON.parse(raw):null; return obj&&typeof obj==='object'&&!Array.isArray(obj)?obj:null; }catch(e){ return null; }
             }
@@ -3748,7 +3933,7 @@ else:
             }
             function resetSimDeliveryBaseline(){
                 try{
-                    const prefixes=[`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const prefixes=[`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
                     const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
                 }catch(e){}
                 setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
@@ -3766,7 +3951,17 @@ else:
                 }else if(msg.municipalities && msg.ano && msg.mes){
                     processSimMunicipalityStates({states:msg.municipalities,ano:msg.ano,mes:msg.mes},'bridge');
                 }else if(msg.delivery){
-                    enqueueSimAlert(msg.delivery);
+                    const d=msg.delivery||{};
+                    if(d.ano && d.mes && d.alert_key){
+                        const persisted=loadJsonSet(simNotifiedKey(d.ano,d.mes));
+                        if(!persisted.has(String(d.alert_key))){
+                            persisted.add(String(d.alert_key));
+                            saveJsonSet(simNotifiedKey(d.ano,d.mes),persisted);
+                            enqueueSimAlert(d);
+                        }
+                    }else{
+                        enqueueSimAlert(d);
+                    }
                 }else if(msg.serverError && simPollStatus!=='ativo'){
                     setSimPollStatus('servidor indisponível',String(msg.serverError).slice(0,100));
                 }
