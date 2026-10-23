@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.3.1
+# Painel de Monitoramento 3.3.2
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -39,11 +39,12 @@ import streamlit.components.v1 as components
 # 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
 # 3.3.0: Alertas SIM por status - verde, laranja e aviso vermelho de pendências a partir do dia configurado
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
+# 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.3.1"
-CONFIG_VERSION = 11
+APP_VERSION = "3.3.2"
+CONFIG_VERSION = 12
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -142,6 +143,11 @@ def sim_alerts_padrao():
         "partial_enabled": True,
         "deadline_enabled": True,
         "deadline_day": 28,
+        "audio_enabled": True,
+        "audio_volume": 60,
+        "audio_green": True,
+        "audio_partial": True,
+        "audio_deadline": True,
         "title_template": "SIM do município {municipio} entregue",
         "partial_title_template": "SIM do município {municipio} parcialmente entregue",
         "deadline_title_template": "SIM do município {municipio} ainda não foi entregue",
@@ -171,6 +177,11 @@ def normalizar_sim_alerts(raw):
         "partial_enabled": bool(raw.get("partial_enabled", True)),
         "deadline_enabled": bool(raw.get("deadline_enabled", True)),
         "deadline_day": _clamp_int(raw.get("deadline_day", 28), 28, 1, 31),
+        "audio_enabled": bool(raw.get("audio_enabled", True)),
+        "audio_volume": _clamp_int(raw.get("audio_volume", 60), 60, 0, 100),
+        "audio_green": bool(raw.get("audio_green", True)),
+        "audio_partial": bool(raw.get("audio_partial", True)),
+        "audio_deadline": bool(raw.get("audio_deadline", True)),
         "title_template": _template("title_template"),
         "partial_title_template": _template("partial_title_template"),
         "deadline_title_template": _template("deadline_title_template"),
@@ -2615,6 +2626,34 @@ if not st.session_state.iniciado:
                 help="Deixe desligado para usar os municípios já verdes/laranjas apenas como referência ao iniciar o monitor.",
             )
 
+        st.markdown("**Som dos alertas**")
+        snd1, snd2, snd3, snd4, snd5 = st.columns([1.25, 1.6, 1.0, 1.0, 1.0])
+        with snd1:
+            sim_alerts["audio_enabled"] = st.toggle(
+                "Alerta sonoro",
+                value=bool(sim_alerts.get("audio_enabled", True)),
+                key="sim_alert_audio_enabled_v332",
+                help="O navegador pode exigir uma interação no monitor antes do primeiro som. Qualquer clique na barra do monitor libera o áudio.",
+            )
+        with snd2:
+            sim_alerts["audio_volume"] = st.slider(
+                "Volume", 0, 100, int(sim_alerts.get("audio_volume", 60)), 5,
+                key="sim_alert_audio_volume_v332",
+            )
+        with snd3:
+            sim_alerts["audio_green"] = st.toggle(
+                "Som verde", value=bool(sim_alerts.get("audio_green", True)), key="sim_alert_audio_green_v332"
+            )
+        with snd4:
+            sim_alerts["audio_partial"] = st.toggle(
+                "Som laranja", value=bool(sim_alerts.get("audio_partial", True)), key="sim_alert_audio_partial_v332"
+            )
+        with snd5:
+            sim_alerts["audio_deadline"] = st.toggle(
+                "Som vermelho", value=bool(sim_alerts.get("audio_deadline", True)), key="sim_alert_audio_deadline_v332"
+            )
+        st.caption("Verde usa um toque curto de sucesso; laranja, dois bipes suaves; vermelho, três bipes de atenção. Os sons são gerados pelo navegador e não dependem de MP3 externo.")
+
         st.markdown("**Alertas verde e laranja**")
         vg1, vg2 = st.columns([1, 3])
         with vg1:
@@ -3068,9 +3107,9 @@ else:
                             <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
                             <button class="menu-item" id="focus-btn" onclick="alternarFocoManual(); closeMoreMenu();" title="Testar ou sair do Modo Foco neste painel">◎ Foco agora</button>
                             <button class="menu-item" id="ticker-btn" onclick="alternarTickerTemporario(); closeMoreMenu();" title="Mostrar ou ocultar temporariamente a faixa de atualizações">▤ Ocultar faixa</button>
-                            <button class="menu-item" onclick="testarAlertaSIM('complete'); closeMoreMenu();" title="Exibir um alerta verde de teste">✓ Testar alerta verde</button>
-                            <button class="menu-item" onclick="testarAlertaSIM('partial'); closeMoreMenu();" title="Exibir um alerta laranja de teste">◐ Testar alerta laranja</button>
-                            <button class="menu-item" onclick="testarAlertaSIM('deadline'); closeMoreMenu();" title="Exibir um alerta vermelho de teste">⚠ Testar alerta vermelho</button>
+                            <button class="menu-item" onclick="testarAlertaSIM('complete'); closeMoreMenu();" title="Exibir o alerta verde com mascote e som">✓ Testar alerta verde</button>
+                            <button class="menu-item" onclick="testarAlertaSIM('partial'); closeMoreMenu();" title="Exibir o alerta laranja com mascote e som">◐ Testar alerta laranja</button>
+                            <button class="menu-item" onclick="testarAlertaSIM('deadline'); closeMoreMenu();" title="Exibir o alerta vermelho com mascote e som">⚠ Testar alerta vermelho</button>
                             <button class="menu-item" id="sim-alert-reset-btn" onclick="resetSimDeliveryBaseline(); closeMoreMenu();" title="Limpar a referência local dos status municipais">↺ Reiniciar leitura SIM</button>
                             <button class="menu-item" id="kiosk-btn" onclick="alternarModoTV(); closeMoreMenu();" title="Modo TV (K)">▣ Modo TV</button>
                             <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
@@ -3155,6 +3194,9 @@ else:
             let simPollTimer = null;
             let simPollStatus = 'aguardando';
             let simLastStatusLogged = '';
+            let simAudioContext = null;
+            let simAudioStatus = 'aguardando interação';
+            let simAudioLogState = '';
             let pendingGeneralReload = false;
             let appStartedAt = Date.now();
             let lastHeartbeat = Date.now();
@@ -3434,6 +3476,69 @@ else:
                 const key=`${status}|${detail}`;
                 if(key!==simLastStatusLogged){ simLastStatusLogged=key; log(`Alertas SIM: ${detail||status}`); }
             }
+            function simSoundEnabled(type){
+                if(simAlertSettings.audio_enabled===false)return false;
+                if(type==='partial')return simAlertSettings.audio_partial!==false;
+                if(type==='deadline')return simAlertSettings.audio_deadline!==false;
+                return simAlertSettings.audio_green!==false;
+            }
+            function logSimAudioStatus(status){
+                simAudioStatus=status;
+                if(status!==simAudioLogState){ simAudioLogState=status; log(`Som SIM: ${status}`); }
+            }
+            async function ensureSimAudioContext(){
+                if(simAlertSettings.audio_enabled===false)return null;
+                try{
+                    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+                    if(!AudioCtx){ logSimAudioStatus('não suportado pelo navegador'); return null; }
+                    if(!simAudioContext)simAudioContext=new AudioCtx();
+                    if(simAudioContext.state==='suspended'){
+                        try{ await simAudioContext.resume(); }catch(e){}
+                    }
+                    if(simAudioContext.state!=='running'){
+                        logSimAudioStatus('aguardando interação no monitor');
+                        return null;
+                    }
+                    logSimAudioStatus('ativo');
+                    return simAudioContext;
+                }catch(e){
+                    logSimAudioStatus('indisponível');
+                    return null;
+                }
+            }
+            function simTone(ctx,freq,start,duration,gainValue,type='sine'){
+                const osc=ctx.createOscillator();
+                const gain=ctx.createGain();
+                osc.type=type; osc.frequency.setValueAtTime(freq,start);
+                gain.gain.setValueAtTime(0.0001,start);
+                gain.gain.exponentialRampToValueAtTime(Math.max(0.0001,gainValue),start+0.018);
+                gain.gain.setValueAtTime(Math.max(0.0001,gainValue),Math.max(start+0.02,start+duration-0.045));
+                gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(start); osc.stop(start+duration+0.02);
+            }
+            async function playSimAlertSound(type='complete'){
+                if(!simSoundEnabled(type))return false;
+                const ctx=await ensureSimAudioContext();
+                if(!ctx)return false;
+                const pct=Math.max(0,Math.min(100,parseInt(simAlertSettings.audio_volume??60,10)));
+                if(pct<=0)return false;
+                const volume=(pct/100)*0.20;
+                const t=ctx.currentTime+0.025;
+                if(type==='partial'){
+                    simTone(ctx,523.25,t,0.15,volume*0.78,'sine');
+                    simTone(ctx,659.25,t+0.19,0.18,volume*0.82,'sine');
+                }else if(type==='deadline'){
+                    simTone(ctx,392.00,t,0.13,volume*0.92,'triangle');
+                    simTone(ctx,329.63,t+0.17,0.13,volume*0.92,'triangle');
+                    simTone(ctx,392.00,t+0.34,0.19,volume,'triangle');
+                }else{
+                    simTone(ctx,659.25,t,0.14,volume*0.78,'sine');
+                    simTone(ctx,783.99,t+0.16,0.14,volume*0.86,'sine');
+                    simTone(ctx,987.77,t+0.32,0.22,volume,'sine');
+                }
+                return true;
+            }
             function enqueueSimAlert(delivery, force=false){
                 if(!simAlertSettings.enabled && !force)return;
                 if(!delivery || !String(delivery.municipio||'').trim())return;
@@ -3468,6 +3573,7 @@ else:
                 const mascotSrc=alertMascots[type]||simAlertSettings.mascot||'';
                 if(mascotSrc)simAlertMascot.src=mascotSrc;
                 simAlertMascot.alt=type==='partial'?'Mascote S&S trabalhando no alerta parcial do SIM':type==='deadline'?'Mascote S&S preocupado com pendência do SIM':'Mascote S&S comemorando entrega do SIM';
+                playSimAlertSound(type);
                 const seconds=Math.max(3,Math.min(30,parseInt(simAlertSettings.display_seconds||8,10)));
                 simDeliveryAlert.style.setProperty('--sim-alert-duration',`${seconds}s`);
                 const bar=document.getElementById('sim-alert-progress-bar'); if(bar){bar.style.animation='none';void bar.offsetWidth;bar.style.animation='simAlertProgress var(--sim-alert-duration) linear forwards';}
@@ -3567,6 +3673,8 @@ else:
                 log('Referência municipal dos alertas SIM reiniciada');
                 setTimeout(pollSimDeliveries,300);
             }
+            document.addEventListener('pointerdown',()=>{ ensureSimAudioContext(); },{passive:true});
+            document.addEventListener('keydown',()=>{ ensureSimAudioContext(); },{passive:true});
             window.addEventListener('message',(event)=>{
                 const msg=event.data;
                 if(!msg || msg.source!=='sim-monitor')return;
