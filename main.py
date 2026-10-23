@@ -36,12 +36,12 @@ import streamlit.components.v1 as components
 # 2.8.0: News Ticker S&S - faixa global de atualizações, cadastro manual, validade e links clicáveis
 # 2.9.0: Ticker alternado - Atualizações S&S + Agenda S&S, tempos configuráveis e modo TV ampliado
 # 3.0.0: Integração S&S Conecta - login autenticado, coleta automática de Atualizações/Agenda e cache seguro
-# 3.1.0: Alertas SIM - monitora Últimas Entregas, fila de notificações e mascote comemorativo
+# 3.2.0: Alertas SIM - valida status municipal via sim_submissions antes de notificar
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.1.0"
-CONFIG_VERSION = 9
+APP_VERSION = "3.2.0"
+CONFIG_VERSION = 10
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -129,7 +129,7 @@ def agenda_item_padrao():
 def sim_alerts_padrao():
     return {
         "enabled": True,
-        "source": "last_deliveries",
+        "source": "municipality_status",
         "display_seconds": 8,
         "poll_seconds": 15,
         "show_entity": True,
@@ -142,9 +142,10 @@ def normalizar_sim_alerts(raw):
     default = sim_alerts_padrao()
     if not isinstance(raw, dict):
         return default
-    source = str(raw.get("source") or "last_deliveries")
-    if source not in {"last_deliveries"}:
-        source = "last_deliveries"
+    source = str(raw.get("source") or "municipality_status")
+    # Migração automática da v3.1: a antiga fonte Últimas Entregas passa a ser apenas apoio visual.
+    if source not in {"municipality_status"}:
+        source = "municipality_status"
     title_template = str(raw.get("title_template") or default["title_template"]).strip()[:160]
     if "{municipio}" not in title_template:
         title_template = default["title_template"]
@@ -2552,49 +2553,49 @@ if not st.session_state.iniciado:
     with st.container(border=True):
         sa1, sa2 = st.columns([3.7, 1])
         with sa1:
-            st.markdown('<div class="section-title">Alertas de Últimas Entregas SIM</div>', unsafe_allow_html=True)
-            st.caption("Exibe uma notificação grande com o mascote quando surgir um novo item na lista ‘Últimas Entregas’ do Monitor SIM. A primeira leitura serve como referência e não gera alertas antigos.")
+            st.markdown('<div class="section-title">Alertas de Entrega SIM</div>', unsafe_allow_html=True)
+            st.caption("Exibe a notificação com o mascote somente quando todas as entidades monitoradas de um município estiverem entregues. A validação usa os mesmos registros de sim_submissions que alimentam o status do mapa.")
         with sa2:
             sim_alerts["enabled"] = st.toggle(
                 "Exibir alertas SIM",
                 value=bool(sim_alerts.get("enabled", True)),
-                key="sim_alert_enabled_v310",
+                key="sim_alert_enabled_v320",
             )
 
         sac1, sac2, sac3, sac4 = st.columns([1.15, 1.15, 1.15, 2.55])
         with sac1:
             sim_alerts["display_seconds"] = st.number_input(
                 "Tempo na tela (s)", 3, 30, int(sim_alerts.get("display_seconds", 8)), 1,
-                key="sim_alert_display_v310",
+                key="sim_alert_display_v320",
             )
         with sac2:
             sim_alerts["poll_seconds"] = st.number_input(
                 "Verificar a cada (s)", 5, 120, int(sim_alerts.get("poll_seconds", 15)), 5,
-                key="sim_alert_poll_v310",
+                key="sim_alert_poll_v320",
             )
         with sac3:
             sim_alerts["show_entity"] = st.toggle(
-                "Mostrar entidade", value=bool(sim_alerts.get("show_entity", True)), key="sim_alert_entity_v310"
+                "Mostrar resumo da validação", value=bool(sim_alerts.get("show_entity", True)), key="sim_alert_entity_v320"
             )
         with sac4:
             sim_alerts["notify_initial"] = st.toggle(
-                "Notificar itens já visíveis na primeira leitura",
+                "Notificar municípios já completos na primeira leitura",
                 value=bool(sim_alerts.get("notify_initial", False)),
-                key="sim_alert_initial_v310",
-                help="Deixe desligado para que os itens que já estavam na lista ao iniciar o monitor sejam apenas usados como referência.",
+                key="sim_alert_initial_v320",
+                help="Deixe desligado para que os municípios que já estavam 100% entregues ao iniciar o monitor sejam usados somente como referência.",
             )
 
         sim_alerts["title_template"] = st.text_input(
             "Texto principal",
             value=str(sim_alerts.get("title_template") or "SIM do município {municipio} entregue"),
-            key="sim_alert_template_v310",
+            key="sim_alert_template_v320",
             help="Use {municipio} onde deseja inserir automaticamente o nome do município.",
             max_chars=160,
         )
         if "{municipio}" not in str(sim_alerts.get("title_template") or ""):
             st.warning("O texto precisa conter **{municipio}**. O padrão será usado até a correção.")
-        st.caption("Fonte atual: **lista Últimas Entregas**. O navegador tenta ler o painel diretamente e, quando permitido, também consulta o endereço do Monitor SIM sem recarregar os iframes. Se o servidor bloquear leitura entre domínios (CORS), o diagnóstico indicará a limitação e a próxima evolução será usar uma API/bridge do Consulta TCE.")
-        st.info("No menu ⋮ da apresentação foram adicionados **Testar alerta SIM** e **Reiniciar leitura SIM**. O segundo limpa somente a referência local das Últimas Entregas daquele navegador.")
+        st.caption("Fonte de validação: **sim_submissions**. `entregue` e `no_prazo` contam como entregues; `nao_entregue` conta como pendente. O município só dispara o alerta quando 100% das entidades monitoradas estiverem entregues.")
+        st.info("No menu ⋮ permanecem **Testar alerta SIM** e **Reiniciar leitura SIM**. O segundo limpa a referência local dos status municipais e permite recriar a linha de base na próxima consulta.")
 
     # Salva somente se houve alteração efetiva.
     salvar_config(config)
@@ -2754,7 +2755,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.1 – Alertas SIM:** nova camada de notificação para itens que entram em “Últimas Entregas”, com mascote comemorativo, fila, memória local da referência e controles de teste/reinício no menu `⋮`.
+            **3.2 – Alertas SIM validados:** a notificação agora agrupa `sim_submissions` por município e só comemora quando todas as entidades estão `entregue` ou `no_prazo`; estados parciais não disparam o alerta.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3241,16 +3242,22 @@ else:
             function simPanel(){
                 return panels.find(p=>String(p.tipo||'').toLowerCase()==='sim' || /sim-submissions/i.test(String(p.link||''))) || null;
             }
-            function simBaselineKey(){ return `monitor_sim_last_deliveries_v31_${profile.id}_${todayLocalIso()}`; }
-            function simDeliveryKey(d){
-                const norm=v=>String(v||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-                return `${norm(d.municipio)}|${norm(d.entidade)}`;
+            function simNorm(v){
+                return String(v||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
             }
-            function loadSimBaseline(){
-                try{ const raw=localStorage.getItem(simBaselineKey()); const arr=raw?JSON.parse(raw):null; return Array.isArray(arr)?new Set(arr):null; }catch(e){ return null; }
+            function simDeliveryKey(d){ return `${simNorm(d.municipio)}|${simNorm(d.entidade)}`; }
+            function simDeliveredStatus(status){ return ['entregue','no_prazo'].includes(simNorm(status).replace(/\s+/g,'_')); }
+            function simStatusBaselineKey(ano,mes){ return `monitor_sim_municipality_status_v32_${profile.id}_${ano}_${mes}`; }
+            function simNotifiedKey(ano,mes){ return `monitor_sim_municipality_notified_v32_${profile.id}_${ano}_${mes}`; }
+            function loadJsonObject(key){
+                try{ const raw=localStorage.getItem(key); const obj=raw?JSON.parse(raw):null; return obj&&typeof obj==='object'&&!Array.isArray(obj)?obj:null; }catch(e){ return null; }
             }
-            function saveSimBaseline(keys){
-                try{ localStorage.setItem(simBaselineKey(),JSON.stringify(Array.from(keys))); }catch(e){}
+            function saveJsonObject(key,obj){ try{ localStorage.setItem(key,JSON.stringify(obj||{})); }catch(e){} }
+            function loadJsonSet(key){
+                try{ const raw=localStorage.getItem(key); const arr=raw?JSON.parse(raw):[]; return new Set(Array.isArray(arr)?arr:[]); }catch(e){ return new Set(); }
+            }
+            function saveJsonSet(key,set){
+                try{ localStorage.setItem(key,JSON.stringify(Array.from(set).slice(-500))); }catch(e){}
             }
             function parseSimDeliveriesFromDocument(doc){
                 if(!doc || !doc.querySelectorAll)return [];
@@ -3277,13 +3284,66 @@ else:
                 for(const item of out){ const k=simDeliveryKey(item); if(k && !seen.has(k)){seen.add(k);uniq.push(item);} }
                 return uniq;
             }
-            function parseSimDeliveriesFromHtml(raw){
-                try{ return parseSimDeliveriesFromDocument(new DOMParser().parseFromString(String(raw||''),'text/html')); }catch(e){ return []; }
-            }
             function currentSimFrameDeliveries(){
                 const p=simPanel(); if(!p)return [];
                 const item=pool.get(p.id); if(!item || !item.iframe)return [];
                 try{ return parseSimDeliveriesFromDocument(item.iframe.contentDocument); }catch(e){ return []; }
+            }
+            function simRowsFromPayload(data){
+                if(Array.isArray(data))return data;
+                if(!data || typeof data!=='object')return [];
+                for(const k of ['results','data','items','submissions']){ if(Array.isArray(data[k]))return data[k]; }
+                return [];
+            }
+            function simMunicipioFromDescriptions(records,recent=[]){
+                const descriptions=records.map(r=>String(r?.monitored_entity?.descricao||'').replace(/\s+/g,' ').trim()).filter(Boolean);
+                for(const item of recent){
+                    const cand=String(item?.municipio||'').replace(/\s+/g,' ').trim(); const n=simNorm(cand);
+                    if(n && descriptions.some(d=>simNorm(d).includes(n)))return cand;
+                }
+                const patterns=[
+                    /PREFEITURA\s+MUNICIPAL\s+DE\s+(.+)$/i,
+                    /C[ÂA]MARA\s+MUNICIPAL\s+DE\s+(.+)$/i,
+                    /MUNIC[IÍ]PIO\s+DE\s+(.+)$/i,
+                    /LEGISLATIVO\s+MUNICIPAL\s+DE\s+(.+)$/i,
+                ];
+                for(const desc of descriptions){
+                    for(const re of patterns){
+                        const m=desc.match(re); if(!m)continue;
+                        const name=String(m[1]||'').trim();
+                        if(name && !/^\d+$/.test(name))return name.replace(/\s+-\s+.*$/,'').trim();
+                    }
+                }
+                return '';
+            }
+            function buildSimMunicipalityStates(data,recent=[]){
+                let rows=simRowsFromPayload(data).filter(r=>r && r.monitored_entity && r.monitored_entity.monitorado!==false);
+                if(!rows.length)return {states:[],ano:null,mes:null};
+                const compCounts=new Map();
+                for(const r of rows){ const a=parseInt(r.ano,10),m=parseInt(r.mes,10); if(!a||!m)continue; const k=`${a}|${m}`; compCounts.set(k,(compCounts.get(k)||0)+1); }
+                const dominant=Array.from(compCounts.entries()).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+                let ano=null,mes=null;
+                if(dominant){ [ano,mes]=dominant.split('|').map(Number); rows=rows.filter(r=>parseInt(r.ano,10)===ano && parseInt(r.mes,10)===mes); }
+                const groups=new Map();
+                for(const r of rows){
+                    const ent=r.monitored_entity||{};
+                    const key=String(ent.cod_municipio_ibge||ent.cod_municipio||'').trim(); if(!key)continue;
+                    if(!groups.has(key))groups.set(key,[]); groups.get(key).push(r);
+                }
+                const states=[];
+                for(const [key,records] of groups){
+                    const total=records.length; const delivered=records.filter(r=>simDeliveredStatus(r.status)).length;
+                    const state=total>0&&delivered===total?'complete':delivered>0?'partial':'pending';
+                    let municipio=simMunicipioFromDescriptions(records,recent);
+                    if(!municipio){
+                        const cod=String(records[0]?.monitored_entity?.cod_municipio||key||'').trim(); municipio=`Município ${cod}`;
+                    }
+                    const ibge=String(records[0]?.monitored_entity?.cod_municipio_ibge||'').trim();
+                    const cod=String(records[0]?.monitored_entity?.cod_municipio||'').trim();
+                    const entityNames=records.map(r=>String(r?.monitored_entity?.descricao||'').trim()).filter(Boolean);
+                    states.push({key,municipio,ibge,cod,ano,mes,total,delivered,state,entities:entityNames});
+                }
+                return {states,ano,mes};
             }
             function setSimPollStatus(status, detail=''){
                 simPollStatus=status;
@@ -3294,9 +3354,9 @@ else:
             function enqueueSimAlert(delivery, force=false){
                 if(!simAlertSettings.enabled && !force)return;
                 if(!delivery || !String(delivery.municipio||'').trim())return;
-                const key=simDeliveryKey(delivery);
-                if(simAlertQueue.some(x=>simDeliveryKey(x)===key))return;
-                simAlertQueue.push({...delivery,force});
+                const key=String(delivery.alert_key||simDeliveryKey(delivery));
+                if(simAlertQueue.some(x=>String(x.alert_key||simDeliveryKey(x))===key))return;
+                simAlertQueue.push({...delivery,alert_key:key,force});
                 showNextSimAlert();
             }
             function showNextSimAlert(){
@@ -3312,44 +3372,60 @@ else:
                 simDeliveryAlert.style.setProperty('--sim-alert-duration',`${seconds}s`);
                 const bar=document.getElementById('sim-alert-progress-bar'); if(bar){bar.style.animation='none';void bar.offsetWidth;bar.style.animation='simAlertProgress var(--sim-alert-duration) linear forwards';}
                 simDeliveryAlert.classList.add('sim-alert-show');
-                log(`Notificação SIM: ${d.municipio}${d.entidade?' · '+d.entidade:''}`);
+                log(`Notificação SIM validada: ${d.municipio}${d.entidade?' · '+d.entidade:''}`);
                 clearTimeout(simAlertHideTimer);
                 simAlertHideTimer=setTimeout(()=>{
                     simDeliveryAlert.classList.remove('sim-alert-show'); simAlertActive=false;
                     setTimeout(showNextSimAlert,260);
                 },seconds*1000);
             }
-            function processSimDeliveries(list, source='lista'){
-                if(!Array.isArray(list) || !list.length)return false;
-                const current=new Map(list.map(d=>[simDeliveryKey(d),d]).filter(([k])=>k));
-                let previous=loadSimBaseline();
+            function processSimMunicipalityStates(result,source='sim_submissions'){
+                const states=Array.isArray(result?.states)?result.states:[]; const ano=result?.ano, mes=result?.mes;
+                if(!states.length || !ano || !mes)return false;
+                const baselineKey=simStatusBaselineKey(ano,mes), notifiedKey=simNotifiedKey(ano,mes);
+                const current=Object.fromEntries(states.map(s=>[String(s.key),String(s.state)]));
+                let previous=loadJsonObject(baselineKey); const notified=loadJsonSet(notifiedKey);
+                const complete=states.filter(s=>s.state==='complete').length, partial=states.filter(s=>s.state==='partial').length, pending=states.filter(s=>s.state==='pending').length;
                 if(previous===null){
-                    if(simAlertSettings.notify_initial===true){ for(const d of current.values())enqueueSimAlert(d); }
-                    saveSimBaseline(new Set(current.keys()));
-                    setSimPollStatus('ativo',`${current.size} item(ns) · referência criada`);
+                    if(simAlertSettings.notify_initial===true){
+                        for(const s of states.filter(x=>x.state==='complete')){
+                            const ak=`${ano}-${mes}|${s.key}`; if(notified.has(ak))continue;
+                            enqueueSimAlert({alert_key:ak,municipio:s.municipio,entidade:`${s.total} ${s.total===1?'entidade entregue':'entidades entregues'} · Competência ${String(mes).padStart(2,'0')}/${ano}`}); notified.add(ak);
+                        }
+                    }
+                    saveJsonObject(baselineKey,current); saveJsonSet(notifiedKey,notified);
+                    setSimPollStatus('ativo',`${complete} verde · ${partial} laranja · ${pending} vermelho · referência criada`);
                     return true;
                 }
                 let novos=0;
-                for(const [key,d] of current){ if(!previous.has(key)){enqueueSimAlert(d);novos++;} }
-                saveSimBaseline(new Set(current.keys()));
-                setSimPollStatus('ativo',`${current.size} item(ns) · ${source}${novos?` · ${novos} novo(s)`:''}`);
+                for(const s of states){
+                    const prev=previous[String(s.key)]; if(s.state!=='complete' || prev==='complete')continue;
+                    const ak=`${ano}-${mes}|${s.key}`; if(notified.has(ak))continue;
+                    enqueueSimAlert({alert_key:ak,municipio:s.municipio,entidade:`${s.total} ${s.total===1?'entidade entregue':'entidades entregues'} · Competência ${String(mes).padStart(2,'0')}/${ano}`});
+                    notified.add(ak); novos++;
+                }
+                saveJsonObject(baselineKey,current); saveJsonSet(notifiedKey,notified);
+                setSimPollStatus('ativo',`${complete} verde · ${partial} laranja · ${pending} vermelho · ${source}${novos?` · ${novos} novo(s)`:''}`);
                 return true;
+            }
+            function simApiUrl(p){
+                try{ const u=new URL(p.link); return `${u.origin}/sim_submissions`; }catch(e){ return ''; }
             }
             async function pollSimDeliveries(){
                 if(!simAlertSettings.enabled)return;
                 const p=simPanel(); if(!p){setSimPollStatus('sem painel','Monitor SIM não encontrado');return;}
-                const live=currentSimFrameDeliveries();
-                if(live.length){processSimDeliveries(live,'DOM do painel');return;}
+                const recent=currentSimFrameDeliveries();
+                const api=simApiUrl(p); if(!api){setSimPollStatus('erro','não foi possível montar a URL de sim_submissions');return;}
                 try{
-                    const resp=await fetch(p.link,{method:'GET',credentials:'include',cache:'no-store',redirect:'follow'});
+                    const resp=await fetch(api,{method:'GET',credentials:'include',cache:'no-store',redirect:'follow',headers:{'Accept':'application/json'}});
                     if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-                    const text=await resp.text();
-                    const list=parseSimDeliveriesFromHtml(text);
-                    if(list.length){processSimDeliveries(list,'consulta direta');return;}
-                    setSimPollStatus('sem dados','página respondeu, mas a lista não veio no HTML');
+                    const data=await resp.json();
+                    const result=buildSimMunicipalityStates(data,recent);
+                    if(result.states.length){processSimMunicipalityStates(result,'sim_submissions');return;}
+                    setSimPollStatus('sem dados','sim_submissions respondeu sem entidades monitoradas');
                 }catch(e){
                     const msg=String(e&&e.message||e||'falha').slice(0,110);
-                    setSimPollStatus('bloqueado',`leitura externa indisponível (${msg})`);
+                    setSimPollStatus('bloqueado',`sim_submissions indisponível no navegador (${msg})`);
                 }
             }
             function startSimDeliveryPolling(){
@@ -3358,23 +3434,27 @@ else:
                 const every=Math.max(5,Math.min(120,parseInt(simAlertSettings.poll_seconds||15,10)));
                 setTimeout(pollSimDeliveries,1800);
                 simPollTimer=setInterval(pollSimDeliveries,every*1000);
-                setSimPollStatus('aguardando',`verificação a cada ${every}s`);
+                setSimPollStatus('aguardando',`validação municipal a cada ${every}s`);
             }
             function testarAlertaSIM(){
                 const p=simPanel();
-                enqueueSimAlert({municipio:'Município de Teste',entidade:'ENTIDADE DE EXEMPLO',envio:'Envio: Recentemente'},true);
+                enqueueSimAlert({alert_key:`test-${Date.now()}`,municipio:'Município de Teste',entidade:'Todas as entidades entregues · Competência de teste'},true);
                 log(`Teste manual de alerta SIM${p?' · '+p.nome:''}`);
             }
             function resetSimDeliveryBaseline(){
-                try{localStorage.removeItem(simBaselineKey());}catch(e){}
-                setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência');
-                log('Referência de Últimas Entregas SIM reiniciada');
+                try{
+                    const prefixes=[`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
+                }catch(e){}
+                setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
+                log('Referência municipal dos alertas SIM reiniciada');
                 setTimeout(pollSimDeliveries,300);
             }
             window.addEventListener('message',(event)=>{
                 const msg=event.data;
                 if(!msg || msg.source!=='sim-monitor')return;
-                if(Array.isArray(msg.deliveries))processSimDeliveries(msg.deliveries,'bridge');
+                if(msg.submissions){ const result=buildSimMunicipalityStates(msg.submissions,msg.deliveries||[]); processSimMunicipalityStates(result,'bridge'); }
+                else if(msg.municipalities && msg.ano && msg.mes){ processSimMunicipalityStates({states:msg.municipalities,ano:msg.ano,mes:msg.mes},'bridge'); }
                 else if(msg.delivery)enqueueSimAlert(msg.delivery);
             });
 
