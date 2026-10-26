@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.5.0
+# Painel de Monitoramento 3.6.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -48,10 +48,11 @@ import streamlit.components.v1 as components
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # 3.4.1: alerta SIM nativo no DOM principal + fila controlada pelo fragmento + diagnóstico de eventos
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
+# 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.5.0"
+APP_VERSION = "3.6.0"
 CONFIG_VERSION = 14
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -3281,27 +3282,17 @@ if not st.session_state.iniciado:
 
     # Estabilidade e operação
     with st.expander("Estabilidade e operação", expanded=False):
-        st.caption("Watchdog e pré-carregamento funcionam sem recarregar a aplicação. O reinício completo agora só acontece quando for explicitamente habilitado.")
-        e0, e1, e2, e3, e4 = st.columns([1.15, 1.35, 1.0, 1.0, 1.0])
+        st.caption("Watchdog e pré-carregamento funcionam sem recarregar a aplicação. Na v3.6.0 o reinício completo automático foi desativado para preservar os iframes com F5 OFF.")
+        perfil["full_restart_enabled"] = False
+        perfil["horas_reload_geral"] = 0
+        e0, e2, e3, e4 = st.columns([1.35, 1.0, 1.0, 1.0])
         with e0:
-            perfil["full_restart_enabled"] = st.toggle(
-                "Permitir reinício completo",
-                value=bool(perfil.get("full_restart_enabled", False)),
-                key=f"full_restart_enabled_{active_profile_id}",
-                help="Desligado, a aplicação não reinicia sozinha. Esta opção é independente do F5 de cada painel.",
-            )
-        with e1:
-            allowed_hours = [1, 2, 4, 6, 8, 12, 24]
-            current_hours = int(perfil.get("horas_reload_geral", 0) or 0)
-            if current_hours not in allowed_hours:
-                current_hours = 6
-            perfil["horas_reload_geral"] = st.selectbox(
-                "Intervalo do reinício",
-                allowed_hours,
-                index=allowed_hours.index(current_hours),
-                format_func=lambda x: "A cada 1 hora" if x == 1 else f"A cada {x} horas",
-                key=f"reload_geral_{active_profile_id}",
-                disabled=not bool(perfil.get("full_restart_enabled", False)),
+            st.toggle(
+                "Reinício completo automático",
+                value=False,
+                key=f"full_restart_disabled_{active_profile_id}",
+                disabled=True,
+                help="Desativado nesta versão para impedir que a aplicação recrie os iframes periodicamente.",
             )
         with e2:
             perfil["preload_seconds"] = st.number_input(
@@ -3321,10 +3312,7 @@ if not st.session_state.iniciado:
                 value=bool(perfil.get("auto_ocultar_controles", True)),
                 key=f"autohide_{active_profile_id}",
             )
-        if perfil.get("full_restart_enabled", False):
-            st.warning("O reinício completo recria a apresentação e os iframes, inclusive painéis com F5 OFF. Mantenha esta opção desligada quando a prioridade for preservar sessões e filtros.")
-        else:
-            st.caption("✓ Reinício completo desativado: o F5 OFF pode preservar o mesmo iframe durante toda a sessão do monitor.")
+        st.caption("✓ Reinício completo automático desativado: o F5 OFF pode preservar o mesmo iframe durante toda a sessão do monitor.")
 
     # Experiência e visual
     with st.expander("Experiência e visual", expanded=False):
@@ -3732,6 +3720,7 @@ else:
                     serverError: data.error || '',
                     serverCounts: data.counts || null,
                     serverAlerts: data.alerts || [],
+                    municipalities: data.municipalities || [],
                     ano: data.ano || null,
                     mes: data.mes || null
                 };
@@ -3847,7 +3836,7 @@ else:
             sim_status_broadcaster(
                 key=f"sim_status_broadcaster_{active_profile_id}",
                 data={
-                    "alerts": alerts, "counts": counts, "ano": grouped.get("ano"), "mes": grouped.get("mes"),
+                    "alerts": alerts, "counts": counts, "municipalities": grouped.get("states", []), "ano": grouped.get("ano"), "mes": grouped.get("mes"),
                     "sourceLabel": "API oficial · servidor Streamlit", "error": result.get("error", ""),
                 },
             )
@@ -3877,7 +3866,7 @@ else:
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
         "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data()},
         "settings": {
-            "generalReloadMs": (int(perfil.get("horas_reload_geral", 0)) * 3600 * 1000) if bool(perfil.get("full_restart_enabled", False)) else 0,
+            "generalReloadMs": 0,
             "fullRestartEnabled": bool(perfil.get("full_restart_enabled", False)),
             "autoHide": bool(perfil.get("auto_ocultar_controles", True)),
             "kioskDefault": bool(perfil.get("modo_tv_padrao", False)),
@@ -4488,12 +4477,78 @@ else:
             }
             function resetSimDeliveryBaseline(){
                 try{
-                    const prefixes=[`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v335_${profile.id}_`,`monitor_sim_municipality_notified_v335_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const prefixes=[`monitor_sim_official_entities_v360_${profile.id}_`,`monitor_sim_official_notified_v360_${profile.id}_`,`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v335_${profile.id}_`,`monitor_sim_municipality_notified_v335_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
                     const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
                 }catch(e){}
                 setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
                 log('Referência municipal dos alertas SIM reiniciada');
                 setTimeout(pollSimDeliveries,300);
+            }
+            function processOfficialSimSnapshot(states, ano, mes){
+                if(!Array.isArray(states) || !states.length || !ano || !mes)return 0;
+                const comp=`${String(mes).padStart(2,'0')}/${ano}`;
+                const snapshotKey=`monitor_sim_official_entities_v360_${profile.id}_${ano}_${String(mes).padStart(2,'0')}`;
+                const notifiedKey=`monitor_sim_official_notified_v360_${profile.id}_${ano}_${String(mes).padStart(2,'0')}`;
+                let previous=null;
+                try{ previous=JSON.parse(localStorage.getItem(snapshotKey)||'null'); }catch(e){ previous=null; }
+                let notified=[];
+                try{ notified=JSON.parse(localStorage.getItem(notifiedKey)||'[]'); if(!Array.isArray(notified))notified=[]; }catch(e){ notified=[]; }
+                const notifiedSet=new Set(notified.map(String));
+                const current={};
+                const entityToMunicipality={};
+                for(const m of states){
+                    for(const e of (Array.isArray(m.entities)?m.entities:[])){
+                        const ek=String(e.key||'').trim(); if(!ek)continue;
+                        current[ek]={delivered:!!e.delivered,data_envio:String(e.data_envio||''),status:String(e.status||''),updated_at:String(e.updated_at||''),descricao:String(e.descricao||'')};
+                        entityToMunicipality[ek]=m;
+                    }
+                }
+                let created=0;
+                const addAlert=(m,e,type)=>{
+                    const ek=String(e.key||'').trim();
+                    const stamp=String(e.data_envio||e.updated_at||`${m.delivered||0}`);
+                    const prefix=type==='complete'?'green':type==='partial'?'orange':'red';
+                    const key=type==='deadline'?`red|${ano}-${mes}|${m.key}`:`${prefix}|${ano}-${mes}|entity:${ek}|${stamp}`;
+                    if(notifiedSet.has(key))return;
+                    const total=Number(m.total||0), delivered=Number(m.delivered||0);
+                    const desc=String(e.descricao||'').trim();
+                    let resumo='';
+                    if(type==='complete')resumo=`${desc?desc+' · ':''}${total} de ${total} entidades entregues · Competência ${comp}`;
+                    else if(type==='partial')resumo=`${desc?desc+' · ':''}${delivered} de ${total} entidades entregues · Competência ${comp}`;
+                    else resumo=total===1?`A entidade monitorada ainda não entregou · Competência ${comp}`:`Nenhuma das ${total} entidades monitoradas entregou · Competência ${comp}`;
+                    enqueueSimAlert({alert_key:key,alert_type:type,municipio:String(m.municipio||'Município'),entidade:resumo,ano,mes,entity_key:ek,data_envio:String(e.data_envio||'')});
+                    notifiedSet.add(key); created++;
+                };
+                if(previous && typeof previous==='object'){
+                    for(const [ek,e] of Object.entries(current)){
+                        const old=previous[ek]||{};
+                        const newlyDelivered=!!e.delivered && (!old.delivered || (e.data_envio && e.data_envio!==String(old.data_envio||'')));
+                        if(!newlyDelivered)continue;
+                        const m=entityToMunicipality[ek]||{};
+                        if(String(m.state)==='complete')addAlert(m,{...e,key:ek},'complete');
+                        else if(String(m.state)==='partial' && simAlertSettings.partial_enabled!==false)addAlert(m,{...e,key:ek},'partial');
+                    }
+                }else if(simAlertSettings.notify_initial===true){
+                    for(const [ek,e] of Object.entries(current)){
+                        if(!e.delivered)continue;
+                        const m=entityToMunicipality[ek]||{};
+                        if(String(m.state)==='complete')addAlert(m,{...e,key:ek},'complete');
+                        else if(String(m.state)==='partial' && simAlertSettings.partial_enabled!==false)addAlert(m,{...e,key:ek},'partial');
+                    }
+                }
+                const deadlineDay=Math.max(1,Math.min(31,parseInt(simAlertSettings.deadline_day||28,10)));
+                if(simAlertSettings.deadline_enabled!==false && new Date().getDate()>=deadlineDay){
+                    for(const m of states){
+                        if(String(m.state)!=='pending')continue;
+                        addAlert(m,{key:String(m.key||''),descricao:'',data_envio:'',updated_at:''},'deadline');
+                    }
+                }
+                try{
+                    localStorage.setItem(snapshotKey,JSON.stringify(current));
+                    localStorage.setItem(notifiedKey,JSON.stringify(Array.from(notifiedSet).slice(-4000)));
+                }catch(e){}
+                if(created)log(`API oficial: ${created} novo(s) alerta(s) detectado(s) no navegador · ${comp}`);
+                return created;
             }
             document.addEventListener('pointerdown',()=>{ ensureSimAudioContext(); },{passive:true});
             document.addEventListener('keydown',()=>{ ensureSimAudioContext(); },{passive:true});
@@ -4507,6 +4562,9 @@ else:
                     setSimPollStatus('ativo',`${c.complete||0} verde · ${c.partial||0} laranja · ${c.pending||0} vermelho · API oficial${comp}${aq?` · ${aq} alerta(s) pendente(s)`:''}`);
                 }else if(msg.serverError){
                     setSimPollStatus('erro',String(msg.serverError).slice(0,140));
+                }
+                if(Array.isArray(msg.municipalities) && msg.municipalities.length && msg.ano && msg.mes){
+                    processOfficialSimSnapshot(msg.municipalities,msg.ano,msg.mes);
                 }
                 if(Array.isArray(msg.serverAlerts)){
                     for(const alert of msg.serverAlerts) enqueueSimAlert(alert);
