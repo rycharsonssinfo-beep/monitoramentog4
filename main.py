@@ -49,11 +49,12 @@ import streamlit.components.v1 as components
 # 3.4.1: alerta SIM nativo no DOM principal + fila controlada pelo fragmento + diagnóstico de eventos
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
+# 3.7.0: eventos oficiais por entidade+data_envio, teste da última entrega real e F5 OFF persistente no navegador
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.6.0"
-CONFIG_VERSION = 14
+APP_VERSION = "3.7.0"
+CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
 SIM_ALERT_STATE_PATH = Path.cwd() / "sim_alert_state.json"
@@ -1132,7 +1133,16 @@ def agrupar_sim_submissions_servidor(data):
         if not isinstance(row, dict):
             continue
         entity = row.get("monitored_entity")
-        if not isinstance(entity, dict) or entity.get("monitorado") is not True:
+        if not isinstance(entity, dict):
+            continue
+        # O endpoint já é consultado com monitorado=true. Ainda assim, aceitamos
+        # bool, número, string e ausência do campo para evitar descartar linhas válidas.
+        raw_mon = entity.get("monitorado", True)
+        if isinstance(raw_mon, str):
+            mon_ok = raw_mon.strip().lower() in {"true", "1", "sim", "yes", "s", "y"}
+        else:
+            mon_ok = bool(raw_mon)
+        if not mon_ok:
             continue
         rows.append(row)
     if not rows:
@@ -1193,71 +1203,104 @@ def agrupar_sim_submissions_servidor(data):
     return {"states": states, "ano": ano, "mes": mes}
 
 
+def _sim_delivery_event_key(entity_key, data_envio, status="", updated_at=""):
+    entity_key = str(entity_key or "").strip()
+    data_envio = str(data_envio or "").strip()
+    status = str(status or "").strip()
+    updated_at = str(updated_at or "").strip()
+    stamp = data_envio or updated_at or status
+    return f"{entity_key}|{stamp}" if entity_key and stamp else ""
+
+
+def _sim_latest_confirmed_delivery(result):
+    states = result.get("states") or []
+    ano, mes = result.get("ano"), result.get("mes")
+    latest = None
+    latest_stamp = ""
+    for municipality in states:
+        for entity in municipality.get("entities") or []:
+            if not bool(entity.get("delivered")):
+                continue
+            stamp = str(entity.get("data_envio") or entity.get("updated_at") or "").strip()
+            if not stamp:
+                continue
+            if latest is None or stamp > latest_stamp:
+                latest_stamp = stamp
+                latest = {
+                    "municipio": municipality.get("municipio") or "Município",
+                    "municipality_key": municipality.get("key"),
+                    "state": municipality.get("state") or "partial",
+                    "delivered": int(municipality.get("delivered") or 0),
+                    "total": int(municipality.get("total") or 0),
+                    "entity_key": str(entity.get("key") or ""),
+                    "entity_description": str(entity.get("descricao") or "").strip(),
+                    "data_envio": str(entity.get("data_envio") or "").strip(),
+                    "updated_at": str(entity.get("updated_at") or "").strip(),
+                    "ano": ano,
+                    "mes": mes,
+                }
+    return latest
+
+
 def detectar_alertas_sim_servidor(result, cfg, profile_id):
     states = result.get("states") or []
     ano, mes = result.get("ano"), result.get("mes")
     if not states or not ano or not mes:
         return []
 
-    # v3.5.0: baseline fora do session_state. Isso faz a detecção sobreviver a
-    # reruns/reconexões do Streamlit e evita que uma nova entrega seja tratada
-    # como "primeira leitura" depois de uma atualização da página.
     persistent_state, bucket, comp_key = _sim_persistent_bucket(profile_id, ano, mes)
-    previous_entities = bucket.get("entities") or {}
-    baseline_exists = bool(bucket.get("baseline_created_at"))
+    known_events = set(bucket.get("known_delivery_events") or [])
     notified = set(bucket.get("notified") or [])
     pending = bucket.get("pending") or {}
-
+    baseline_exists = bool(bucket.get("event_baseline_created_at"))
     now_ts = time.time()
-    # Mantém eventos por 10 minutos para o componente visual receber várias leituras.
+
+    # Mantém eventos por 10 minutos para múltiplas tentativas de exibição.
     pending = {
         k: v for k, v in pending.items()
         if isinstance(v, dict) and now_ts - float(v.get("created_at", 0) or 0) <= 600
     }
 
-    current_entities = {}
-    state_by_entity = {}
+    entity_to_municipality = {}
+    current_events = {}
     for municipality in states:
         for entity in municipality.get("entities") or []:
             entity_key = str(entity.get("key") or "").strip()
             if not entity_key:
                 continue
-            current_entities[entity_key] = {
-                "delivered": bool(entity.get("delivered")),
-                "data_envio": str(entity.get("data_envio") or ""),
-                "status": str(entity.get("status") or ""),
-                "updated_at": str(entity.get("updated_at") or ""),
-                "descricao": str(entity.get("descricao") or ""),
-            }
-            state_by_entity[entity_key] = municipality
+            entity_to_municipality[entity_key] = municipality
+            if not bool(entity.get("delivered")):
+                continue
+            event_key = _sim_delivery_event_key(
+                entity_key,
+                entity.get("data_envio"),
+                entity.get("status"),
+                entity.get("updated_at"),
+            )
+            if event_key:
+                current_events[event_key] = {**entity, "key": entity_key}
 
     competencia = f"{int(mes):02d}/{ano}"
 
-    def add_entity_alert(municipality, entity, alert_type):
+    def add_alert(municipality, entity, alert_type, event_key=""):
         total = int(municipality.get("total") or 0)
         delivered = int(municipality.get("delivered") or 0)
         entity_key = str(entity.get("key") or "").strip()
-        envio_stamp = str(entity.get("data_envio") or entity.get("updated_at") or delivered)
         prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
         alert_key = (
-            f"{prefix}|{ano}-{mes}|entity:{entity_key}|{envio_stamp}"
+            f"{prefix}|{ano}-{mes}|event:{event_key}"
             if alert_type != "deadline"
             else f"red|{ano}-{mes}|{municipality.get('key')}"
         )
         if alert_key in notified:
             return False
-
         entity_desc = str(entity.get("descricao") or "").strip()
         if alert_type == "complete":
             resumo = f"{entity_desc} · {total} de {total} entidades entregues · Competência {competencia}" if entity_desc else f"{total} entidades entregues · Competência {competencia}"
         elif alert_type == "partial":
             resumo = f"{entity_desc} · {delivered} de {total} entidades entregues · Competência {competencia}" if entity_desc else f"{delivered} de {total} entidades entregues · Competência {competencia}"
         else:
-            resumo = (
-                f"A entidade monitorada ainda não entregou · Competência {competencia}"
-                if total == 1 else f"Nenhuma das {total} entidades monitoradas entregou · Competência {competencia}"
-            )
-
+            resumo = f"A entidade monitorada ainda não entregou · Competência {competencia}" if total == 1 else f"Nenhuma das {total} entidades monitoradas entregou · Competência {competencia}"
         alert = {
             "alert_key": alert_key,
             "alert_type": alert_type,
@@ -1285,40 +1328,30 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
             "competencia": competencia,
         }
         bucket["last_event"] = last_event
-        st.session_state[f"_sim_last_event_v342_{profile_id}"] = last_event
+        st.session_state[f"_sim_last_event_v370_{profile_id}"] = last_event
         return True
 
-    notify_initial = bool(cfg.get("notify_initial", False))
     if not baseline_exists:
-        # Primeira leitura desta competência: cria referência persistente.
-        if notify_initial:
-            for entity_key, current in current_entities.items():
-                if not current.get("delivered"):
-                    continue
-                municipality = state_by_entity.get(entity_key) or {}
+        # Primeira leitura: apenas registra todas as entregas já existentes.
+        known_events.update(current_events.keys())
+        bucket["event_baseline_created_at"] = datetime.now().isoformat()
+        if bool(cfg.get("notify_initial", False)):
+            for event_key, entity in current_events.items():
+                municipality = entity_to_municipality.get(str(entity.get("key") or "")) or {}
                 if municipality.get("state") == "complete":
-                    add_entity_alert(municipality, {**current, "key": entity_key}, "complete")
+                    add_alert(municipality, entity, "complete", event_key)
                 elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
-                    add_entity_alert(municipality, {**current, "key": entity_key}, "partial")
-        bucket["baseline_created_at"] = datetime.now().isoformat()
+                    add_alert(municipality, entity, "partial", event_key)
     else:
-        for entity_key, current in current_entities.items():
-            previous = previous_entities.get(entity_key) if isinstance(previous_entities, dict) else None
-            old_delivered = bool(previous.get("delivered")) if isinstance(previous, dict) else False
-            new_delivered = bool(current.get("delivered"))
-            old_stamp = str(previous.get("data_envio") or "") if isinstance(previous, dict) else ""
-            new_stamp = str(current.get("data_envio") or "")
-
-            # Evento primário: entidade passa de pendente para entregue.
-            # Evento secundário: data_envio muda para um novo envio/reenvio.
-            is_new_delivery = new_delivered and (not old_delivered or (new_stamp and new_stamp != old_stamp))
-            if not is_new_delivery:
-                continue
-            municipality = state_by_entity.get(entity_key) or {}
+        # Regra central: qualquer combinação entidade + data_envio nova é uma nova entrega.
+        for event_key in sorted(set(current_events.keys()) - known_events):
+            entity = current_events[event_key]
+            municipality = entity_to_municipality.get(str(entity.get("key") or "")) or {}
             if municipality.get("state") == "complete":
-                add_entity_alert(municipality, {**current, "key": entity_key}, "complete")
+                add_alert(municipality, entity, "complete", event_key)
             elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
-                add_entity_alert(municipality, {**current, "key": entity_key}, "partial")
+                add_alert(municipality, entity, "partial", event_key)
+        known_events.update(current_events.keys())
 
     deadline_day = max(1, min(31, int(cfg.get("deadline_day", 28) or 28)))
     if bool(cfg.get("deadline_enabled", True)) and datetime.now().day >= deadline_day:
@@ -1326,11 +1359,12 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
             if municipality.get("state") != "pending":
                 continue
             fake_entity = {"key": municipality.get("key"), "descricao": "", "data_envio": "", "updated_at": ""}
-            add_entity_alert(municipality, fake_entity, "deadline")
+            add_alert(municipality, fake_entity, "deadline", "")
 
-    bucket["entities"] = current_entities
-    bucket["notified"] = sorted(notified)[-4000:]
+    bucket["known_delivery_events"] = sorted(known_events)[-10000:]
+    bucket["notified"] = sorted(notified)[-6000:]
     bucket["pending"] = pending
+    bucket["latest_delivery"] = _sim_latest_confirmed_delivery(result)
     bucket["updated_at"] = datetime.now().isoformat()
     _save_sim_persistent_state(persistent_state)
 
@@ -3432,7 +3466,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.3.6 – Alertas por progresso:** além da API oficial, o monitor compara a quantidade de entidades entregues. Novas entregas geram alerta mesmo quando o município continua laranja; a última entrega gera o alerta verde.
+            **3.7.0 – Eventos oficiais de entrega:** cada nova combinação entidade + data_envio retornada pela API oficial gera um evento. O botão “Testar última entrega confirmada” usa o registro mais recente da própria API. O F5 OFF agora fica persistente no navegador.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3720,6 +3754,7 @@ else:
                     serverError: data.error || '',
                     serverCounts: data.counts || null,
                     serverAlerts: data.alerts || [],
+                    latestDelivery: data.latestDelivery || null,
                     municipalities: data.municipalities || [],
                     ano: data.ano || null,
                     mes: data.mes || null
@@ -3769,6 +3804,8 @@ else:
                 if result.get("ok"):
                     grouped = agrupar_sim_submissions_servidor(result.get("data"))
                     alerts = detectar_alertas_sim_servidor(grouped, sim_poll_cfg, active_profile_id)
+                latest_delivery = _sim_latest_confirmed_delivery(grouped) if grouped.get("states") else None
+                st.session_state[f"_sim_latest_delivery_v370_{active_profile_id}"] = latest_delivery
                 counts = {
                     "complete": sum(1 for x in grouped.get("states", []) if x.get("state") == "complete"),
                     "partial": sum(1 for x in grouped.get("states", []) if x.get("state") == "partial"),
@@ -3797,6 +3834,7 @@ else:
                 grouped = payload_cache.get("grouped") or {"states": [], "ano": None, "mes": None}
                 counts = payload_cache.get("counts") or {"complete": 0, "partial": 0, "pending": 0}
                 alerts = st.session_state.get(last_alerts_key) or []
+                latest_delivery = st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}")
 
             ui_seen_key = f"_sim_direct_seen_v341_{active_profile_id}"
             ui_queue_key = f"_sim_direct_queue_v341_{active_profile_id}"
@@ -3837,6 +3875,7 @@ else:
                 key=f"sim_status_broadcaster_{active_profile_id}",
                 data={
                     "alerts": alerts, "counts": counts, "municipalities": grouped.get("states", []), "ano": grouped.get("ano"), "mes": grouped.get("mes"),
+                    "latestDelivery": latest_delivery,
                     "sourceLabel": "API oficial · servidor Streamlit", "error": result.get("error", ""),
                 },
             )
@@ -3864,7 +3903,7 @@ else:
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
-        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data()},
+        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}")},
         "settings": {
             "generalReloadMs": 0,
             "fullRestartEnabled": bool(perfil.get("full_restart_enabled", False)),
@@ -3922,7 +3961,7 @@ else:
                     <button class="btn" onclick="mudarTela(-1)" title="Painel anterior (←)">←</button>
                     <button class="btn" id="pause-btn" onclick="alternarPausa()" title="Pausar/retomar (Espaço)">Ⅱ <span class="label">Pausar</span></button>
                     <button class="btn" onclick="mudarTela(1)" title="Próximo painel (→)">→</button>
-                    <button class="btn" id="reload-toggle" onclick="alternarRecarregamentoTemporario()" title="F5 automático deste painel; alteração temporária não muda a configuração salva">↻ <span class="label">F5</span></button>
+                    <button class="btn" id="reload-toggle" onclick="alternarRecarregamentoTemporario()" title="F5 automático deste painel; ON/OFF fica preservado neste navegador">↻ <span class="label">F5</span></button>
                     <button class="btn" onclick="alternarTelaCheia()" title="Tela cheia (F)">⛶</button>
                     <div class="more-wrap">
                         <button class="btn" id="more-btn" onclick="toggleMoreMenu(event)" title="Mais controles">⋮</button>
@@ -3933,6 +3972,7 @@ else:
                             <button class="menu-item" onclick="testarAlertaSIM('complete'); closeMoreMenu();" title="Exibir o alerta verde com mascote e som">✓ Testar alerta verde</button>
                             <button class="menu-item" onclick="testarAlertaSIM('partial'); closeMoreMenu();" title="Exibir o alerta laranja com mascote e som">◐ Testar alerta laranja</button>
                             <button class="menu-item" onclick="testarAlertaSIM('deadline'); closeMoreMenu();" title="Exibir o alerta vermelho com mascote e som">⚠ Testar alerta vermelho</button>
+                            <button class="menu-item" onclick="testarUltimaEntregaSIM(); closeMoreMenu();" title="Testar o alerta usando a última entrega confirmada pela API oficial">▶ Testar última entrega confirmada</button>
                             <button class="menu-item" id="sim-alert-reset-btn" onclick="resetSimDeliveryBaseline(); closeMoreMenu();" title="Limpar a referência local dos status municipais">↺ Reiniciar leitura SIM</button>
                             <button class="menu-item" id="kiosk-btn" onclick="alternarModoTV(); closeMoreMenu();" title="Modo TV (K)">▣ Modo TV</button>
                             <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
@@ -4005,7 +4045,15 @@ else:
             let kioskMode = false;
             let pool = new Map();
             let logs = [];
-            let runtimeReloadOverrides = {}; // nunca persistido: nova sessão = configuração salva
+            const reloadOverrideStorageKey=`monitor_reload_overrides_v370_${profile.id}`;
+            let runtimeReloadOverrides = {};
+            try {
+                const savedOverrides=JSON.parse(localStorage.getItem(reloadOverrideStorageKey)||'{}');
+                if(savedOverrides && typeof savedOverrides==='object' && !Array.isArray(savedOverrides)) runtimeReloadOverrides=savedOverrides;
+            } catch(e) { runtimeReloadOverrides={}; }
+            function saveReloadOverrides(){
+                try{ localStorage.setItem(reloadOverrideStorageKey,JSON.stringify(runtimeReloadOverrides)); }catch(e){}
+            }
             let manualFocusPanelId = null;
             let tickerTemporarilyHidden = false;
             let tickerHasActiveNews = false;
@@ -4475,6 +4523,23 @@ else:
                 else enqueueSimAlert({alert_key:`test-green-${Date.now()}`,alert_type:'complete',municipio:'Município de Teste',entidade:'2 entidades entregues · Competência de teste'},true);
                 log(`Teste manual de alerta SIM (${type})${p?' · '+p.nome:''}`);
             }
+            function testarUltimaEntregaSIM(){
+                const d=simAlertSettings.latest_delivery;
+                if(!d || !String(d.municipio||'').trim()){
+                    log('Teste da última entrega: API ainda não informou uma entrega confirmada');
+                    restartNotice.style.display='block';
+                    restartNotice.textContent='Última entrega ainda não disponível. Aguarde a próxima leitura da API.';
+                    setTimeout(()=>{restartNotice.style.display='none';},3500);
+                    return;
+                }
+                const total=Number(d.total||0), delivered=Number(d.delivered||0);
+                const type=String(d.state)==='complete'?'complete':'partial';
+                const comp=(d.mes&&d.ano)?`${String(d.mes).padStart(2,'0')}/${d.ano}`:'competência atual';
+                const desc=String(d.entity_description||'').trim();
+                const resumo=`${desc?desc+' · ':''}${delivered} de ${total} entidades entregues · Competência ${comp}`;
+                enqueueSimAlert({alert_key:`test-last-${Date.now()}`,alert_type:type,municipio:String(d.municipio),entidade:resumo,data_envio:String(d.data_envio||'')},true);
+                log(`Teste usando última entrega confirmada: ${d.municipio}${desc?' · '+desc:''}`);
+            }
             function resetSimDeliveryBaseline(){
                 try{
                     const prefixes=[`monitor_sim_official_entities_v360_${profile.id}_`,`monitor_sim_official_notified_v360_${profile.id}_`,`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v335_${profile.id}_`,`monitor_sim_municipality_notified_v335_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
@@ -4555,6 +4620,7 @@ else:
             window.addEventListener('message',(event)=>{
                 const msg=event.data;
                 if(!msg || msg.source!=='sim-monitor')return;
+                if(msg.latestDelivery) simAlertSettings.latest_delivery=msg.latestDelivery;
                 if(msg.serverCounts){
                     const c=msg.serverCounts||{};
                     const comp=(msg.mes&&msg.ano)?` · ${String(msg.mes).padStart(2,'0')}/${msg.ano}`:'';
@@ -4783,7 +4849,7 @@ else:
             }
 
             function renderDots(){ dots.innerHTML=''; panels.forEach((p,i)=>{ const d=document.createElement('span'); d.className='dot'+(i===index?' active':''); d.title=p.nome; d.onclick=()=>{index=i;afterIndexChange('Indicador');}; dots.appendChild(d); }); }
-            function renderReloadButton(){ const p=panels[index], on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 temporário nesta apresentação. * indica valor diferente da configuração salva.'; }
+            function renderReloadButton(){ const p=panels[index], on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 deste painel. A escolha ON/OFF fica preservada neste navegador. * indica valor diferente da configuração salva.'; }
             function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); renderFocusButton(); if(p.iframe_check&&p.iframe_check.blocked)runtimeStatus.textContent='Iframe bloqueado'; localStorage.setItem(indexKey,p.id); }
 
             function stopTimers(){ clearInterval(timer); clearInterval(intervalReloadTimer); clearTimeout(preloadTimer); timer=null; intervalReloadTimer=null; preloadTimer=null; }
@@ -4820,7 +4886,7 @@ else:
                 else { pauseBtn.classList.remove('pause'); pauseBtn.innerHTML='Ⅱ <span class="label">Pausar</span>'; runtimeStatus.textContent=''; startTimerWith(pauseRemainingMs||Math.max(5,panels[index].tempo)*1000); log('Rotação retomada'); }
             }
 
-            function alternarRecarregamentoTemporario(){ const p=panels[index]; const current=effectiveReload(p); runtimeReloadOverrides[p.id]=!current; renderReloadButton(); setupIntervalReload(); log(`F5 temporário ${!current?'ON':'OFF'}: ${p.nome}`); }
+            function alternarRecarregamentoTemporario(){ const p=panels[index]; const current=effectiveReload(p); runtimeReloadOverrides[p.id]=!current; saveReloadOverrides(); renderReloadButton(); setupIntervalReload(); log(`F5 persistente ${!current?'ON':'OFF'}: ${p.nome}`); }
             function recarregarAgora(){ const p=panels[index]; const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,true); }
             function alternarTelaCheia(){ if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}else if(document.exitFullscreen){document.exitFullscreen().catch(()=>{});} }
 
