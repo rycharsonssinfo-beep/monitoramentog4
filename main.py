@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.4.0
+# Painel de Monitoramento 3.4.1
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -45,10 +45,11 @@ import streamlit.components.v1 as components
 # 3.3.3: polling SIM híbrido - servidor Streamlit + navegador, sem recarregar os iframes
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
+# 3.4.1: alerta SIM nativo no DOM principal + fila controlada pelo fragmento + diagnóstico de eventos
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.4.0"
+APP_VERSION = "3.4.1"
 CONFIG_VERSION = 13
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -77,6 +78,39 @@ def _sim_native_mascots_data():
         "partial": f"data:image/webp;base64,{MASCOT_SIM_NATIVE_ORANGE_WEBP_B64}",
         "deadline": f"data:image/webp;base64,{MASCOT_SIM_NATIVE_RED_WEBP_B64}",
     }
+
+
+def _sim_direct_overlay_html(alert, cfg):
+    if not isinstance(alert, dict):
+        return ""
+    alert_type = str(alert.get("alert_type") or "complete")
+    resumo = html.escape(str(alert.get("entidade") or ""))
+    mascots = _sim_native_mascots_data()
+    mascot = mascots.get(alert_type) or mascots.get("complete", "")
+    if alert_type == "partial":
+        border, soft, fg, title_color, kicker = "#f59e0b", "#fff7e6", "#92400e", "#9a5707", "◐ ENTREGA PARCIAL"
+        template = str(cfg.get("partial_title_template") or "SIM do município {municipio} parcialmente entregue")
+    elif alert_type == "deadline":
+        border, soft, fg, title_color, kicker = "#ef4444", "#fff1f2", "#991b1b", "#991b1b", "⚠ PENDÊNCIA DE ENVIO"
+        template = str(cfg.get("deadline_title_template") or "SIM do município {municipio} ainda não foi entregue")
+    else:
+        border, soft, fg, title_color, kicker = "#22c55e", "#effdf5", "#166534", "#075b42", "✓ ENTREGA CONCLUÍDA"
+        template = str(cfg.get("title_template") or "SIM do município {municipio} entregue")
+    title = html.escape(template.replace("{municipio}", str(alert.get("municipio") or "Município")))
+    return f"""
+    <div style="position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(7,26,38,.58);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);">
+      <div style="width:min(1040px,92vw);min-height:430px;border-radius:26px;background:{soft};border:3px solid {border};box-shadow:0 28px 80px rgba(0,0,0,.34);display:grid;grid-template-columns:minmax(250px,360px) minmax(0,1fr);align-items:center;gap:26px;padding:34px 42px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+        <div style="display:flex;align-items:center;justify-content:center"><img src="{mascot}" alt="Mascote S&S" style="width:100%;max-width:340px;max-height:340px;object-fit:contain;display:block"></div>
+        <div>
+          <div style="display:inline-flex;align-items:center;border-radius:999px;padding:7px 13px;font-size:15px;font-weight:900;letter-spacing:.2px;background:white;color:{fg};border:1px solid {border}55">{kicker}</div>
+          <div style="margin-top:15px;font-size:46px;line-height:1.08;font-weight:950;color:{title_color}">{title}</div>
+          <div style="margin-top:13px;font-size:23px;font-weight:800;color:{fg}">{resumo}</div>
+          <div style="margin-top:18px;font-size:15px;font-weight:700;color:#64748b">Monitor SIM · API oficial · alerta direto Streamlit</div>
+          <div style="height:5px;border-radius:99px;background:#e2e8f0;margin-top:24px;overflow:hidden"><div style="height:100%;width:100%;background:{border}"></div></div>
+        </div>
+      </div>
+    </div>
+    """
 
 APP_EMBED_ORIGIN = "https://monitoramentog4.streamlit.app"
 
@@ -1168,6 +1202,15 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
         }
         pending[alert_key] = {"created_at": now_ts, "alert": alert}
         notified.add(alert_key)
+        st.session_state[f"_sim_last_event_v341_{profile_id}"] = {
+            "detected_at": datetime.now().isoformat(),
+            "alert_key": alert_key,
+            "alert_type": alert_type,
+            "municipio": alert.get("municipio"),
+            "delivered": delivered,
+            "total": total,
+            "competencia": competencia,
+        }
         return True
 
     notify_initial = bool(cfg.get("notify_initial", False))
@@ -3012,7 +3055,7 @@ if not st.session_state.iniciado:
             if isinstance(runtime_api, dict):
                 if runtime_api.get("ok"):
                     cc = runtime_api.get("counts") or {}
-                    st.caption(f"Última leitura automática: **{runtime_api.get('rows', 0)} entidades** · {cc.get('complete', 0)} município(s) verde · {cc.get('partial', 0)} laranja · {cc.get('pending', 0)} vermelho · {runtime_api.get('alerts_pending', 0)} alerta(s) pendente(s).")
+                    st.caption(f"Última leitura automática: **{runtime_api.get('rows', 0)} entidades** · **{runtime_api.get('delivered_rows', 0)} entregues** · {cc.get('complete', 0)} município(s) verde · {cc.get('partial', 0)} laranja · {cc.get('pending', 0)} vermelho · {runtime_api.get('alerts_pending', 0)} alerta(s) pendente(s).")
                 elif runtime_api.get("error"):
                     st.error(f"Última leitura automática da API: {runtime_api.get('error')}")
             else:
@@ -3030,6 +3073,32 @@ if not st.session_state.iniciado:
                 st.success(f"API SIM respondendo: {total_entities_test} entidades monitoradas · {green_test} município(s) verde · {orange_test} laranja · {red_test} vermelho · competência {int(grouped_test.get('mes') or 0):02d}/{grouped_test.get('ano') or '-' }.")
             elif manual_test.get("error"):
                 st.error(f"Teste da API SIM: {manual_test.get('error')}")
+
+        last_event = st.session_state.get(f"_sim_last_event_v341_{active_profile_id}")
+        if isinstance(last_event, dict):
+            st.info(
+                f"Último evento detectado pelo backend: **{last_event.get('municipio','-')}** · "
+                f"{last_event.get('delivered',0)}/{last_event.get('total',0)} entidades · "
+                f"{last_event.get('competencia','-')} · tipo {last_event.get('alert_type','-')}."
+            )
+        else:
+            st.caption("Último evento detectado pelo backend: nenhum evento novo desde a referência atual.")
+
+        st.markdown("**Teste do alerta direto (DOM principal)**")
+        dt1, dt2, dt3 = st.columns(3)
+        direct_test_key = f"_sim_direct_tests_v341_{active_profile_id}"
+        with dt1:
+            if st.button("Testar verde direto", use_container_width=True, key="sim_direct_test_green_v341"):
+                st.session_state.setdefault(direct_test_key, []).append({"alert_key":f"direct-green-{time.time_ns()}","alert_type":"complete","municipio":"Município de Teste","entidade":"2 entidades entregues · Competência de teste"})
+                st.rerun()
+        with dt2:
+            if st.button("Testar laranja direto", use_container_width=True, key="sim_direct_test_orange_v341"):
+                st.session_state.setdefault(direct_test_key, []).append({"alert_key":f"direct-orange-{time.time_ns()}","alert_type":"partial","municipio":"Município de Teste","entidade":"1 de 2 entidades entregues · Competência de teste"})
+                st.rerun()
+        with dt3:
+            if st.button("Testar vermelho direto", use_container_width=True, key="sim_direct_test_red_v341"):
+                st.session_state.setdefault(direct_test_key, []).append({"alert_key":f"direct-red-{time.time_ns()}","alert_type":"deadline","municipio":"Município de Teste","entidade":"Nenhuma das 2 entidades monitoradas entregou · Competência de teste"})
+                st.rerun()
 
         st.markdown("**Som dos alertas**")
         snd1, snd2, snd3, snd4, snd5 = st.columns([1.25, 1.6, 1.0, 1.0, 1.0])
@@ -3610,30 +3679,86 @@ else:
     sim_server_interval = max(5, min(120, int(sim_poll_cfg.get("poll_seconds", 15))))
 
     if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and hasattr(st, "fragment"):
-        @st.fragment(run_every=sim_server_interval)
+        @st.fragment(run_every=1.0)
         def _sim_server_poll_fragment():
-            result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
-            alerts = []
-            grouped = {"states": [], "ano": None, "mes": None}
-            if result.get("ok"):
-                grouped = agrupar_sim_submissions_servidor(result.get("data"))
-                alerts = detectar_alertas_sim_servidor(grouped, sim_poll_cfg, active_profile_id)
-            counts = {
-                "complete": sum(1 for x in grouped.get("states", []) if x.get("state") == "complete"),
-                "partial": sum(1 for x in grouped.get("states", []) if x.get("state") == "partial"),
-                "pending": sum(1 for x in grouped.get("states", []) if x.get("state") == "pending"),
-            }
-            runtime_status = {
-                "ok": bool(result.get("ok")),
-                "error": str(result.get("error") or ""),
-                "fetched_at": str(result.get("fetched_at") or datetime.now().isoformat()),
-                "ano": grouped.get("ano"),
-                "mes": grouped.get("mes"),
-                "counts": counts,
-                "rows": sum(int(x.get("total") or 0) for x in grouped.get("states", [])),
-                "alerts_pending": len(alerts),
-            }
-            st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = runtime_status
+            now_ts = time.time()
+            last_poll_key = f"_sim_api_last_poll_ts_v341_{active_profile_id}"
+            last_payload_key = f"_sim_api_last_payload_v341_{active_profile_id}"
+            last_alerts_key = f"_sim_api_last_alerts_v341_{active_profile_id}"
+            last_poll = float(st.session_state.get(last_poll_key, 0) or 0)
+            should_poll = (now_ts - last_poll) >= sim_server_interval or last_payload_key not in st.session_state
+
+            if should_poll:
+                result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
+                alerts = []
+                grouped = {"states": [], "ano": None, "mes": None}
+                if result.get("ok"):
+                    grouped = agrupar_sim_submissions_servidor(result.get("data"))
+                    alerts = detectar_alertas_sim_servidor(grouped, sim_poll_cfg, active_profile_id)
+                counts = {
+                    "complete": sum(1 for x in grouped.get("states", []) if x.get("state") == "complete"),
+                    "partial": sum(1 for x in grouped.get("states", []) if x.get("state") == "partial"),
+                    "pending": sum(1 for x in grouped.get("states", []) if x.get("state") == "pending"),
+                }
+                runtime_status = {
+                    "ok": bool(result.get("ok")),
+                    "error": str(result.get("error") or ""),
+                    "fetched_at": str(result.get("fetched_at") or datetime.now().isoformat()),
+                    "ano": grouped.get("ano"),
+                    "mes": grouped.get("mes"),
+                    "counts": counts,
+                    "rows": sum(int(x.get("total") or 0) for x in grouped.get("states", [])),
+                    "delivered_rows": sum(int(x.get("delivered") or 0) for x in grouped.get("states", [])),
+                    "alerts_pending": len(alerts),
+                }
+                st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = runtime_status
+                st.session_state[last_poll_key] = now_ts
+                st.session_state[last_payload_key] = {"result": result, "grouped": grouped, "counts": counts}
+                st.session_state[last_alerts_key] = alerts
+            else:
+                payload_cache = st.session_state.get(last_payload_key) or {}
+                result = payload_cache.get("result") or {"ok": False, "error": "Aguardando próxima leitura"}
+                grouped = payload_cache.get("grouped") or {"states": [], "ano": None, "mes": None}
+                counts = payload_cache.get("counts") or {"complete": 0, "partial": 0, "pending": 0}
+                alerts = st.session_state.get(last_alerts_key) or []
+
+            ui_seen_key = f"_sim_direct_seen_v341_{active_profile_id}"
+            ui_queue_key = f"_sim_direct_queue_v341_{active_profile_id}"
+            ui_current_key = f"_sim_direct_current_v341_{active_profile_id}"
+            seen = set(st.session_state.get(ui_seen_key, []))
+            queue = st.session_state.get(ui_queue_key, [])
+            if not isinstance(queue, list):
+                queue = []
+            current = st.session_state.get(ui_current_key)
+
+            direct_tests_key = f"_sim_direct_tests_v341_{active_profile_id}"
+            direct_tests = st.session_state.pop(direct_tests_key, []) if direct_tests_key in st.session_state else []
+            candidate_alerts = list(alerts) + (direct_tests if isinstance(direct_tests, list) else [])
+            queued_keys = {str(x.get("alert_key")) for x in queue if isinstance(x, dict)}
+            current_alert_key = str(current.get("alert_key")) if isinstance(current, dict) else ""
+            for alert in candidate_alerts:
+                if not isinstance(alert, dict):
+                    continue
+                key = str(alert.get("alert_key") or "")
+                if not key or key in seen or key in queued_keys or key == current_alert_key:
+                    continue
+                queue.append(alert)
+                queued_keys.add(key)
+
+            if isinstance(current, dict) and float(current.get("expires_at", 0) or 0) <= now_ts:
+                seen.add(str(current.get("alert_key") or ""))
+                current = None
+            if current is None and queue:
+                alert = queue.pop(0)
+                current = dict(alert)
+                current["expires_at"] = now_ts + max(3, min(30, int(sim_poll_cfg.get("display_seconds", 8) or 8)))
+
+            st.session_state[ui_seen_key] = sorted(x for x in seen if x)[-1000:]
+            st.session_state[ui_queue_key] = queue
+            st.session_state[ui_current_key] = current
+
+            if isinstance(current, dict):
+                st.markdown(_sim_direct_overlay_html(current, sim_poll_cfg), unsafe_allow_html=True)
 
             sim_status_broadcaster(
                 key=f"sim_status_broadcaster_{active_profile_id}",
