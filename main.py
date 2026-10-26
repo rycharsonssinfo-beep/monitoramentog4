@@ -50,10 +50,11 @@ import streamlit.components.v1 as components
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
 # 3.7.0: eventos oficiais por entidade+data_envio, teste da última entrega real e F5 OFF persistente no navegador
+# 3.8.0: detecção corrigida por transição de status; data_envio pode ser nulo em entregas; teste usa updated_at/ultima_verificacao_em
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.7.0"
+APP_VERSION = "3.8.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -1187,6 +1188,7 @@ def agrupar_sim_submissions_servidor(data):
                 "data_envio": str(r.get("data_envio") or "").strip(),
                 "status": str(r.get("status") or "").strip(),
                 "updated_at": str(r.get("updated_at") or "").strip(),
+                "ultima_verificacao_em": str(r.get("ultima_verificacao_em") or "").strip(),
             })
         states.append({
             "key": key,
@@ -1221,7 +1223,7 @@ def _sim_latest_confirmed_delivery(result):
         for entity in municipality.get("entities") or []:
             if not bool(entity.get("delivered")):
                 continue
-            stamp = str(entity.get("data_envio") or entity.get("updated_at") or "").strip()
+            stamp = str(entity.get("updated_at") or entity.get("ultima_verificacao_em") or entity.get("data_envio") or "").strip()
             if not stamp:
                 continue
             if latest is None or stamp > latest_stamp:
@@ -1236,6 +1238,8 @@ def _sim_latest_confirmed_delivery(result):
                     "entity_description": str(entity.get("descricao") or "").strip(),
                     "data_envio": str(entity.get("data_envio") or "").strip(),
                     "updated_at": str(entity.get("updated_at") or "").strip(),
+                    "ultima_verificacao_em": str(entity.get("ultima_verificacao_em") or "").strip(),
+                    "status": str(entity.get("status") or "").strip(),
                     "ano": ano,
                     "mes": mes,
                 }
@@ -1249,49 +1253,47 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
         return []
 
     persistent_state, bucket, comp_key = _sim_persistent_bucket(profile_id, ano, mes)
-    known_events = set(bucket.get("known_delivery_events") or [])
     notified = set(bucket.get("notified") or [])
     pending = bucket.get("pending") or {}
-    baseline_exists = bool(bucket.get("event_baseline_created_at"))
+    previous_entities = bucket.get("entity_status") or {}
+    baseline_exists = bool(bucket.get("status_baseline_created_at")) and isinstance(previous_entities, dict)
     now_ts = time.time()
 
-    # Mantém eventos por 10 minutos para múltiplas tentativas de exibição.
+    # Mantém alertas pendentes por 10 minutos para múltiplas tentativas de exibição.
     pending = {
         k: v for k, v in pending.items()
         if isinstance(v, dict) and now_ts - float(v.get("created_at", 0) or 0) <= 600
     }
 
+    current_entities = {}
     entity_to_municipality = {}
-    current_events = {}
     for municipality in states:
         for entity in municipality.get("entities") or []:
             entity_key = str(entity.get("key") or "").strip()
             if not entity_key:
                 continue
             entity_to_municipality[entity_key] = municipality
-            if not bool(entity.get("delivered")):
-                continue
-            event_key = _sim_delivery_event_key(
-                entity_key,
-                entity.get("data_envio"),
-                entity.get("status"),
-                entity.get("updated_at"),
-            )
-            if event_key:
-                current_events[event_key] = {**entity, "key": entity_key}
+            current_entities[entity_key] = {
+                "delivered": bool(entity.get("delivered")),
+                "status": str(entity.get("status") or "").strip(),
+                "descricao": str(entity.get("descricao") or "").strip(),
+                "data_envio": str(entity.get("data_envio") or "").strip(),
+                "updated_at": str(entity.get("updated_at") or "").strip(),
+                "ultima_verificacao_em": str(entity.get("ultima_verificacao_em") or "").strip(),
+            }
 
     competencia = f"{int(mes):02d}/{ano}"
 
-    def add_alert(municipality, entity, alert_type, event_key=""):
+    def add_alert(municipality, entity, alert_type, transition_id=""):
         total = int(municipality.get("total") or 0)
         delivered = int(municipality.get("delivered") or 0)
         entity_key = str(entity.get("key") or "").strip()
         prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
-        alert_key = (
-            f"{prefix}|{ano}-{mes}|event:{event_key}"
-            if alert_type != "deadline"
-            else f"red|{ano}-{mes}|{municipality.get('key')}"
-        )
+        if alert_type == "deadline":
+            alert_key = f"red|{ano}-{mes}|{municipality.get('key')}"
+        else:
+            stamp = transition_id or str(entity.get("updated_at") or entity.get("ultima_verificacao_em") or entity.get("status") or "")
+            alert_key = f"{prefix}|{ano}-{mes}|entity:{entity_key}|{stamp}"
         if alert_key in notified:
             return False
         entity_desc = str(entity.get("descricao") or "").strip()
@@ -1313,6 +1315,8 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
             "entity_key": entity_key,
             "entity_description": entity_desc,
             "data_envio": str(entity.get("data_envio") or ""),
+            "status": str(entity.get("status") or ""),
+            "updated_at": str(entity.get("updated_at") or ""),
         }
         pending[alert_key] = {"created_at": now_ts, "alert": alert}
         notified.add(alert_key)
@@ -1322,46 +1326,55 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
             "alert_type": alert_type,
             "municipio": alert.get("municipio"),
             "entity_description": entity_desc,
-            "data_envio": alert.get("data_envio"),
+            "status": alert.get("status"),
+            "updated_at": alert.get("updated_at"),
             "delivered": delivered,
             "total": total,
             "competencia": competencia,
         }
         bucket["last_event"] = last_event
-        st.session_state[f"_sim_last_event_v370_{profile_id}"] = last_event
+        st.session_state[f"_sim_last_event_v380_{profile_id}"] = last_event
         return True
 
     if not baseline_exists:
-        # Primeira leitura: apenas registra todas as entregas já existentes.
-        known_events.update(current_events.keys())
-        bucket["event_baseline_created_at"] = datetime.now().isoformat()
+        # Primeira leitura após publicação/reboot: registra o estado atual e não cria alertas antigos.
+        bucket["status_baseline_created_at"] = datetime.now().isoformat()
         if bool(cfg.get("notify_initial", False)):
-            for event_key, entity in current_events.items():
-                municipality = entity_to_municipality.get(str(entity.get("key") or "")) or {}
+            for entity_key, entity in current_entities.items():
+                if not entity.get("delivered"):
+                    continue
+                municipality = entity_to_municipality.get(entity_key) or {}
+                full_entity = {**entity, "key": entity_key}
                 if municipality.get("state") == "complete":
-                    add_alert(municipality, entity, "complete", event_key)
+                    add_alert(municipality, full_entity, "complete", "initial")
                 elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
-                    add_alert(municipality, entity, "partial", event_key)
+                    add_alert(municipality, full_entity, "partial", "initial")
     else:
-        # Regra central: qualquer combinação entidade + data_envio nova é uma nova entrega.
-        for event_key in sorted(set(current_events.keys()) - known_events):
-            entity = current_events[event_key]
-            municipality = entity_to_municipality.get(str(entity.get("key") or "")) or {}
+        # Regra correta da API: várias entregas têm data_envio=NULL.
+        # O evento é a transição de uma entidade de não entregue para um status entregue.
+        for entity_key, entity in current_entities.items():
+            old = previous_entities.get(entity_key) or {}
+            was_delivered = bool(old.get("delivered"))
+            is_delivered = bool(entity.get("delivered"))
+            if not is_delivered or was_delivered:
+                continue
+            municipality = entity_to_municipality.get(entity_key) or {}
+            full_entity = {**entity, "key": entity_key}
+            transition_id = str(entity.get("updated_at") or entity.get("ultima_verificacao_em") or entity.get("status") or "entregue")
             if municipality.get("state") == "complete":
-                add_alert(municipality, entity, "complete", event_key)
+                add_alert(municipality, full_entity, "complete", transition_id)
             elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
-                add_alert(municipality, entity, "partial", event_key)
-        known_events.update(current_events.keys())
+                add_alert(municipality, full_entity, "partial", transition_id)
 
     deadline_day = max(1, min(31, int(cfg.get("deadline_day", 28) or 28)))
     if bool(cfg.get("deadline_enabled", True)) and datetime.now().day >= deadline_day:
         for municipality in states:
             if municipality.get("state") != "pending":
                 continue
-            fake_entity = {"key": municipality.get("key"), "descricao": "", "data_envio": "", "updated_at": ""}
+            fake_entity = {"key": municipality.get("key"), "descricao": "", "status": "nao_entregue", "updated_at": ""}
             add_alert(municipality, fake_entity, "deadline", "")
 
-    bucket["known_delivery_events"] = sorted(known_events)[-10000:]
+    bucket["entity_status"] = current_entities
     bucket["notified"] = sorted(notified)[-6000:]
     bucket["pending"] = pending
     bucket["latest_delivery"] = _sim_latest_confirmed_delivery(result)
@@ -3306,7 +3319,7 @@ if not st.session_state.iniciado:
             if "{municipio}" not in str(value or ""):
                 st.warning(f"O texto do alerta **{label}** precisa conter **{{municipio}}**. O padrão será usado até a correção.")
 
-        st.caption("Fonte: **API oficial `/api/sim_submissions`**. Uma entidade conta como entregue quando `data_envio` está preenchida ou quando o status indica entrega. O agrupamento é feito por município/IBGE.")
+        st.caption("Fonte: **API oficial `/api/sim_submissions`**. A entrega é determinada pelo `status` (`entregue`, `no_prazo`, etc.). O campo `data_envio` pode vir vazio mesmo em entregas confirmadas. O agrupamento é feito por município/IBGE.")
         st.info("No menu ⋮ ficam disponíveis testes separados para **verde**, **laranja** e **vermelho**, além de **Reiniciar leitura SIM**.")
 
     # Salva somente se houve alteração efetiva.
@@ -3466,7 +3479,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.7.0 – Eventos oficiais de entrega:** cada nova combinação entidade + data_envio retornada pela API oficial gera um evento. O botão “Testar última entrega confirmada” usa o registro mais recente da própria API. O F5 OFF agora fica persistente no navegador.
+            **3.8.0 – Detecção por status:** corrigida a regra da API: `data_envio` pode ser nulo em entregas confirmadas. O alerta agora nasce da transição `nao_entregue → entregue/no_prazo`, e “Testar última entrega confirmada” usa `updated_at/ultima_verificacao_em`.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3891,6 +3904,21 @@ else:
 
         _sim_server_poll_fragment()
 
+    # Garante que o botão "Testar última entrega confirmada" tenha um registro real
+    # já no primeiro carregamento da apresentação, sem depender do broadcaster do fragmento.
+    _latest_key = f"_sim_latest_delivery_v370_{active_profile_id}"
+    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and not st.session_state.get(_latest_key):
+        try:
+            _initial_result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
+            if _initial_result.get("ok"):
+                _initial_grouped = agrupar_sim_submissions_servidor(_initial_result.get("data"))
+                _initial_latest = _sim_latest_confirmed_delivery(_initial_grouped)
+                st.session_state[_latest_key] = _initial_latest
+                if _initial_grouped.get("states"):
+                    st.session_state[f"_sim_initial_grouped_v380_{active_profile_id}"] = _initial_grouped
+        except Exception:
+            pass
+
     iframe_checks = verificar_paineis_iframe(paineis_ativos)
     paineis_payload = []
     for painel_item in paineis_ativos:
@@ -3906,7 +3934,7 @@ else:
         "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}")},
         "settings": {
             "generalReloadMs": 0,
-            "fullRestartEnabled": bool(perfil.get("full_restart_enabled", False)),
+            "fullRestartEnabled": False,
             "autoHide": bool(perfil.get("auto_ocultar_controles", True)),
             "kioskDefault": bool(perfil.get("modo_tv_padrao", False)),
             "preloadSeconds": int(perfil.get("preload_seconds", 8)),
@@ -4564,14 +4592,14 @@ else:
                 for(const m of states){
                     for(const e of (Array.isArray(m.entities)?m.entities:[])){
                         const ek=String(e.key||'').trim(); if(!ek)continue;
-                        current[ek]={delivered:!!e.delivered,data_envio:String(e.data_envio||''),status:String(e.status||''),updated_at:String(e.updated_at||''),descricao:String(e.descricao||'')};
+                        current[ek]={delivered:!!e.delivered,data_envio:String(e.data_envio||''),status:String(e.status||''),updated_at:String(e.updated_at||''),ultima_verificacao_em:String(e.ultima_verificacao_em||''),descricao:String(e.descricao||'')};
                         entityToMunicipality[ek]=m;
                     }
                 }
                 let created=0;
                 const addAlert=(m,e,type)=>{
                     const ek=String(e.key||'').trim();
-                    const stamp=String(e.data_envio||e.updated_at||`${m.delivered||0}`);
+                    const stamp=String(e.updated_at||e.ultima_verificacao_em||e.status||`${m.delivered||0}`);
                     const prefix=type==='complete'?'green':type==='partial'?'orange':'red';
                     const key=type==='deadline'?`red|${ano}-${mes}|${m.key}`:`${prefix}|${ano}-${mes}|entity:${ek}|${stamp}`;
                     if(notifiedSet.has(key))return;
@@ -4587,7 +4615,7 @@ else:
                 if(previous && typeof previous==='object'){
                     for(const [ek,e] of Object.entries(current)){
                         const old=previous[ek]||{};
-                        const newlyDelivered=!!e.delivered && (!old.delivered || (e.data_envio && e.data_envio!==String(old.data_envio||'')));
+                        const newlyDelivered=!!e.delivered && !old.delivered;
                         if(!newlyDelivered)continue;
                         const m=entityToMunicipality[ek]||{};
                         if(String(m.state)==='complete')addAlert(m,{...e,key:ek},'complete');
