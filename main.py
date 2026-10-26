@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.9.0
+# Painel de Monitoramento 3.10.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -52,10 +52,11 @@ import streamlit.components.v1 as components
 # 3.7.0: eventos oficiais por entidade+data_envio, teste da última entrega real e F5 OFF persistente no navegador
 # 3.8.0: detecção corrigida por transição de status; data_envio pode ser nulo em entregas; teste usa updated_at/ultima_verificacao_em
 # 3.9.0: alerta SIM simplificado - uma única notificação verde baseada na última entrega confirmada da API
+# 3.10.0: corrige API oficial com status codificado/data_envio, remove dependência do município e usa transição de entrega por entidade
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.9.0"
+APP_VERSION = "3.10.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -91,7 +92,7 @@ def _sim_direct_overlay_html(alert, cfg):
     if not isinstance(alert, dict):
         return ""
     mascot = _sim_native_mascots_data().get("complete", "")
-    title = html.escape(str(cfg.get("title_template") or "Nova entrega SIM confirmada"))
+    title = html.escape(str(alert.get("title") or cfg.get("title_template") or "Nova entrega SIM confirmada"))
     entity_desc = str(alert.get("entity_description") or alert.get("entidade") or "Entidade confirmada").strip()
     municipio = str(alert.get("municipio") or "").strip()
     ano, mes = alert.get("ano"), alert.get("mes")
@@ -1288,21 +1289,37 @@ def _sim_guess_municipio_from_description(desc):
 
 
 def _sim_latest_confirmed_delivery_raw(data, ano, mes):
+    """Retorna a entrega confirmada mais recente da competência.
+
+    A API oficial pode usar códigos no campo ``status`` (ex.: ``N`` no manual)
+    e, nesse formato, ``data_envio`` é a evidência mais segura. Já o endpoint
+    usado pela tela costuma retornar ``entregue``/``no_prazo`` mesmo com
+    ``data_envio`` nulo. Por isso reutilizamos a regra unificada
+    ``_sim_server_delivered``.
+    """
     latest = None
     latest_stamp = ""
-    for row in _sim_rows_competencia(data, ano, mes):
-        if not _sim_status_confirmado(row.get("status")):
+    rows = _sim_rows_competencia(data, ano, mes)
+    for row in rows:
+        if not _sim_server_delivered(row):
             continue
         ent = row.get("monitored_entity") or {}
-        stamp = str(row.get("updated_at") or row.get("ultima_verificacao_em") or row.get("data_envio") or "").strip()
+        stamp = str(
+            row.get("data_envio")
+            or row.get("updated_at")
+            or row.get("ultima_verificacao_em")
+            or ""
+        ).strip()
         if not stamp:
             continue
         if latest is None or stamp > latest_stamp:
             latest_stamp = stamp
             desc = re.sub(r"\s+", " ", str(ent.get("descricao") or ent.get("name") or "")).strip()
+            municipio = _sim_guess_municipio_from_description(desc)
             latest = {
                 "alert_type": "complete",
-                "municipio": _sim_guess_municipio_from_description(desc),
+                "title": "Nova entrega SIM confirmada",
+                "municipio": municipio,
                 "entity_key": str(ent.get("id") or row.get("monitored_entity_id") or row.get("id") or ""),
                 "entity_description": desc,
                 "entidade": desc,
@@ -1310,11 +1327,95 @@ def _sim_latest_confirmed_delivery_raw(data, ano, mes):
                 "updated_at": str(row.get("updated_at") or ""),
                 "ultima_verificacao_em": str(row.get("ultima_verificacao_em") or ""),
                 "data_envio": str(row.get("data_envio") or ""),
+                "event_stamp": stamp,
                 "ano": int(ano),
                 "mes": int(mes),
             }
     return latest
 
+
+def detectar_nova_entrega_simples(data, cfg, profile_id, ano, mes):
+    """Detecta somente novas entregas por entidade e emite no máximo um alerta verde.
+
+    A primeira leitura cria o baseline. Nas leituras seguintes, qualquer entidade que
+    passe de não entregue para entregue é candidata; se houver várias no mesmo ciclo,
+    somente a mais recente é exibida, reproduzindo a ideia de ``Últimas Entregas``.
+    """
+    rows = _sim_rows_competencia(data, ano, mes)
+    persistent_state, bucket, _ = _sim_persistent_bucket(profile_id, ano, mes)
+    state_key = "simple_entity_delivery_v310"
+    previous = bucket.get(state_key)
+    if not isinstance(previous, dict):
+        previous = None
+
+    current = {}
+    candidates = []
+    for row in rows:
+        ent = row.get("monitored_entity") or {}
+        entity_key = str(ent.get("id") or row.get("monitored_entity_id") or row.get("id") or "").strip()
+        if not entity_key:
+            continue
+        delivered = bool(_sim_server_delivered(row))
+        stamp = str(row.get("data_envio") or row.get("updated_at") or row.get("ultima_verificacao_em") or "").strip()
+        desc = re.sub(r"\s+", " ", str(ent.get("descricao") or ent.get("name") or "")).strip()
+        current[entity_key] = {
+            "delivered": delivered,
+            "status": str(row.get("status") or ""),
+            "stamp": stamp,
+            "descricao": desc,
+        }
+        if previous is not None:
+            old = previous.get(entity_key) or {}
+            if delivered and not bool(old.get("delivered")):
+                candidates.append((stamp, row))
+
+    bucket[state_key] = current
+    bucket["updated_at"] = datetime.now().isoformat()
+
+    latest = _sim_latest_confirmed_delivery_raw(data, ano, mes)
+    bucket["latest_delivery"] = latest
+
+    alerts = []
+    if previous is not None and candidates:
+        candidates.sort(key=lambda x: str(x[0] or ""))
+        _, row = candidates[-1]
+        ent = row.get("monitored_entity") or {}
+        desc = re.sub(r"\s+", " ", str(ent.get("descricao") or ent.get("name") or "")).strip()
+        entity_key = str(ent.get("id") or row.get("monitored_entity_id") or row.get("id") or "").strip()
+        stamp = str(row.get("data_envio") or row.get("updated_at") or row.get("ultima_verificacao_em") or "").strip()
+        alert_key = f"delivery-v310|{ano}-{mes:02d}|{entity_key}|{stamp or row.get('status') or 'entregue'}"
+        notified = set(bucket.get("notified_simple_v310") or [])
+        if alert_key not in notified:
+            municipio = _sim_guess_municipio_from_description(desc)
+            alert = {
+                "alert_key": alert_key,
+                "alert_type": "complete",
+                "title": "Nova entrega SIM confirmada",
+                "municipio": municipio,
+                "entity_key": entity_key,
+                "entity_description": desc,
+                "entidade": f"{desc} · Competência {mes:02d}/{ano}" if desc else f"Competência {mes:02d}/{ano}",
+                "status": str(row.get("status") or ""),
+                "data_envio": str(row.get("data_envio") or ""),
+                "updated_at": str(row.get("updated_at") or ""),
+                "ultima_verificacao_em": str(row.get("ultima_verificacao_em") or ""),
+                "ano": int(ano),
+                "mes": int(mes),
+            }
+            alerts.append(alert)
+            notified.add(alert_key)
+            bucket["notified_simple_v310"] = sorted(notified)[-3000:]
+            bucket["last_event"] = {
+                "detected_at": datetime.now().isoformat(),
+                "entity_description": desc,
+                "status": alert["status"],
+                "competencia": f"{mes:02d}/{ano}",
+                "alert_key": alert_key,
+            }
+            st.session_state[f"_sim_last_event_v310_{profile_id}"] = bucket["last_event"]
+
+    _save_sim_persistent_state(persistent_state)
+    return alerts
 
 def detectar_nova_ultima_entrega(data, cfg, profile_id, ano, mes):
     latest = _sim_latest_confirmed_delivery_raw(data, ano, mes)
@@ -3213,7 +3314,7 @@ if not st.session_state.iniciado:
     with st.expander("Alerta de Nova Entrega SIM", expanded=False):
         sa1, sa2 = st.columns([3.7, 1])
         with sa1:
-            st.caption("Mostra um único alerta verde sempre que a API oficial passa a indicar uma nova última entrega confirmada na competência consultada.")
+            st.caption("Mostra um único alerta verde quando uma entidade monitorada passa de pendente para entregue na competência consultada.")
         with sa2:
             sim_alerts["enabled"] = st.toggle("Exibir alerta SIM", value=bool(sim_alerts.get("enabled", True)), key="sim_alert_enabled_v390")
 
@@ -3271,7 +3372,7 @@ if not st.session_state.iniciado:
             if manual_test.get("ok"):
                 yy, mm = _sim_api_competencia(sim_alerts)
                 rows = _sim_rows_competencia(manual_test.get("data"), yy, mm)
-                confirmed = sum(1 for r in rows if _sim_status_confirmado(r.get("status")))
+                confirmed = sum(1 for r in rows if _sim_server_delivered(r))
                 latest = _sim_latest_confirmed_delivery_raw(manual_test.get("data"), yy, mm)
                 latest_desc = latest.get("entity_description") if latest else "nenhuma"
                 st.success(f"API respondendo: {len(rows)} entidades · {confirmed} entregues · última confirmada: {latest_desc}.")
@@ -3304,7 +3405,7 @@ if not st.session_state.iniciado:
         with snd3:
             sim_alerts["audio_green"] = st.toggle("Som verde", value=bool(sim_alerts.get("audio_green", True)), key="sim_alert_audio_green_v390")
 
-        st.caption("Fonte: API oficial `/api/sim_submissions`. O alerta acompanha apenas a última entidade confirmada (`entregue`/`no_prazo`) e usa `updated_at`/`ultima_verificacao_em` para identificar qual é a mais recente.")
+        st.caption("Fonte: API oficial `/api/sim_submissions`. O alerta acompanha novas entregas por entidade. A API oficial aceita `data_envio` preenchida mesmo quando `status` usa código; o endpoint visual também aceita `entregue`/`no_prazo`.")
         st.info("No menu ⋮ fica apenas **Testar última entrega confirmada**.")
 
     # Salva somente se houve alteração efetiva.
@@ -3464,7 +3565,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.9.0 – Alerta simplificado:** um único alerta verde acompanha a última entrega confirmada da API. O teste usa exatamente o mesmo registro real mais recente.
+            **3.10.0 – Alerta simplificado:** um único alerta verde acompanha a última entrega confirmada da API. O teste usa exatamente o mesmo registro real mais recente.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3802,7 +3903,7 @@ else:
                 if result.get("ok"):
                     grouped = agrupar_sim_submissions_servidor(result.get("data"))
                     yy, mm = _sim_api_competencia(sim_poll_cfg)
-                    alerts = detectar_nova_ultima_entrega(result.get("data"), sim_poll_cfg, active_profile_id, yy, mm)
+                    alerts = detectar_nova_entrega_simples(result.get("data"), sim_poll_cfg, active_profile_id, yy, mm)
                 yy, mm = _sim_api_competencia(sim_poll_cfg)
                 latest_delivery = _sim_latest_confirmed_delivery_raw(result.get("data"), yy, mm) if result.get("ok") else None
                 st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest_delivery
@@ -4462,7 +4563,7 @@ else:
                 simDeliveryAlert.classList.remove('sim-alert-green','sim-alert-orange','sim-alert-red');
                 simDeliveryAlert.classList.add(cssClass);
                 simAlertKicker.textContent=kicker; simAlertSource.textContent=source;
-                simAlertTitle.textContent=template.replaceAll('{municipio}',String(d.municipio||'').trim());
+                simAlertTitle.textContent=String(d.title||'').trim() || template.replaceAll('{municipio}',String(d.municipio||'').trim());
                 const showEntity=simAlertSettings.show_entity!==false && String(d.entidade||'').trim();
                 simAlertEntity.textContent=showEntity?String(d.entidade).trim():'';
                 simAlertEntity.style.display=showEntity?'block':'none';
@@ -4548,18 +4649,18 @@ else:
             }
             function testarUltimaEntregaSIM(){
                 const d=simAlertSettings.latest_delivery;
-                if(!d || !String(d.municipio||'').trim()){
+                const desc=String(d?.entity_description||d?.entidade||'').trim();
+                const municipio=String(d?.municipio||'').trim();
+                if(!d || (!desc && !municipio)){
                     log('Teste da última entrega: API ainda não informou uma entrega confirmada');
                     restartNotice.style.display='block';
-                    restartNotice.textContent='Última entrega ainda não disponível. Aguarde a próxima leitura da API.';
+                    restartNotice.textContent='Última entrega ainda não disponível. Verifique a conexão da API SIM nos ajustes.';
                     setTimeout(()=>{restartNotice.style.display='none';},3500);
                     return;
                 }
                 const comp=(d.mes&&d.ano)?`${String(d.mes).padStart(2,'0')}/${d.ano}`:'competência atual';
-                const desc=String(d.entity_description||'').trim();
-                const municipio=String(d.municipio||'').trim();
-                const resumo=`${desc||'Entidade confirmada'} · Competência ${comp}`;
-                enqueueSimAlert({alert_key:`test-last-${Date.now()}`,alert_type:'complete',municipio:municipio||'Nova entrega',entidade:resumo,entity_description:desc,ano:d.ano,mes:d.mes},true);
+                const resumo=`${desc||municipio} · Competência ${comp}`;
+                enqueueSimAlert({alert_key:`test-last-${Date.now()}`,alert_type:'complete',title:'Nova entrega SIM confirmada',municipio:municipio,entidade:resumo,entity_description:desc,ano:d.ano,mes:d.mes},true);
                 log(`Teste usando última entrega confirmada: ${desc||municipio}`);
             }
             function resetSimDeliveryBaseline(){
