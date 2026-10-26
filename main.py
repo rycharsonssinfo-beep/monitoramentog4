@@ -23,7 +23,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================
-# Painel de Monitoramento 3.4.1
+# Painel de Monitoramento 3.5.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
 # 2.4.2: correção do F5 OFF com preservação automática
 # 2.4.3: tentativa de navegação direta do botão Ajustes
@@ -47,13 +47,15 @@ import streamlit.components.v1 as components
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # 3.4.1: alerta SIM nativo no DOM principal + fila controlada pelo fragmento + diagnóstico de eventos
+# 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.4.2"
-CONFIG_VERSION = 13
+APP_VERSION = "3.5.0"
+CONFIG_VERSION = 14
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
+SIM_ALERT_STATE_PATH = Path.cwd() / "sim_alert_state.json"
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 MASCOT_ALERT_PATH = ASSETS_DIR / "mascote_alerta.png"
 PORTAL_BASE_URL = "https://portal.cdbb.win"
@@ -933,6 +935,49 @@ def config_hash(data):
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _load_sim_persistent_state():
+    try:
+        if SIM_ALERT_STATE_PATH.exists():
+            data = json.loads(SIM_ALERT_STATE_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return {"profiles": {}}
+
+
+def _save_sim_persistent_state(data):
+    try:
+        if not isinstance(data, dict):
+            return False
+        raw = json.dumps(data, ensure_ascii=False, indent=2)
+        fd, temp_name = tempfile.mkstemp(prefix="sim_alert_state_", suffix=".json", dir=str(SIM_ALERT_STATE_PATH.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+                tmp.write(raw)
+                tmp.flush()
+                os.fsync(tmp.fileno())
+            os.replace(temp_name, SIM_ALERT_STATE_PATH)
+        finally:
+            if os.path.exists(temp_name):
+                os.unlink(temp_name)
+        return True
+    except Exception:
+        return False
+
+
+def _sim_persistent_bucket(profile_id, ano, mes):
+    state = _load_sim_persistent_state()
+    profiles = state.setdefault("profiles", {})
+    profile = profiles.setdefault(str(profile_id), {})
+    comp_key = f"{int(ano):04d}-{int(mes):02d}"
+    bucket = profile.setdefault(comp_key, {"entities": {}, "notified": [], "pending": {}, "updated_at": ""})
+    if not isinstance(bucket.get("entities"), dict): bucket["entities"] = {}
+    if not isinstance(bucket.get("notified"), list): bucket["notified"] = []
+    if not isinstance(bucket.get("pending"), dict): bucket["pending"] = {}
+    return state, bucket, comp_key
+
+
 def url_valida(url):
     try:
         parsed = urlparse(str(url).strip())
@@ -1153,24 +1198,20 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
     if not states or not ano or not mes:
         return []
 
-    # v3.4.2: a fonte do evento passa a ser a própria entidade.
-    # Uma nova entrega existe quando data_envio/status muda o registro da entidade
-    # de não entregue para entregue. Depois calculamos a cor municipal resultante.
-    entity_baseline_key = f"_sim_entity_baseline_v342_{profile_id}_{ano}_{mes}"
-    notified_key = f"_sim_entity_notified_v342_{profile_id}_{ano}_{mes}"
-    pending_key = f"_sim_entity_pending_v342_{profile_id}_{ano}_{mes}"
-    previous_entities = st.session_state.get(entity_baseline_key)
-    notified = set(st.session_state.get(notified_key, []))
-    pending = st.session_state.get(pending_key, {})
-    if not isinstance(pending, dict):
-        pending = {}
+    # v3.5.0: baseline fora do session_state. Isso faz a detecção sobreviver a
+    # reruns/reconexões do Streamlit e evita que uma nova entrega seja tratada
+    # como "primeira leitura" depois de uma atualização da página.
+    persistent_state, bucket, comp_key = _sim_persistent_bucket(profile_id, ano, mes)
+    previous_entities = bucket.get("entities") or {}
+    baseline_exists = bool(bucket.get("baseline_created_at"))
+    notified = set(bucket.get("notified") or [])
+    pending = bucket.get("pending") or {}
 
     now_ts = time.time()
-    # Mantém eventos detectados por alguns minutos para os dois canais visuais
-    # (overlay principal e iframe) terem várias oportunidades de exibi-los.
+    # Mantém eventos por 10 minutos para o componente visual receber várias leituras.
     pending = {
         k: v for k, v in pending.items()
-        if isinstance(v, dict) and now_ts - float(v.get("created_at", 0)) <= 300
+        if isinstance(v, dict) and now_ts - float(v.get("created_at", 0) or 0) <= 600
     }
 
     current_entities = {}
@@ -1197,8 +1238,11 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
         entity_key = str(entity.get("key") or "").strip()
         envio_stamp = str(entity.get("data_envio") or entity.get("updated_at") or delivered)
         prefix = {"complete": "green", "partial": "orange", "deadline": "red"}.get(alert_type, alert_type)
-        # Entrega é única por entidade/competência. data_envio ajuda a distinguir correções/reenvios.
-        alert_key = f"{prefix}|{ano}-{mes}|entity:{entity_key}|{envio_stamp}" if alert_type != "deadline" else f"red|{ano}-{mes}|{municipality.get('key')}"
+        alert_key = (
+            f"{prefix}|{ano}-{mes}|entity:{entity_key}|{envio_stamp}"
+            if alert_type != "deadline"
+            else f"red|{ano}-{mes}|{municipality.get('key')}"
+        )
         if alert_key in notified:
             return False
 
@@ -1228,7 +1272,7 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
         }
         pending[alert_key] = {"created_at": now_ts, "alert": alert}
         notified.add(alert_key)
-        st.session_state[f"_sim_last_event_v342_{profile_id}"] = {
+        last_event = {
             "detected_at": datetime.now().isoformat(),
             "alert_key": alert_key,
             "alert_type": alert_type,
@@ -1239,12 +1283,13 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
             "total": total,
             "competencia": competencia,
         }
+        bucket["last_event"] = last_event
+        st.session_state[f"_sim_last_event_v342_{profile_id}"] = last_event
         return True
 
     notify_initial = bool(cfg.get("notify_initial", False))
-    if previous_entities is None:
-        # Primeira leitura: apenas cria referência, salvo se o usuário explicitamente
-        # pediu para notificar o estado já existente.
+    if not baseline_exists:
+        # Primeira leitura desta competência: cria referência persistente.
         if notify_initial:
             for entity_key, current in current_entities.items():
                 if not current.get("delivered"):
@@ -1254,20 +1299,26 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
                     add_entity_alert(municipality, {**current, "key": entity_key}, "complete")
                 elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
                     add_entity_alert(municipality, {**current, "key": entity_key}, "partial")
+        bucket["baseline_created_at"] = datetime.now().isoformat()
     else:
         for entity_key, current in current_entities.items():
             previous = previous_entities.get(entity_key) if isinstance(previous_entities, dict) else None
             old_delivered = bool(previous.get("delivered")) if isinstance(previous, dict) else False
             new_delivered = bool(current.get("delivered"))
-            # Esse é o evento equivalente ao toast nativo "Nova entrega" do Consulta TCE.
-            if new_delivered and not old_delivered:
-                municipality = state_by_entity.get(entity_key) or {}
-                if municipality.get("state") == "complete":
-                    add_entity_alert(municipality, {**current, "key": entity_key}, "complete")
-                elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
-                    add_entity_alert(municipality, {**current, "key": entity_key}, "partial")
+            old_stamp = str(previous.get("data_envio") or "") if isinstance(previous, dict) else ""
+            new_stamp = str(current.get("data_envio") or "")
 
-    # Alerta vermelho continua municipal e só começa no dia configurado.
+            # Evento primário: entidade passa de pendente para entregue.
+            # Evento secundário: data_envio muda para um novo envio/reenvio.
+            is_new_delivery = new_delivered and (not old_delivered or (new_stamp and new_stamp != old_stamp))
+            if not is_new_delivery:
+                continue
+            municipality = state_by_entity.get(entity_key) or {}
+            if municipality.get("state") == "complete":
+                add_entity_alert(municipality, {**current, "key": entity_key}, "complete")
+            elif municipality.get("state") == "partial" and bool(cfg.get("partial_enabled", True)):
+                add_entity_alert(municipality, {**current, "key": entity_key}, "partial")
+
     deadline_day = max(1, min(31, int(cfg.get("deadline_day", 28) or 28)))
     if bool(cfg.get("deadline_enabled", True)) and datetime.now().day >= deadline_day:
         for municipality in states:
@@ -1276,9 +1327,12 @@ def detectar_alertas_sim_servidor(result, cfg, profile_id):
             fake_entity = {"key": municipality.get("key"), "descricao": "", "data_envio": "", "updated_at": ""}
             add_entity_alert(municipality, fake_entity, "deadline")
 
-    st.session_state[entity_baseline_key] = current_entities
-    st.session_state[notified_key] = sorted(notified)
-    st.session_state[pending_key] = pending
+    bucket["entities"] = current_entities
+    bucket["notified"] = sorted(notified)[-4000:]
+    bucket["pending"] = pending
+    bucket["updated_at"] = datetime.now().isoformat()
+    _save_sim_persistent_state(persistent_state)
+
     return [
         entry.get("alert") for entry in pending.values()
         if isinstance(entry, dict) and isinstance(entry.get("alert"), dict)
@@ -3097,7 +3151,14 @@ if not st.session_state.iniciado:
             elif manual_test.get("error"):
                 st.error(f"Teste da API SIM: {manual_test.get('error')}")
 
-        last_event = st.session_state.get(f"_sim_last_event_v342_{active_profile_id}") or st.session_state.get(f"_sim_last_event_v341_{active_profile_id}")
+        last_event = st.session_state.get(f"_sim_last_event_v342_{active_profile_id}")
+        if not isinstance(last_event, dict):
+            try:
+                _py, _pm = _sim_api_competencia(sim_alerts)
+                _pst, _pbucket, _ = _sim_persistent_bucket(active_profile_id, _py, _pm)
+                last_event = _pbucket.get("last_event")
+            except Exception:
+                last_event = None or st.session_state.get(f"_sim_last_event_v341_{active_profile_id}")
         if isinstance(last_event, dict):
             st.info(
                 f"Último evento detectado pelo backend: **{last_event.get('municipio','-')}** · "
@@ -3703,7 +3764,7 @@ else:
     sim_server_interval = max(5, min(120, int(sim_poll_cfg.get("poll_seconds", 15))))
 
     if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and hasattr(st, "fragment"):
-        @st.fragment(run_every=1.0)
+        @st.fragment(run_every=max(5, sim_server_interval))
         def _sim_server_poll_fragment():
             now_ts = time.time()
             last_poll_key = f"_sim_api_last_poll_ts_v341_{active_profile_id}"
@@ -3734,6 +3795,8 @@ else:
                     "rows": sum(int(x.get("total") or 0) for x in grouped.get("states", [])),
                     "delivered_rows": sum(int(x.get("delivered") or 0) for x in grouped.get("states", [])),
                     "alerts_pending": len(alerts),
+                    "url": str(result.get("url") or ""),
+                    "baseline_persistente": True,
                 }
                 st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = runtime_status
                 st.session_state[last_poll_key] = now_ts
@@ -3780,9 +3843,6 @@ else:
             st.session_state[ui_seen_key] = sorted(x for x in seen if x)[-1000:]
             st.session_state[ui_queue_key] = queue
             st.session_state[ui_current_key] = current
-
-            if isinstance(current, dict):
-                st.markdown(_sim_direct_overlay_html(current, sim_poll_cfg), unsafe_allow_html=True)
 
             sim_status_broadcaster(
                 key=f"sim_status_broadcaster_{active_profile_id}",
