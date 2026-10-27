@@ -57,7 +57,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.14.0"
+APP_VERSION = "3.14.1"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -2373,8 +2373,8 @@ st.markdown(
         /* v3.14.0 · Home de configurações inspirada no mockup aprovado */
         .cfg-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; margin:2px 0 18px; }
         .cfg-hero-main { display:flex; align-items:center; gap:18px; min-width:0; }
-        .cfg-brand-box { width:88px; height:74px; flex:none; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #D9E7F2; border-radius:18px; box-shadow:0 8px 24px rgba(14,82,133,.06); overflow:hidden; }
-        .cfg-brand-box img { width:78px; height:auto; display:block; }
+        .cfg-brand-box { width:190px; min-width:190px; height:auto; flex:none; display:flex; align-items:center; justify-content:flex-start; background:transparent; border:0; border-radius:0; box-shadow:none; overflow:visible; padding:0; }
+        .cfg-brand-box img { width:180px; max-width:100%; height:auto; display:block; object-fit:contain; }
         .cfg-hero-title { color:#0A1D3A; font-size:31px; line-height:1.08; font-weight:850; letter-spacing:-.7px; margin:0 0 6px; }
         .cfg-hero-subtitle { color:#718096; font-size:14px; line-height:1.45; max-width:760px; }
         .cfg-version-card { flex:none; min-width:260px; background:rgba(255,255,255,.86); border:1px solid #CFE0ED; border-radius:14px; padding:13px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 5px 18px rgba(14,82,133,.05); }
@@ -2420,7 +2420,7 @@ st.markdown(
         .ux24-start-link { background:linear-gradient(110deg,#0867B8,#0E5285 65%,#0A70C8)!important; border-radius:10px!important; min-width:220px!important; }
         @media(max-width:900px){
             .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-            .cfg-hero{align-items:flex-start;flex-direction:column}.cfg-version-card{width:100%;min-width:0}.cfg-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cfg-nav-grid{grid-template-columns:1fr}.cfg-section-bar{align-items:stretch;flex-direction:column}.cfg-hero-title{font-size:25px}.cfg-brand-box{width:72px;height:62px}.cfg-brand-box img{width:64px}
+            .cfg-hero{align-items:flex-start;flex-direction:column}.cfg-version-card{width:100%;min-width:0}.cfg-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cfg-nav-grid{grid-template-columns:1fr}.cfg-section-bar{align-items:stretch;flex-direction:column}.cfg-hero-title{font-size:25px}.cfg-brand-box{width:160px;min-width:160px;height:auto}.cfg-brand-box img{width:150px}
             .block-container{padding-left:12px!important;padding-right:12px!important;padding-bottom:112px!important;}
             .onboarding-steps{grid-template-columns:1fr;}
             .ux24-fixed-inner{padding:9px 12px;}
@@ -3699,6 +3699,8 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
+            **3.14.1 – Ajuste visual do cabeçalho:** logotipo do Grupo S&S exibido em formato horizontal, sem caixa, borda ou sombra, mantendo a nova central de configurações.
+
             **3.14.0 – Nova central de configurações:** tela inicial redesenhada com identidade visual do Grupo S&S, cards-resumo, busca de configurações e navegação em grade; cada área abre isoladamente em largura total, reduzindo a poluição visual sem alterar as regras existentes.
 
             **3.12.0 – Alerta simplificado:** usa somente a última entrega confirmada; o teste é executado localmente com os dados já carregados e não fica preso em “Consultando...”.
