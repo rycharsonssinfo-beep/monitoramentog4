@@ -57,7 +57,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.14.1"
+APP_VERSION = "3.14.2"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -2404,7 +2404,7 @@ st.markdown(
         .cfg-nav-title { color:#0A1D3A; font-size:14px; font-weight:830; line-height:1.25; }
         .cfg-nav-desc { color:#74869A; font-size:11.5px; line-height:1.35; margin-top:4px; }
         .cfg-nav-arrow { position:absolute; right:14px; top:50%; transform:translateY(-50%); width:31px; height:31px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#F1F7FC; color:#0877E3; font-size:20px; font-weight:700; }
-        .cfg-active-head { background:linear-gradient(135deg,#F8FBFE,#EEF6FB); border:1px solid #CADDEA; border-radius:14px; padding:14px 16px; margin:8px 0 12px; display:flex; align-items:center; gap:13px; }
+        .cfg-active-head { scroll-margin-top:18px; background:linear-gradient(135deg,#F8FBFE,#EEF6FB); border:1px solid #CADDEA; border-radius:14px; padding:14px 16px; margin:8px 0 12px; display:flex; align-items:center; gap:13px; }
         .cfg-active-head-icon { width:45px; height:45px; flex:none; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#0E5285; font-size:22px; font-weight:900; }
         .cfg-active-head-title { color:#0A1D3A; font-size:16px; font-weight:850; }
         .cfg-active-head-desc { color:#718096; font-size:11.5px; margin-top:2px; }
@@ -2520,13 +2520,23 @@ if not st.session_state.iniciado:
     # =========================================================
     # v3.14.0 · HOME DE CONFIGURAÇÕES
     # =========================================================
-    active_section = str(st.query_params.get("sec", "") or "").strip().lower()
     valid_sections = {
         "profiles", "panels", "ticker", "integration", "updates", "agenda",
         "sim_alert", "stability", "visual", "backup", "news"
     }
+
+    # v3.14.2: a navegação das áreas deixou de usar links/query string.
+    # Isso evita a navegação completa do navegador (tela branca) ao abrir uma seção.
+    # O parâmetro antigo `sec` é aceito apenas na primeira carga por compatibilidade.
+    legacy_section = str(st.query_params.get("sec", "") or "").strip().lower()
+    if legacy_section not in valid_sections:
+        legacy_section = ""
+    if "config_active_section_v3142" not in st.session_state:
+        st.session_state["config_active_section_v3142"] = legacy_section
+    active_section = str(st.session_state.get("config_active_section_v3142", "") or "").strip().lower()
     if active_section not in valid_sections:
         active_section = ""
+        st.session_state["config_active_section_v3142"] = ""
 
     ticker_home = normalizar_ticker(config.get("ticker"))
     sim_alert_home = normalizar_sim_alerts(config.get("sim_alerts"))
@@ -2620,19 +2630,115 @@ if not st.session_state.iniciado:
     if q:
         nav_items = [item for item in nav_items if q in (item[3] + " " + item[4]).lower()]
 
-    cards_html = []
-    for key, icon, color_class, title, desc in nav_items:
-        active_class = " active" if active_section == key else ""
-        href = f"?perfil={html.escape(active_profile_id, quote=True)}&amp;iniciado=false&amp;sec={key}#config-content"
-        cards_html.append(
-            f'<a class="cfg-nav-card{active_class}" href="{href}" target="_self">'
-            f'<div class="cfg-nav-icon {color_class}">{html.escape(icon)}</div>'
-            f'<div class="cfg-nav-copy"><div class="cfg-nav-title">{html.escape(title)}</div><div class="cfg-nav-desc">{html.escape(desc)}</div></div>'
-            f'<div class="cfg-nav-arrow">›</div></a>'
+    # Navegação instantânea: componente V2 em vez de <a href="?...">.
+    # O clique envia somente o identificador da seção para o Streamlit, sem
+    # recarregar a página do navegador. O conteúdo abaixo é atualizado pelo
+    # ciclo normal do Streamlit e o componente faz scroll suave até ele.
+    nav_payload = [
+        {"key": key, "icon": icon, "colorClass": color_class, "title": title, "desc": desc}
+        for key, icon, color_class, title, desc in nav_items
+    ]
+
+    if hasattr(st.components, "v2"):
+        config_nav_component = st.components.v2.component(
+            "config_home_nav_v3142",
+            html='<div class="cfg-v2-nav" role="navigation" aria-label="Áreas de configuração"></div>',
+            css=r'''
+                :host{display:block;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+                .cfg-v2-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;width:100%}
+                .cfg-v2-card{appearance:none;width:100%;min-height:82px;border:1px solid #D7E3EE;border-radius:13px;background:#fff;display:grid;grid-template-columns:46px minmax(0,1fr) 30px;align-items:center;gap:12px;padding:13px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.025);transition:border-color .16s ease,box-shadow .16s ease,transform .12s ease,background .16s ease;color:#0A1D3A}
+                .cfg-v2-card:hover{border-color:#8CC2E8;box-shadow:0 5px 18px rgba(14,82,133,.08);transform:translateY(-1px)}
+                .cfg-v2-card:active{transform:translateY(0) scale(.997)}
+                .cfg-v2-card.active{border-color:#1685D1;box-shadow:0 0 0 1px rgba(22,133,209,.12),0 5px 18px rgba(14,82,133,.07)}
+                .cfg-v2-card.opening{pointer-events:none;background:#F8FBFE;border-color:#1685D1}
+                .cfg-v2-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;flex:0 0 auto}
+                .cfg-ic-blue{background:#EAF3FA;color:#0876D1}.cfg-ic-green{background:#E8FAF1;color:#07955A}.cfg-ic-purple{background:#F3EAFE;color:#7C3AED}.cfg-ic-orange{background:#FFF1E5;color:#EA6A00}.cfg-ic-red{background:#FFE8EA;color:#E11D48}
+                .cfg-v2-title{font-size:14px;font-weight:820;line-height:1.2;color:#071B37;margin:0 0 5px}
+                .cfg-v2-desc{font-size:11.5px;line-height:1.35;color:#718197;white-space:normal}
+                .cfg-v2-arrow{width:28px;height:28px;border-radius:999px;background:#F1F7FC;color:#0876D1;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;transition:transform .15s ease,background .15s ease}
+                .cfg-v2-card:hover .cfg-v2-arrow{background:#E7F3FC;transform:translateX(2px)}
+                .cfg-v2-card.opening .cfg-v2-arrow{font-size:0;transform:none}
+                .cfg-v2-card.opening .cfg-v2-arrow:after{content:"";width:13px;height:13px;border:2px solid #B8D8EE;border-top-color:#0876D1;border-radius:50%;animation:cfgspin .65s linear infinite}
+                @keyframes cfgspin{to{transform:rotate(360deg)}}
+                @media(max-width:850px){.cfg-v2-nav{grid-template-columns:1fr}.cfg-v2-card{min-height:76px}}
+            ''',
+            isolate_styles=True,
+            js=r'''
+                export default function(component) {
+                    const { data, parentElement, setTriggerValue } = component;
+                    const host = parentElement.querySelector('.cfg-v2-nav');
+                    if (!host || !data) return;
+                    const items = Array.isArray(data.items) ? data.items : [];
+                    const active = String(data.active || '');
+                    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+                    host.innerHTML = items.map(item => {
+                        const key = String(item.key || '');
+                        const cls = key === active ? ' active' : '';
+                        return `<button type="button" class="cfg-v2-card${cls}" data-section="${esc(key)}" aria-pressed="${key===active?'true':'false'}">
+                            <span class="cfg-v2-icon ${esc(item.colorClass || '')}">${esc(item.icon || '')}</span>
+                            <span><div class="cfg-v2-title">${esc(item.title || '')}</div><div class="cfg-v2-desc">${esc(item.desc || '')}</div></span>
+                            <span class="cfg-v2-arrow">›</span>
+                        </button>`;
+                    }).join('');
+
+                    host.querySelectorAll('.cfg-v2-card').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const section = btn.dataset.section || '';
+                            host.querySelectorAll('.cfg-v2-card').forEach(el => el.classList.remove('opening'));
+                            btn.classList.add('opening');
+                            try { sessionStorage.setItem('ss_cfg_scroll_pending_v3142', section); } catch(e) {}
+                            setTriggerValue('nav_event', JSON.stringify({section, sentAt: Date.now()}));
+                        });
+                    });
+
+                    let pending = '';
+                    try { pending = sessionStorage.getItem('ss_cfg_scroll_pending_v3142') || ''; } catch(e) {}
+                    if (pending && pending === active) {
+                        try { sessionStorage.removeItem('ss_cfg_scroll_pending_v3142'); } catch(e) {}
+                        const scrollToContent = () => {
+                            const target = document.getElementById('config-content');
+                            if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
+                            else setTimeout(scrollToContent, 80);
+                        };
+                        setTimeout(scrollToContent, 80);
+                    }
+                }
+            ''',
         )
-    if cards_html:
-        st.markdown('<div class="cfg-nav-grid">' + ''.join(cards_html) + '</div>', unsafe_allow_html=True)
+        nav_result = config_nav_component(
+            data={"items": nav_payload, "active": active_section},
+            key=f"config_home_nav_{active_profile_id}",
+            on_nav_event_change=lambda: None,
+        )
+        raw_nav_event = getattr(nav_result, "nav_event", None)
+        if raw_nav_event:
+            try:
+                nav_event = json.loads(raw_nav_event)
+                event_id = f"{nav_event.get('section')}:{nav_event.get('sentAt')}"
+                if event_id != st.session_state.get("config_nav_last_event_v3142"):
+                    st.session_state["config_nav_last_event_v3142"] = event_id
+                    requested_section = str(nav_event.get("section") or "").strip().lower()
+                    if requested_section in valid_sections:
+                        active_section = requested_section
+                        st.session_state["config_active_section_v3142"] = requested_section
+            except Exception:
+                pass
     else:
+        cards_html = []
+        for key, icon, color_class, title, desc in nav_items:
+            active_class = " active" if active_section == key else ""
+            href = f"?perfil={html.escape(active_profile_id, quote=True)}&amp;iniciado=false&amp;sec={key}#config-content"
+            cards_html.append(
+                f'<a class="cfg-nav-card{active_class}" href="{href}" target="_self">'
+                f'<div class="cfg-nav-icon {color_class}">{html.escape(icon)}</div>'
+                f'<div class="cfg-nav-copy"><div class="cfg-nav-title">{html.escape(title)}</div><div class="cfg-nav-desc">{html.escape(desc)}</div></div>'
+                f'<div class="cfg-nav-arrow">›</div></a>'
+            )
+        if cards_html:
+            st.markdown('<div class="cfg-nav-grid">' + ''.join(cards_html) + '</div>', unsafe_allow_html=True)
+
+    if not nav_items:
         st.info("Nenhuma área de configuração corresponde à busca.")
 
     section_meta = {key: (icon, title, desc) for key, icon, _, title, desc in [
