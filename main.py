@@ -56,7 +56,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.10.0"
+APP_VERSION = "3.11.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -185,6 +185,23 @@ def agenda_item_padrao():
         "url": "",
         "ativo": True,
     }
+
+
+def _is_sim_panel_config(panel):
+    """Reconhece o Monitor SIM mesmo em perfis antigos onde `tipo` ficou como normal."""
+    if not isinstance(panel, dict):
+        return False
+    tipo = str(panel.get("tipo") or "").strip().lower()
+    nome = str(panel.get("nome") or "").strip().lower()
+    link = str(panel.get("link") or "").strip().lower()
+    return (
+        tipo == "sim"
+        or "monitoramento sim" in nome
+        or nome == "monitor sim"
+        or "sim-submissions" in link
+        or "sim_submissions" in link
+        or "/sim-submissions" in link
+    )
 
 
 def sim_alerts_padrao():
@@ -1872,6 +1889,10 @@ def normalizar_config(data):
             panel_type = str(p.get("tipo") or "normal")
             if panel_type not in {"normal", "sim", "personalizado"}:
                 panel_type = "normal"
+            # Perfis antigos podem ter o Monitor SIM salvo como painel normal.
+            # Corrige automaticamente pela identidade do painel, sem depender do campo legado.
+            if _is_sim_panel_config({"tipo": panel_type, "nome": p.get("nome"), "link": p.get("link")}):
+                panel_type = "sim"
 
             tempo_normalizado = _clamp_int(p.get("tempo", 20), 20, 5, 600)
             max_focus_seconds = max(1, tempo_normalizado - 1)
@@ -3352,7 +3373,7 @@ if not st.session_state.iniciado:
         if not sim_api_credentials.get("configured"):
             st.code('[sim_api]\nemail = "SEU_EMAIL"\nsenha = "SUA_SENHA"\napi_key = "CHAVE_DA_API"', language="toml")
 
-        sim_panel_cfg = next((p for p in paineis if p.get("tipo") == "sim" and url_valida(p.get("link", ""))), None)
+        sim_panel_cfg = next((p for p in paineis if _is_sim_panel_config(p) and url_valida(p.get("link", ""))), None)
         t1, t2 = st.columns([1.5, 3.5])
         with t1:
             if st.button("Testar conexão API SIM", use_container_width=True, key="sim_api_test_v390", disabled=not bool(sim_panel_cfg) or not sim_api_credentials.get("configured")):
@@ -3565,7 +3586,7 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
-            **3.10.0 – Alerta simplificado:** um único alerta verde acompanha a última entrega confirmada da API. O teste usa exatamente o mesmo registro real mais recente.
+            **3.11.0 – Correção estrutural SIM:** o Monitor SIM passa a ser reconhecido por tipo, nome ou URL. O polling da API e o F5 OFF não dependem mais de perfis antigos salvos como painel normal.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
@@ -3680,7 +3701,7 @@ else:
                     return;
                 }
 
-                if (msg.action === "settings" || msg.action === "reload" || msg.action === "recheck_iframe") {
+                if (msg.action === "settings" || msg.action === "reload" || msg.action === "recheck_iframe" || msg.action === "test_sim_latest") {
                     setTriggerValue("panel_id", msg.panelId || "");
                     setTriggerValue("action", msg.action);
                 }
@@ -3717,6 +3738,35 @@ else:
 
     if bridge_action == "recheck_iframe":
         detectar_bloqueio_iframe.clear()
+        st.session_state.iniciado = True
+        st.query_params["perfil"] = active_profile_id
+        st.query_params["iniciado"] = "true"
+        st.rerun()
+
+    if bridge_action == "test_sim_latest":
+        _test_cfg = normalizar_sim_alerts(config.get("sim_alerts"))
+        _test_panel = next((p for p in paineis_ativos if _is_sim_panel_config(p)), None)
+        _test_error_key = f"_sim_test_error_v311_{active_profile_id}"
+        if _test_panel:
+            _test_result = buscar_sim_submissions_servidor(_test_panel.get("link", ""), _test_cfg)
+            if _test_result.get("ok"):
+                _yy, _mm = _sim_api_competencia(_test_cfg)
+                _latest = _sim_latest_confirmed_delivery_raw(_test_result.get("data"), _yy, _mm)
+                if _latest:
+                    _latest = dict(_latest)
+                    _latest["alert_key"] = f"test-host-{time.time_ns()}"
+                    st.session_state.setdefault(f"_sim_direct_tests_v341_{active_profile_id}", []).append(_latest)
+                    st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = _latest
+                    st.session_state[f"_sim_latest_delivery_v370_{active_profile_id}"] = _latest
+                    st.session_state.pop(_test_error_key, None)
+                else:
+                    _rows = _sim_rows_competencia(_test_result.get("data"), _yy, _mm)
+                    _confirmed = sum(1 for r in _rows if _sim_server_delivered(r))
+                    st.session_state[_test_error_key] = f"API retornou {len(_rows)} entidades de {_mm:02d}/{_yy}, mas {_confirmed} foram reconhecidas como entregues e nenhuma pôde ser ordenada como última entrega."
+            else:
+                st.session_state[_test_error_key] = f"Falha na API SIM: {_test_result.get('error') or 'erro desconhecido'}"
+        else:
+            st.session_state[_test_error_key] = "Monitor SIM não foi reconhecido entre os painéis ativos."
         st.session_state.iniciado = True
         st.query_params["perfil"] = active_profile_id
         st.query_params["iniciado"] = "true"
@@ -3882,7 +3932,7 @@ else:
         """,
     )
 
-    sim_panel_for_server = next((p for p in paineis_ativos if p.get("tipo") == "sim"), None)
+    sim_panel_for_server = next((p for p in paineis_ativos if _is_sim_panel_config(p)), None)
     sim_poll_cfg = normalizar_sim_alerts(config.get("sim_alerts"))
     sim_server_interval = max(5, min(120, int(sim_poll_cfg.get("poll_seconds", 15))))
 
@@ -4019,8 +4069,10 @@ else:
         item = copy.deepcopy(painel_item)
         # v3.9: o Monitor SIM nunca é recarregado pelo wrapper ao iniciar.
         # O próprio Consulta TCE continua atualizando seus dados internamente via XHR.
-        if item.get("tipo") == "sim":
+        if _is_sim_panel_config(item):
+            item["tipo"] = "sim"
             item["reload_enabled"] = False
+            item["reload_strategy"] = "on_show"
             item["preserve_session"] = True
         item["iframe_check"] = iframe_checks.get(item.get("id"), {"blocked": False, "status": "unknown", "reason": "Compatibilidade não verificada."})
         paineis_payload.append(item)
@@ -4030,7 +4082,7 @@ else:
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
-        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}")},
+        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", "")},
         "settings": {
             "generalReloadMs": 0,
             "fullRestartEnabled": False,
@@ -4150,6 +4202,7 @@ else:
             const settings = payload.settings;
             const tickerSettings = payload.ticker || {enabled:false, news:[]};
             const simAlertSettings = payload.simAlerts || {enabled:false};
+            const simTestError = String(simAlertSettings.test_error||'').trim();
 
             document.documentElement.style.setProperty('--scale', String(settings.uiScale / 100));
             document.documentElement.style.setProperty('--fade', `${settings.transitionMs}ms`);
@@ -4255,7 +4308,16 @@ else:
             function formatCountdown(ms){ const sec=Math.max(0,Math.ceil(ms/1000)); const m=Math.floor(sec/60),s=sec%60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
             function nextIndex(){ return (index+1)%panels.length; }
             function getPanelById(id){ return panels.find(p=>p.id===id); }
-            function effectiveReload(p){ return typeof runtimeReloadOverrides[p.id]==='boolean' ? runtimeReloadOverrides[p.id] : !!p.reload_enabled; }
+            function isSimPanel(p){
+                if(!p)return false;
+                const tipo=String(p.tipo||'').toLowerCase();
+                const nome=String(p.nome||'').toLowerCase();
+                const link=String(p.link||'').toLowerCase();
+                return tipo==='sim' || nome.includes('monitoramento sim') || nome==='monitor sim' || link.includes('sim-submissions') || link.includes('sim_submissions');
+            }
+            // Monitor SIM é sempre preservado. O próprio Consulta TCE faz suas consultas XHR;
+            // o wrapper não deve recriar/recarregar esse iframe automaticamente.
+            function effectiveReload(p){ if(isSimPanel(p))return false; return typeof runtimeReloadOverrides[p.id]==='boolean' ? runtimeReloadOverrides[p.id] : !!p.reload_enabled; }
             function setState(kind){ stateDot.classList.remove('offline','recovering'); if(kind==='offline')stateDot.classList.add('offline'); if(kind==='recovering')stateDot.classList.add('recovering'); }
 
             function todayLocalIso(){
@@ -4361,7 +4423,7 @@ else:
             }
 
             function simPanel(){
-                return panels.find(p=>String(p.tipo||'').toLowerCase()==='sim' || /sim-submissions/i.test(String(p.link||''))) || null;
+                return panels.find(p=>isSimPanel(p)) || null;
             }
             function simNorm(v){
                 return String(v||'').trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
@@ -4648,20 +4710,10 @@ else:
                 log(`Teste manual de alerta SIM (${type})${p?' · '+p.nome:''}`);
             }
             function testarUltimaEntregaSIM(){
-                const d=simAlertSettings.latest_delivery;
-                const desc=String(d?.entity_description||d?.entidade||'').trim();
-                const municipio=String(d?.municipio||'').trim();
-                if(!d || (!desc && !municipio)){
-                    log('Teste da última entrega: API ainda não informou uma entrega confirmada');
-                    restartNotice.style.display='block';
-                    restartNotice.textContent='Última entrega ainda não disponível. Verifique a conexão da API SIM nos ajustes.';
-                    setTimeout(()=>{restartNotice.style.display='none';},3500);
-                    return;
-                }
-                const comp=(d.mes&&d.ano)?`${String(d.mes).padStart(2,'0')}/${d.ano}`:'competência atual';
-                const resumo=`${desc||municipio} · Competência ${comp}`;
-                enqueueSimAlert({alert_key:`test-last-${Date.now()}`,alert_type:'complete',title:'Nova entrega SIM confirmada',municipio:municipio,entidade:resumo,entity_description:desc,ano:d.ano,mes:d.mes},true);
-                log(`Teste usando última entrega confirmada: ${desc||municipio}`);
+                restartNotice.style.display='block';
+                restartNotice.textContent='Consultando a última entrega confirmada na API SIM...';
+                log('Teste da última entrega: solicitando consulta ao servidor Streamlit');
+                enviarAcaoHost('test_sim_latest');
             }
             function resetSimDeliveryBaseline(){
                 try{
@@ -4673,12 +4725,39 @@ else:
                 setTimeout(pollSimDeliveries,300);
             }
             function processOfficialSimSnapshot(states, ano, mes){
-                return 0;
+                if(!Array.isArray(states)||!states.length)return 0;
+                let latest=null, latestStamp='';
+                for(const municipality of states){
+                    for(const entity of (municipality.entities||[])){
+                        if(!entity || entity.delivered!==true)continue;
+                        const stamp=String(entity.updated_at||entity.ultima_verificacao_em||entity.data_envio||'');
+                        if(!stamp || stamp<=latestStamp)continue;
+                        latestStamp=stamp;
+                        latest={
+                            alert_type:'complete',
+                            title:'Nova entrega SIM confirmada',
+                            municipio:String(municipality.municipio||''),
+                            entity_key:String(entity.key||''),
+                            entity_description:String(entity.descricao||''),
+                            entidade:String(entity.descricao||''),
+                            status:String(entity.status||''),
+                            updated_at:String(entity.updated_at||''),
+                            ultima_verificacao_em:String(entity.ultima_verificacao_em||''),
+                            data_envio:String(entity.data_envio||''),
+                            ano:Number(ano), mes:Number(mes)
+                        };
+                    }
+                }
+                if(latest)simAlertSettings.latest_delivery=latest;
+                return latest?1:0;
             }
             window.addEventListener('message',(event)=>{
                 const msg=event.data;
                 if(!msg || msg.source!=='sim-monitor')return;
                 if(msg.latestDelivery) simAlertSettings.latest_delivery=msg.latestDelivery;
+                if(Array.isArray(msg.municipalities) && msg.municipalities.length && msg.ano && msg.mes){
+                    processOfficialSimSnapshot(msg.municipalities,msg.ano,msg.mes);
+                }
                 if(msg.serverCounts){
                     const c=msg.serverCounts||{};
                     const comp=(msg.mes&&msg.ano)?` · ${String(msg.mes).padStart(2,'0')}/${msg.ano}`:'';
@@ -4686,9 +4765,6 @@ else:
                     setSimPollStatus('ativo',`${c.complete||0} verde · ${c.partial||0} laranja · ${c.pending||0} vermelho · API oficial${comp}${aq?` · ${aq} alerta(s) pendente(s)`:''}`);
                 }else if(msg.serverError){
                     setSimPollStatus('erro',String(msg.serverError).slice(0,140));
-                }
-                if(Array.isArray(msg.municipalities) && msg.municipalities.length && msg.ano && msg.mes){
-                    processOfficialSimSnapshot(msg.municipalities,msg.ano,msg.mes);
                 }
                 if(Array.isArray(msg.serverAlerts)){
                     for(const alert of msg.serverAlerts) enqueueSimAlert(alert);
@@ -4907,7 +4983,7 @@ else:
             }
 
             function renderDots(){ dots.innerHTML=''; panels.forEach((p,i)=>{ const d=document.createElement('span'); d.className='dot'+(i===index?' active':''); d.title=p.nome; d.onclick=()=>{index=i;afterIndexChange('Indicador');}; dots.appendChild(d); }); }
-            function renderReloadButton(){ const p=panels[index], on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 deste painel. A escolha ON/OFF fica preservada neste navegador. * indica valor diferente da configuração salva.'; }
+            function renderReloadButton(){ const p=panels[index]; if(isSimPanel(p)){ runtimeReloadOverrides[p.id]=false; saveReloadOverrides(); reloadToggle.classList.remove('active'); reloadToggle.classList.add('off'); reloadToggle.innerHTML='▣ <span class="label">F5 OFF</span>'; reloadToggle.title='Monitor SIM: o iframe é mantido aberto. Somente as atualizações internas do próprio Consulta TCE continuam ativas.'; return; } const on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 deste painel. A escolha ON/OFF fica preservada neste navegador. * indica valor diferente da configuração salva.'; }
             function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); renderFocusButton(); if(p.iframe_check&&p.iframe_check.blocked)runtimeStatus.textContent='Iframe bloqueado'; localStorage.setItem(indexKey,p.id); }
 
             function stopTimers(){ clearInterval(timer); clearInterval(intervalReloadTimer); clearTimeout(preloadTimer); timer=null; intervalReloadTimer=null; preloadTimer=null; }
@@ -4944,7 +5020,7 @@ else:
                 else { pauseBtn.classList.remove('pause'); pauseBtn.innerHTML='Ⅱ <span class="label">Pausar</span>'; runtimeStatus.textContent=''; startTimerWith(pauseRemainingMs||Math.max(5,panels[index].tempo)*1000); log('Rotação retomada'); }
             }
 
-            function alternarRecarregamentoTemporario(){ const p=panels[index]; const current=effectiveReload(p); runtimeReloadOverrides[p.id]=!current; saveReloadOverrides(); renderReloadButton(); setupIntervalReload(); log(`F5 persistente ${!current?'ON':'OFF'}: ${p.nome}`); }
+            function alternarRecarregamentoTemporario(){ const p=panels[index]; if(isSimPanel(p)){ runtimeReloadOverrides[p.id]=false; saveReloadOverrides(); renderReloadButton(); setupIntervalReload(); runtimeStatus.textContent='SIM: F5 externo bloqueado'; log(`F5 externo mantido OFF: ${p.nome}`); return; } const current=effectiveReload(p); runtimeReloadOverrides[p.id]=!current; saveReloadOverrides(); renderReloadButton(); setupIntervalReload(); log(`F5 persistente ${!current?'ON':'OFF'}: ${p.nome}`); }
             function recarregarAgora(){ const p=panels[index]; const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,true); }
             function alternarTelaCheia(){ if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}else if(document.exitFullscreen){document.exitFullscreen().catch(()=>{});} }
 
@@ -5035,6 +5111,12 @@ else:
 
             if(settings.generalReloadMs>0){ setTimeout(()=>{ pendingGeneralReload=true; restartNotice.style.display='block'; restartNotice.textContent='Reinício programado: a aplicação será reiniciada ao fim do painel atual.'; runtimeStatus.textContent='Reinício pendente'; log('Reinício geral aguardando o fim do painel atual'); },settings.generalReloadMs); }
 
+            if(simTestError){
+                restartNotice.style.display='block';
+                restartNotice.textContent=simTestError;
+                setTimeout(()=>{restartNotice.style.display='none';},6500);
+                log(`Teste SIM: ${simTestError}`);
+            }
             renderTicker();
             startSimDeliveryPolling();
             updateClock(); setInterval(updateClock,1000); setInterval(updateDiag,1000); updateNetwork(); startWatchdog();
