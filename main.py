@@ -56,7 +56,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.11.0"
+APP_VERSION = "3.12.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -3586,6 +3586,8 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
+            **3.12.0 – Alerta simplificado:** usa somente a última entrega confirmada; o teste é executado localmente com os dados já carregados e não fica preso em “Consultando...”.
+
             **3.11.0 – Correção estrutural SIM:** o Monitor SIM passa a ser reconhecido por tipo, nome ou URL. O polling da API e o F5 OFF não dependem mais de perfis antigos salvos como painel normal.
 
             **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
@@ -3701,7 +3703,7 @@ else:
                     return;
                 }
 
-                if (msg.action === "settings" || msg.action === "reload" || msg.action === "recheck_iframe" || msg.action === "test_sim_latest") {
+                if (msg.action === "settings" || msg.action === "reload" || msg.action === "recheck_iframe") {
                     setTriggerValue("panel_id", msg.panelId || "");
                     setTriggerValue("action", msg.action);
                 }
@@ -3738,35 +3740,6 @@ else:
 
     if bridge_action == "recheck_iframe":
         detectar_bloqueio_iframe.clear()
-        st.session_state.iniciado = True
-        st.query_params["perfil"] = active_profile_id
-        st.query_params["iniciado"] = "true"
-        st.rerun()
-
-    if bridge_action == "test_sim_latest":
-        _test_cfg = normalizar_sim_alerts(config.get("sim_alerts"))
-        _test_panel = next((p for p in paineis_ativos if _is_sim_panel_config(p)), None)
-        _test_error_key = f"_sim_test_error_v311_{active_profile_id}"
-        if _test_panel:
-            _test_result = buscar_sim_submissions_servidor(_test_panel.get("link", ""), _test_cfg)
-            if _test_result.get("ok"):
-                _yy, _mm = _sim_api_competencia(_test_cfg)
-                _latest = _sim_latest_confirmed_delivery_raw(_test_result.get("data"), _yy, _mm)
-                if _latest:
-                    _latest = dict(_latest)
-                    _latest["alert_key"] = f"test-host-{time.time_ns()}"
-                    st.session_state.setdefault(f"_sim_direct_tests_v341_{active_profile_id}", []).append(_latest)
-                    st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = _latest
-                    st.session_state[f"_sim_latest_delivery_v370_{active_profile_id}"] = _latest
-                    st.session_state.pop(_test_error_key, None)
-                else:
-                    _rows = _sim_rows_competencia(_test_result.get("data"), _yy, _mm)
-                    _confirmed = sum(1 for r in _rows if _sim_server_delivered(r))
-                    st.session_state[_test_error_key] = f"API retornou {len(_rows)} entidades de {_mm:02d}/{_yy}, mas {_confirmed} foram reconhecidas como entregues e nenhuma pôde ser ordenada como última entrega."
-            else:
-                st.session_state[_test_error_key] = f"Falha na API SIM: {_test_result.get('error') or 'erro desconhecido'}"
-        else:
-            st.session_state[_test_error_key] = "Monitor SIM não foi reconhecido entre os painéis ativos."
         st.session_state.iniciado = True
         st.query_params["perfil"] = active_profile_id
         st.query_params["iniciado"] = "true"
@@ -3953,7 +3926,7 @@ else:
                 if result.get("ok"):
                     grouped = agrupar_sim_submissions_servidor(result.get("data"))
                     yy, mm = _sim_api_competencia(sim_poll_cfg)
-                    alerts = detectar_nova_entrega_simples(result.get("data"), sim_poll_cfg, active_profile_id, yy, mm)
+                    alerts = detectar_nova_ultima_entrega(result.get("data"), sim_poll_cfg, active_profile_id, yy, mm)
                 yy, mm = _sim_api_competencia(sim_poll_cfg)
                 latest_delivery = _sim_latest_confirmed_delivery_raw(result.get("data"), yy, mm) if result.get("ok") else None
                 st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest_delivery
@@ -4710,10 +4683,21 @@ else:
                 log(`Teste manual de alerta SIM (${type})${p?' · '+p.nome:''}`);
             }
             function testarUltimaEntregaSIM(){
+                const latest=simAlertSettings.latest_delivery||null;
+                if(latest && (latest.entity_description || latest.entidade || latest.municipio)){
+                    const testAlert={...latest, alert_key:`test-latest-${Date.now()}`, alert_type:'complete'};
+                    if(!testAlert.title) testAlert.title='Nova entrega SIM confirmada';
+                    if(!testAlert.entidade) testAlert.entidade=String(testAlert.entity_description||'Entrega confirmada');
+                    enqueueSimAlert(testAlert,true);
+                    restartNotice.style.display='none';
+                    log(`Teste da última entrega: ${testAlert.entidade||testAlert.municipio||'entrega confirmada'}`);
+                    return;
+                }
                 restartNotice.style.display='block';
-                restartNotice.textContent='Consultando a última entrega confirmada na API SIM...';
-                log('Teste da última entrega: solicitando consulta ao servidor Streamlit');
-                enviarAcaoHost('test_sim_latest');
+                restartNotice.textContent='Última entrega ainda não disponível no monitor. Verifique a conexão da API SIM nos ajustes.';
+                clearTimeout(window.__simTestNoticeTimer);
+                window.__simTestNoticeTimer=setTimeout(()=>{restartNotice.style.display='none';},5000);
+                log('Teste da última entrega: nenhuma entrega disponível no payload atual');
             }
             function resetSimDeliveryBaseline(){
                 try{
