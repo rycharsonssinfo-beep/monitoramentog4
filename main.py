@@ -57,7 +57,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.13.0"
+APP_VERSION = "3.14.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -2370,8 +2370,57 @@ st.markdown(
         .ticker-preview-items { white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 12px;color:#F8FBFE; }
         .news-headline {display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}.news-title{font-weight:780;color:#244157;font-size:12.5px}.news-meta{display:flex;gap:5px;flex-wrap:wrap}
         .block-container { padding-bottom:100px!important; }
+        /* v3.14.0 · Home de configurações inspirada no mockup aprovado */
+        .cfg-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; margin:2px 0 18px; }
+        .cfg-hero-main { display:flex; align-items:center; gap:18px; min-width:0; }
+        .cfg-brand-box { width:88px; height:74px; flex:none; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #D9E7F2; border-radius:18px; box-shadow:0 8px 24px rgba(14,82,133,.06); overflow:hidden; }
+        .cfg-brand-box img { width:78px; height:auto; display:block; }
+        .cfg-hero-title { color:#0A1D3A; font-size:31px; line-height:1.08; font-weight:850; letter-spacing:-.7px; margin:0 0 6px; }
+        .cfg-hero-subtitle { color:#718096; font-size:14px; line-height:1.45; max-width:760px; }
+        .cfg-version-card { flex:none; min-width:260px; background:rgba(255,255,255,.86); border:1px solid #CFE0ED; border-radius:14px; padding:13px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 5px 18px rgba(14,82,133,.05); }
+        .cfg-version-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#1673C9; font-size:20px; font-weight:900; }
+        .cfg-version-title { color:#16324A; font-size:12px; font-weight:800; }
+        .cfg-version-sub { color:#718096; font-size:10.5px; margin-top:2px; }
+        .cfg-dot { width:8px; height:8px; display:inline-block; border-radius:50%; background:#19A35B; margin-right:6px; box-shadow:0 0 0 3px #E6F8EE; }
+        .cfg-profile-strip { background:#fff; border:1px solid #D8E5EF; border-radius:13px; padding:9px 14px 5px; margin:0 0 14px; box-shadow:0 2px 9px rgba(14,82,133,.035); }
+        .cfg-metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:0 0 25px; }
+        .cfg-metric { min-height:96px; background:#fff; border:1px solid #DCE8F1; border-radius:13px; padding:13px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 5px 18px rgba(14,82,133,.045); }
+        .cfg-metric-icon { width:48px; height:48px; flex:none; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:23px; font-weight:850; }
+        .cfg-ic-blue{background:#E9F3FF;color:#0877E3}.cfg-ic-green{background:#E7FBF1;color:#07945A}.cfg-ic-purple{background:#F3EAFE;color:#7426E7}.cfg-ic-orange{background:#FFF0E4;color:#F06A00}.cfg-ic-red{background:#FFE9EC;color:#DC243D}
+        .cfg-metric-value { color:#071A3B; font-size:24px; line-height:1; font-weight:850; }
+        .cfg-metric-label { color:#23415C; font-size:12px; font-weight:800; margin-top:4px; }
+        .cfg-metric-sub { color:#8291A3; font-size:10px; line-height:1.25; margin-top:2px; }
+        .cfg-section-bar { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin:0 0 13px; }
+        .cfg-section-heading { display:flex; align-items:center; gap:12px; }
+        .cfg-section-grid-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#0E5285; font-weight:900; font-size:18px; }
+        .cfg-section-title { color:#0A1D3A; font-size:20px; font-weight:850; margin:0; }
+        .cfg-section-sub { color:#7A8A9E; font-size:12px; margin-top:2px; }
+        .cfg-nav-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+        .cfg-nav-card { text-decoration:none!important; color:inherit!important; background:#fff; border:1px solid #D9E6F0; border-radius:13px; min-height:92px; padding:13px 15px; display:flex; align-items:center; gap:14px; position:relative; box-shadow:0 4px 15px rgba(14,82,133,.04); transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease; }
+        .cfg-nav-card:hover { transform:translateY(-1px); box-shadow:0 9px 25px rgba(14,82,133,.09); border-color:#AFCDE2; }
+        .cfg-nav-card.active { border-color:#4A96CE; box-shadow:0 0 0 2px rgba(14,82,133,.07),0 7px 20px rgba(14,82,133,.07); }
+        .cfg-nav-icon { width:50px; height:50px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:23px; font-weight:900; }
+        .cfg-nav-copy { min-width:0; padding-right:30px; }
+        .cfg-nav-title { color:#0A1D3A; font-size:14px; font-weight:830; line-height:1.25; }
+        .cfg-nav-desc { color:#74869A; font-size:11.5px; line-height:1.35; margin-top:4px; }
+        .cfg-nav-arrow { position:absolute; right:14px; top:50%; transform:translateY(-50%); width:31px; height:31px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#F1F7FC; color:#0877E3; font-size:20px; font-weight:700; }
+        .cfg-active-head { background:linear-gradient(135deg,#F8FBFE,#EEF6FB); border:1px solid #CADDEA; border-radius:14px; padding:14px 16px; margin:8px 0 12px; display:flex; align-items:center; gap:13px; }
+        .cfg-active-head-icon { width:45px; height:45px; flex:none; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#0E5285; font-size:22px; font-weight:900; }
+        .cfg-active-head-title { color:#0A1D3A; font-size:16px; font-weight:850; }
+        .cfg-active-head-desc { color:#718096; font-size:11.5px; margin-top:2px; }
+        .cfg-home-hint { color:#8493A4; font-size:11px; margin:0 0 8px; }
+        .cfg-launch-card { margin:16px 0 6px; border-radius:15px; background:linear-gradient(110deg,#0867B8 0%,#0E5285 58%,#0A70C8 100%); color:#fff; padding:14px 20px; box-shadow:0 9px 25px rgba(14,82,133,.18); display:flex; align-items:center; gap:14px; }
+        .cfg-launch-play { width:48px; height:48px; flex:none; border-radius:50%; background:#fff; color:#0E5285; display:flex; align-items:center; justify-content:center; font-size:20px; }
+        .cfg-launch-kicker { font-size:9px; font-weight:850; letter-spacing:.35px; text-transform:uppercase; opacity:.9; }
+        .cfg-launch-title { font-size:18px; font-weight:850; margin-top:1px; }
+        .cfg-launch-sub { font-size:10.5px; opacity:.85; }
+        /* O conteúdo de configuração aberto ocupa toda a largura, mesmo que o menu use duas colunas. */
+        div[data-testid="stExpander"] details { border-color:#D9E6F0!important; border-radius:12px!important; }
+        .ux24-fixed-bar { background:rgba(246,250,253,.94)!important; border-top:1px solid #D9E6F0!important; box-shadow:0 -5px 20px rgba(14,82,133,.05)!important; }
+        .ux24-start-link { background:linear-gradient(110deg,#0867B8,#0E5285 65%,#0A70C8)!important; border-radius:10px!important; min-width:220px!important; }
         @media(max-width:900px){
             .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+            .cfg-hero{align-items:flex-start;flex-direction:column}.cfg-version-card{width:100%;min-width:0}.cfg-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cfg-nav-grid{grid-template-columns:1fr}.cfg-section-bar{align-items:stretch;flex-direction:column}.cfg-hero-title{font-size:25px}.cfg-brand-box{width:72px;height:62px}.cfg-brand-box img{width:64px}
             .block-container{padding-left:12px!important;padding-right:12px!important;padding-bottom:112px!important;}
             .onboarding-steps{grid-template-columns:1fr;}
             .ux24-fixed-inner{padding:9px 12px;}
@@ -2468,86 +2517,149 @@ if not st.session_state.iniciado:
         st.query_params["iniciado"] = "true"
         st.rerun()
 
-    top_left, top_right = st.columns([1.6, 1])
-    with top_left:
-        st.image("https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png", width=250)
-        st.markdown('<div class="app-title">Painel de Monitoramento</div>', unsafe_allow_html=True)
-        st.markdown('<div class="app-subtitle">Organize as telas, defina o tempo de exibição e inicie a rotação automática do monitor.</div>', unsafe_allow_html=True)
-    with top_right:
-        st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
+    # =========================================================
+    # v3.14.0 · HOME DE CONFIGURAÇÕES
+    # =========================================================
+    active_section = str(st.query_params.get("sec", "") or "").strip().lower()
+    valid_sections = {
+        "profiles", "panels", "ticker", "integration", "updates", "agenda",
+        "sim_alert", "stability", "visual", "backup", "news"
+    }
+    if active_section not in valid_sections:
+        active_section = ""
+
+    ticker_home = normalizar_ticker(config.get("ticker"))
+    sim_alert_home = normalizar_sim_alerts(config.get("sim_alerts"))
+    sim_api_home = _sim_api_credentials()
+    profiles_count = len(config.get("profiles", {}))
+    faixas_ativas = int(bool(ticker_home.get("enabled", True))) + int(bool(ticker_home.get("agenda_enabled", True)))
+    integracoes_ativas = int(bool(ticker_home.get("portal_enabled", True))) + int(bool(sim_api_home.get("configured")))
+    alertas_ativos = int(bool(sim_alert_home.get("enabled", True)))
+
+    st.markdown(
+        f"""
+        <div class="cfg-hero">
+            <div class="cfg-hero-main">
+                <div class="cfg-brand-box"><img src="https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png" alt="Grupo S&S"></div>
+                <div>
+                    <div class="cfg-hero-title">Configurações do Painel de Monitoramento</div>
+                    <div class="cfg-hero-subtitle">Personalize o comportamento, conteúdo e integrações do painel de monitoramento.<br>Mantenha tudo configurado para uma operação mais eficiente e alinhada às suas necessidades.</div>
+                </div>
+            </div>
+            <div class="cfg-version-card">
+                <div class="cfg-version-icon">◇</div>
+                <div><div class="cfg-version-title"><span class="cfg-dot"></span>Painel de Monitoramento v{APP_VERSION}</div><div class="cfg-version-sub">Sua versão está atualizada</div></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Perfil permanece operacional e acessível, mas em uma faixa mais discreta.
+    st.markdown('<div class="cfg-profile-strip">', unsafe_allow_html=True)
+    ph1, ph2 = st.columns([2.8, 1])
+    with ph1:
         profile_ids = list(config["profiles"].keys())
         selected = st.selectbox(
             "Perfil deste monitor",
             options=profile_ids,
             index=profile_ids.index(active_profile_id),
             format_func=lambda pid: config["profiles"][pid]["nome"],
-            key="perfil_select_v23",
-            help="Um perfil é um conjunto de painéis. Cada TV ou monitor pode usar um perfil diferente.",
+            key="perfil_select_v314",
+            help="Cada TV ou monitor pode utilizar um perfil diferente.",
         )
-        st.markdown('<div class="profile-help">Define quais painéis serão exibidos neste monitor.</div>', unsafe_allow_html=True)
         if selected != active_profile_id:
             st.query_params["perfil"] = selected
             st.query_params["iniciado"] = "false"
             st.session_state.iniciado = False
             st.rerun()
-        if st.button("▶ Iniciar monitoramento", type="primary", use_container_width=True, key="start_top_v24"):
-            iniciar_monitoramento_ux24()
+    with ph2:
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+        last_saved = st.session_state.get("ultima_gravacao")
+        saved_text = f"✓ Salvo automaticamente · {last_saved}" if last_saved else "✓ Salvamento automático ativo"
+        st.markdown(f'<div style="text-align:right;color:#64748B;font-size:11px;padding-top:8px">{html.escape(saved_text)}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
         f"""
-        <div class="summary-grid">
-            <div class="summary-card" title="Quantidade total de painéis cadastrados neste perfil."><div class="summary-label">Painéis cadastrados</div><div class="summary-value">{len(paineis)}</div></div>
-            <div class="summary-card" title="Painéis habilitados e com endereço válido que participarão da rotação."><div class="summary-label">Painéis ativos</div><div class="summary-value">{len(ativos)}</div></div>
-            <div class="summary-card" title="Tempo necessário para exibir todos os painéis ativos uma vez."><div class="summary-label">Duração de uma volta</div><div class="summary-value">{tempo_fmt}</div></div>
-            <div class="summary-card" title="Painéis mantidos carregados em segundo plano para preservar login, filtros ou estado da página."><div class="summary-label">Painéis mantidos abertos</div><div class="summary-value">{preservados}</div></div>
+        <div class="cfg-metrics">
+            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-blue">◎</div><div><div class="cfg-metric-value">{profiles_count}</div><div class="cfg-metric-label">Perfis ativos</div><div class="cfg-metric-sub">de monitoramento</div></div></div>
+            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-green">▥</div><div><div class="cfg-metric-value">{len(paineis)}</div><div class="cfg-metric-label">Painéis configurados</div><div class="cfg-metric-sub">{len(ativos)} ativo(s) na rotação</div></div></div>
+            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-purple">▱</div><div><div class="cfg-metric-value">{faixas_ativas}</div><div class="cfg-metric-label">Faixas corporativas</div><div class="cfg-metric-sub">Atualizações + Agenda S&S</div></div></div>
+            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-orange">↗</div><div><div class="cfg-metric-value">{integracoes_ativas}</div><div class="cfg-metric-label">Integrações ativas</div><div class="cfg-metric-sub">Portal e Monitor SIM</div></div></div>
+            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-red">!</div><div><div class="cfg-metric-value">{alertas_ativos}</div><div class="cfg-metric-label">Alertas ativos</div><div class="cfg-metric-sub">Nova Entrega SIM</div></div></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    last_saved = st.session_state.get("ultima_gravacao")
-    if last_saved:
-        st.markdown(f'<div class="save-line" title="Última gravação às {last_saved}">✓ Salvo automaticamente</div>', unsafe_allow_html=True)
-
-    if ativos:
-        nomes_preview = [html.escape(str(p.get("nome") or "Painel")) for p in ativos]
-        if len(nomes_preview) > 5:
-            visiveis = nomes_preview[:5]
-            preview = " → ".join(visiveis) + f" → +{len(nomes_preview)-5}"
-        else:
-            preview = " → ".join(nomes_preview)
+    sh1, sh2 = st.columns([2.4, 1])
+    with sh1:
         st.markdown(
-            f'<div class="rotation-preview"><strong>Ordem de exibição:</strong><span>{preview}</span><span>→ repetir</span></div>',
+            '<div class="cfg-section-heading"><div class="cfg-section-grid-icon">▦</div><div><div class="cfg-section-title">Áreas de configuração</div><div class="cfg-section-sub">Acesse e configure cada aspecto do seu painel de monitoramento.</div></div></div>',
             unsafe_allow_html=True,
         )
+    with sh2:
+        config_search = st.text_input("Buscar configuração", placeholder="⌕  Buscar configuração...", label_visibility="collapsed", key="config_search_v314")
 
-    if "ux24_onboarding_dismissed" not in st.session_state:
-        st.session_state["ux24_onboarding_dismissed"] = False
-    if not st.session_state["ux24_onboarding_dismissed"]:
-        with st.container(border=False):
-            g1, g2 = st.columns([5, 1])
-            with g1:
-                st.markdown(
-                    """
-                    <div class="onboarding-card">
-                        <div class="onboarding-title">Primeiro acesso? Configure o monitor em 3 passos</div>
-                        <div class="onboarding-steps">
-                            <div class="onboarding-step"><b>1. Escolha o perfil</b>Selecione o conjunto de painéis que esta tela deve mostrar.</div>
-                            <div class="onboarding-step"><b>2. Confira os painéis</b>Ajuste ordem, tempo na tela e atualização automática.</div>
-                            <div class="onboarding-step"><b>3. Inicie a rotação</b>Clique em “Iniciar monitoramento” e deixe a exibição rodar.</div>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            with g2:
-                st.markdown("<div style='height:19px'></div>", unsafe_allow_html=True)
-                if st.button("Entendi", use_container_width=True, key="dismiss_guide_v24"):
-                    st.session_state["ux24_onboarding_dismissed"] = True
-                    st.rerun()
+    nav_items = [
+        ("profiles", "◎", "cfg-ic-blue", "Perfis de monitoramento", "Gerencie perfis e defina qual conjunto de painéis cada monitor utiliza."),
+        ("panels", "▣", "cfg-ic-green", "Painéis e ordem de exibição", "Configure quais painéis são exibidos, ordem, tempo e comportamento de cada tela."),
+        ("ticker", "▱", "cfg-ic-purple", "Faixas corporativas · Atualizações S&S + Agenda S&S", "Gerencie as faixas corporativas exibidas no rodapé do monitoramento."),
+        ("integration", "↗", "cfg-ic-orange", "Integração automática · S&S Conecta", "Configure a sincronização automática de atualizações e compromissos do portal."),
+        ("updates", "▤", "cfg-ic-blue", "Atualizações S&S · conteúdo e prévia", "Defina o conteúdo das atualizações e visualize como será apresentado na faixa."),
+        ("agenda", "□", "cfg-ic-green", "Agenda S&S", "Ajuste compromissos, período de exibição e conteúdo da Agenda S&S."),
+        ("sim_alert", "!", "cfg-ic-red", "Alerta de Nova Entrega SIM", "Configure o alerta visual e sonoro para novas entregas do Monitor SIM."),
+        ("stability", "⚙", "cfg-ic-blue", "Estabilidade e operação", "Parâmetros de desempenho, preservação de sessão e operação do painel."),
+        ("visual", "✎", "cfg-ic-purple", "Experiência e visual", "Personalize escala, barra de controles, transições, relógio e indicadores."),
+        ("backup", "▰", "cfg-ic-blue", "Backup, importação, restauração e diagnóstico", "Exporte, restaure, importe configurações e consulte o diagnóstico do ambiente."),
+        ("news", "✦", "cfg-ic-green", "Novidades desta versão", "Confira melhorias e mudanças implementadas nas versões do painel."),
+    ]
+
+    q = (config_search or "").strip().lower()
+    if q:
+        nav_items = [item for item in nav_items if q in (item[3] + " " + item[4]).lower()]
+
+    cards_html = []
+    for key, icon, color_class, title, desc in nav_items:
+        active_class = " active" if active_section == key else ""
+        href = f"?perfil={html.escape(active_profile_id, quote=True)}&amp;iniciado=false&amp;sec={key}#config-content"
+        cards_html.append(
+            f'<a class="cfg-nav-card{active_class}" href="{href}" target="_self">'
+            f'<div class="cfg-nav-icon {color_class}">{html.escape(icon)}</div>'
+            f'<div class="cfg-nav-copy"><div class="cfg-nav-title">{html.escape(title)}</div><div class="cfg-nav-desc">{html.escape(desc)}</div></div>'
+            f'<div class="cfg-nav-arrow">›</div></a>'
+        )
+    if cards_html:
+        st.markdown('<div class="cfg-nav-grid">' + ''.join(cards_html) + '</div>', unsafe_allow_html=True)
+    else:
+        st.info("Nenhuma área de configuração corresponde à busca.")
+
+    section_meta = {key: (icon, title, desc) for key, icon, _, title, desc in [
+        ("profiles", "◎", "", "Perfis de monitoramento", "Gerencie perfis, duplicações, nomes e URL fixa por monitor."),
+        ("panels", "▣", "", "Painéis e ordem de exibição", "Configure painéis, ordem, tempo, F5, preservação e Modo Foco."),
+        ("ticker", "▱", "", "Faixas corporativas · Atualizações S&S + Agenda S&S", "Defina comportamento, tamanho e alternância das faixas corporativas."),
+        ("integration", "↗", "", "Integração automática · S&S Conecta", "Gerencie sincronização automática com o portal corporativo."),
+        ("updates", "▤", "", "Atualizações S&S · conteúdo e prévia", "Cadastre e confira as notícias apresentadas na faixa de atualizações."),
+        ("agenda", "□", "", "Agenda S&S", "Gerencie compromissos e conteúdo exibido na faixa de agenda."),
+        ("sim_alert", "!", "", "Alerta de Nova Entrega SIM", "Configurações do alerta de entrega do Monitor SIM."),
+        ("stability", "⚙", "", "Estabilidade e operação", "Ajustes operacionais e de estabilidade do monitoramento."),
+        ("visual", "✎", "", "Experiência e visual", "Personalização da experiência de visualização na TV ou monitor."),
+        ("backup", "▰", "", "Backup, importação, restauração e diagnóstico", "Ferramentas para proteger, restaurar e diagnosticar a configuração."),
+        ("news", "✦", "", "Novidades desta versão", "Histórico das principais melhorias do Painel de Monitoramento."),
+    ]}
+
+    if active_section:
+        sec_icon, sec_title, sec_desc = section_meta[active_section]
+        st.markdown(
+            f'<div id="config-content" class="cfg-active-head"><div class="cfg-active-head-icon">{html.escape(sec_icon)}</div><div><div class="cfg-active-head-title">{html.escape(sec_title)}</div><div class="cfg-active-head-desc">{html.escape(sec_desc)}</div></div></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown('<div class="cfg-home-hint">Selecione uma área acima para abrir suas configurações. As demais permanecem recolhidas, deixando a página mais limpa.</div>', unsafe_allow_html=True)
 
     # Perfis
-    with st.expander("Perfis de monitoramento", expanded=False):
+    if active_section == "profiles":
         p1, p2, p3, p4 = st.columns([2.2, 1, 1, 1])
         with p1:
             novo_nome = st.text_input("Novo perfil", placeholder="Ex.: Coordenação, eSocial, SAT...", key="novo_perfil_v23")
@@ -2636,7 +2748,7 @@ if not st.session_state.iniciado:
                     st.query_params["perfil"] = next_id
                     st.rerun()
 
-    with st.expander("Painéis e ordem de exibição", expanded=False):
+    if active_section == "panels":
         # Cabeçalho dos painéis
         header_l, header_m, header_r = st.columns([3.25, 1.35, 1])
         with header_l:
@@ -3033,7 +3145,7 @@ if not st.session_state.iniciado:
     ticker["agenda"] = ticker.get("agenda", []) if isinstance(ticker.get("agenda"), list) else []
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    with st.expander("Faixas corporativas · Atualizações S&S + Agenda S&S", expanded=False):
+    if active_section == "ticker":
         th1, th2 = st.columns([3.6, 1])
         with th1:
             st.caption("Uma única faixa global alterna entre notícias de atualização e compromissos da agenda. Os tempos de cada faixa são independentes e configuráveis.")
@@ -3102,7 +3214,7 @@ if not st.session_state.iniciado:
             ticker["agenda_label"] = st.text_input("Nome da faixa de agenda", value=str(ticker.get("agenda_label") or "AGENDA S&S"), key="ticker_agenda_label_v300", max_chars=60)
 
 
-    with st.expander("Integração automática · S&S Conecta", expanded=False):
+    if active_section == "integration":
         st.caption("Busca Atualizações e Agenda diretamente do portal autenticado. As credenciais ficam somente nos Secrets do Streamlit e nunca são gravadas no JSON da aplicação.")
         pi1, pi2, pi3, pi4 = st.columns([1.35, 1.15, 1.0, 1.1])
         source_options = ["portal_manual", "portal", "manual"]
@@ -3172,7 +3284,7 @@ if not st.session_state.iniciado:
                 st.caption("Modo Portal + manual: itens do portal têm prioridade e os cadastros manuais continuam disponíveis como contingência.")
 
 
-    with st.expander("Atualizações S&S · conteúdo e prévia", expanded=False):
+    if active_section == "updates":
         active_preview = noticias_ativas_ticker(ticker)
         active_agenda_preview = agenda_ativa_ticker(ticker)
         if ticker.get("enabled", True) and active_preview:
@@ -3269,7 +3381,7 @@ if not st.session_state.iniciado:
                         if st.button("Confirmar exclusão",key=f"news_confirm_del_{nid}",type="primary",use_container_width=True): ticker["news"]=[n for n in ticker["news"] if n.get("id")!=nid]; st.session_state["news_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
 
 
-    with st.expander("Agenda S&S", expanded=False):
+    if active_section == "agenda":
         ag_head, ag_toggle, ag_add = st.columns([3.1, 1.1, 1.15])
         with ag_head:
             st.caption("Compromissos do portal e manuais aparecem na faixa verde-petróleo. Itens realizados, cancelados ou vencidos deixam de ser exibidos automaticamente.")
@@ -3333,7 +3445,7 @@ if not st.session_state.iniciado:
     # =========================================================
     sim_alerts = config.setdefault("sim_alerts", sim_alerts_padrao())
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    with st.expander("Alerta de Nova Entrega SIM", expanded=False):
+    if active_section == "sim_alert":
         sa1, sa2 = st.columns([3.7, 1])
         with sa1:
             st.caption("Mostra um único alerta verde quando uma entidade monitorada passa de pendente para entregue na competência consultada.")
@@ -3436,7 +3548,7 @@ if not st.session_state.iniciado:
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
     # Estabilidade e operação
-    with st.expander("Estabilidade e operação", expanded=False):
+    if active_section == "stability":
         st.caption("Watchdog e pré-carregamento funcionam sem recarregar a aplicação. Na v3.6.0 o reinício completo automático foi desativado para preservar os iframes com F5 OFF.")
         perfil["full_restart_enabled"] = False
         perfil["horas_reload_geral"] = 0
@@ -3470,7 +3582,7 @@ if not st.session_state.iniciado:
         st.caption("✓ Reinício completo automático desativado: o F5 OFF pode preservar o mesmo iframe durante toda a sessão do monitor.")
 
     # Experiência e visual
-    with st.expander("Experiência e visual", expanded=False):
+    if active_section == "visual":
         st.caption("Ajustes específicos para distância de visualização, posição da barra e modo TV.")
         v1, v2, v3, v4 = st.columns(4)
         with v1:
@@ -3491,7 +3603,7 @@ if not st.session_state.iniciado:
     salvar_config(config)
 
     # Backup/importação/diagnóstico
-    with st.expander("Backup, importação, restauração e diagnóstico", expanded=False):
+    if active_section == "backup":
         b1, b2, b3 = st.columns(3)
         with b1:
             st.download_button(
@@ -3562,7 +3674,7 @@ if not st.session_state.iniciado:
         if st.session_state.get("ultimo_erro_persistencia"):
             st.error(f"Último erro de persistência: {st.session_state['ultimo_erro_persistencia']}")
 
-    with st.expander("Novidades desta versão", expanded=False):
+    if active_section == "news":
         st.markdown(
             """
             **3.4.0 – Alertas SIM e organização:** alerta detectado pelo backend passa a ter uma camada nativa sobre o próprio Streamlit, independente do iframe; diagnóstico da API SIM; configurações principais recolhíveis; e reinício completo passa a exigir habilitação explícita, evitando recriação inesperada dos painéis com F5 OFF.
@@ -3587,6 +3699,8 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
+            **3.14.0 – Nova central de configurações:** tela inicial redesenhada com identidade visual do Grupo S&S, cards-resumo, busca de configurações e navegação em grade; cada área abre isoladamente em largura total, reduzindo a poluição visual sem alterar as regras existentes.
+
             **3.12.0 – Alerta simplificado:** usa somente a última entrega confirmada; o teste é executado localmente com os dados já carregados e não fica preso em “Consultando...”.
 
             **3.11.0 – Correção estrutural SIM:** o Monitor SIM passa a ser reconhecido por tipo, nome ou URL. O polling da API e o F5 OFF não dependem mais de perfis antigos salvos como painel normal.
@@ -3597,10 +3711,16 @@ if not st.session_state.iniciado:
             """
         )
 
-    st.markdown(f'<span class="version-pill">Painel de Monitoramento v{APP_VERSION}</span>', unsafe_allow_html=True)
-    st.markdown("<div style='height:9px'></div>", unsafe_allow_html=True)
-
-    if st.button("▶ Iniciar monitoramento", type="primary", use_container_width=True, key="start_bottom_v24"):
+    st.markdown(
+        """
+        <div class="cfg-launch-card">
+            <div class="cfg-launch-play">▶</div>
+            <div><div class="cfg-launch-kicker">Tudo configurado?</div><div class="cfg-launch-title">Iniciar monitoramento</div><div class="cfg-launch-sub">Aplique as configurações e inicie a rotação dos painéis.</div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if st.button("▶ Iniciar monitoramento", type="primary", use_container_width=True, key="start_bottom_v314"):
         iniciar_monitoramento_ux24()
 
     # Barra fixa: mantém a ação principal acessível mesmo em páginas com muitos painéis.
