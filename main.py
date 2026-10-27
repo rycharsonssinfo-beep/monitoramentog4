@@ -57,7 +57,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.14.2"
+APP_VERSION = "3.14.3"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -2409,7 +2409,9 @@ st.markdown(
         .cfg-active-head-title { color:#0A1D3A; font-size:16px; font-weight:850; }
         .cfg-active-head-desc { color:#718096; font-size:11.5px; margin-top:2px; }
         .cfg-home-hint { color:#8493A4; font-size:11px; margin:0 0 8px; }
-        .cfg-launch-card { margin:16px 0 6px; border-radius:15px; background:linear-gradient(110deg,#0867B8 0%,#0E5285 58%,#0A70C8 100%); color:#fff; padding:14px 20px; box-shadow:0 9px 25px rgba(14,82,133,.18); display:flex; align-items:center; gap:14px; }
+        .cfg-launch-card { margin:16px 0 6px; border-radius:15px; background:linear-gradient(110deg,#0867B8 0%,#0E5285 58%,#0A70C8 100%); color:#fff!important; padding:14px 20px; box-shadow:0 9px 25px rgba(14,82,133,.18); display:flex; align-items:center; gap:14px; text-decoration:none!important; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+        .cfg-launch-card:hover { transform:translateY(-1px); box-shadow:0 12px 28px rgba(14,82,133,.24); filter:brightness(1.03); }
+        .cfg-launch-card:active { transform:translateY(0); }
         .cfg-launch-play { width:48px; height:48px; flex:none; border-radius:50%; background:#fff; color:#0E5285; display:flex; align-items:center; justify-content:center; font-size:20px; }
         .cfg-launch-kicker { font-size:9px; font-weight:850; letter-spacing:.35px; text-transform:uppercase; opacity:.9; }
         .cfg-launch-title { font-size:18px; font-weight:850; margin-top:1px; }
@@ -2565,8 +2567,7 @@ if not st.session_state.iniciado:
         unsafe_allow_html=True,
     )
 
-    # Perfil permanece operacional e acessível, mas em uma faixa mais discreta.
-    st.markdown('<div class="cfg-profile-strip">', unsafe_allow_html=True)
+    # Perfil permanece operacional e acessível, sem wrapper HTML vazio.
     ph1, ph2 = st.columns([2.8, 1])
     with ph1:
         profile_ids = list(config["profiles"].keys())
@@ -2588,7 +2589,6 @@ if not st.session_state.iniciado:
         last_saved = st.session_state.get("ultima_gravacao")
         saved_text = f"✓ Salvo automaticamente · {last_saved}" if last_saved else "✓ Salvamento automático ativo"
         st.markdown(f'<div style="text-align:right;color:#64748B;font-size:11px;padding-top:8px">{html.escape(saved_text)}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown(
         f"""
@@ -3805,6 +3805,8 @@ if not st.session_state.iniciado:
 
             **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
             
+            **3.14.3 – Refinamento da central:** removido o contêiner vazio abaixo do cabeçalho e unificada a ação “Iniciar monitoramento” em um único CTA funcional, eliminando botões duplicados.
+
             **3.14.1 – Ajuste visual do cabeçalho:** logotipo do Grupo S&S exibido em formato horizontal, sem caixa, borda ou sombra, mantendo a nova central de configurações.
 
             **3.14.0 – Nova central de configurações:** tela inicial redesenhada com identidade visual do Grupo S&S, cards-resumo, busca de configurações e navegação em grade; cada área abre isoladamente em largura total, reduzindo a poluição visual sem alterar as regras existentes.
@@ -3819,32 +3821,40 @@ if not st.session_state.iniciado:
             """
         )
 
-    st.markdown(
-        """
-        <div class="cfg-launch-card">
-            <div class="cfg-launch-play">▶</div>
-            <div><div class="cfg-launch-kicker">Tudo configurado?</div><div class="cfg-launch-title">Iniciar monitoramento</div><div class="cfg-launch-sub">Aplique as configurações e inicie a rotação dos painéis.</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    if st.button("▶ Iniciar monitoramento", type="primary", use_container_width=True, key="start_bottom_v314"):
-        iniciar_monitoramento_ux24()
-
-    # Barra fixa: mantém a ação principal acessível mesmo em páginas com muitos painéis.
+    # CTA único e funcional. O card inteiro é clicável e substitui o antigo
+    # bloco decorativo + botão Streamlit + botão fixo duplicado.
     fixed_ativos = perfil_ativos(perfil)
     fixed_invalid = [p for p in perfil.get("paineis", []) if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
     perfil_nome_safe = html.escape(str(perfil.get("nome", "Perfil")))
     if fixed_ativos and not fixed_invalid:
-        fixed_action = f'<a class="ux24-start-link" href="?perfil={active_profile_id}&amp;iniciado=true" target="_self">▶ Iniciar monitoramento</a>'
+        launch_href = f'?perfil={active_profile_id}&amp;iniciado=true'
+        st.markdown(
+            f"""
+            <a class="cfg-launch-card" href="{launch_href}" target="_self" aria-label="Iniciar monitoramento">
+                <div class="cfg-launch-play">▶</div>
+                <div><div class="cfg-launch-kicker">Tudo configurado?</div><div class="cfg-launch-title">Iniciar monitoramento</div><div class="cfg-launch-sub">Aplique as configurações e inicie a rotação dos painéis.</div></div>
+            </a>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-        fixed_action = '<span class="ux24-start-disabled" title="Corrija os painéis antes de iniciar">▶ Iniciar monitoramento</span>'
+        st.markdown(
+            """
+            <div class="cfg-launch-card" style="opacity:.55;cursor:not-allowed" title="Corrija os painéis antes de iniciar">
+                <div class="cfg-launch-play">▶</div>
+                <div><div class="cfg-launch-kicker">Atenção</div><div class="cfg-launch-title">Iniciar monitoramento</div><div class="cfg-launch-sub">Corrija os painéis ativos com URL inválida antes de iniciar.</div></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Rodapé fixo mostra somente o estado de salvamento. A ação de iniciar
+    # existe uma única vez no CTA acima.
     st.markdown(
         f"""
         <div class="ux24-fixed-bar">
-            <div class="ux24-fixed-inner">
+            <div class="ux24-fixed-inner" style="justify-content:flex-start">
                 <div class="ux24-fixed-copy"><strong>✓ Salvo automaticamente</strong><span> &nbsp;•&nbsp; Perfil: {perfil_nome_safe} &nbsp;•&nbsp; {len(fixed_ativos)} painel(is) ativo(s)</span></div>
-                {fixed_action}
             </div>
         </div>
         """,
