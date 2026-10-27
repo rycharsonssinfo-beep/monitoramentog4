@@ -57,7 +57,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.14.3"
+APP_VERSION = "3.15.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -2429,6 +2429,8 @@ st.markdown(
             .ux24-fixed-copy span{display:none;}
             .ux24-start-link,.ux24-start-disabled{min-width:155px;}
         }
+        /* v3.15.0 · Refinamentos de hierarquia, responsividade e operação */
+        .block-container{max-width:1280px!important;padding-top:12px!important;padding-bottom:96px!important}.cfg-hero-v315{margin:0 0 10px!important;gap:18px!important}.cfg-hero-v315 .cfg-brand-box{width:170px!important;min-width:170px!important}.cfg-hero-v315 .cfg-brand-box img{width:164px!important}.cfg-hero-v315 .cfg-hero-title{font-size:28px!important;margin-bottom:4px!important}.cfg-hero-v315 .cfg-hero-subtitle{font-size:12.5px!important;color:#5E7489!important}.cfg-version-card{padding:10px 13px!important;min-width:235px!important}.cfg-version-icon svg{width:20px;height:20px}.cfg-version-title{font-size:11.5px!important}.cfg-version-sub{color:#62778B!important}.st-key-cfg_profile_card_v315{margin-bottom:12px}.st-key-cfg_profile_card_v315 [data-testid="stVerticalBlockBorderWrapper"]{border:1px solid #D8E5EF!important;border-radius:14px!important;background:#fff!important;box-shadow:0 4px 15px rgba(14,82,133,.035)!important}.st-key-cfg_profile_card_v315 [data-testid="stVerticalBlock"]{gap:.25rem!important}.cfg-profile-eyebrow{font-size:9px;letter-spacing:.55px;font-weight:850;color:#7B8FA2;margin-bottom:1px}.cfg-profile-title{font-size:13px;font-weight:830;color:#173A56;margin-bottom:4px}.cfg-profile-stat{height:100%;min-height:55px;display:flex;flex-direction:column;justify-content:center;padding-left:12px;border-left:1px solid #E7EEF4;color:#698096;font-size:10px}.cfg-profile-stat strong{font-size:11.5px;color:#23415C;margin:2px 0}.cfg-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#94A3B8}.cfg-status-dot.ok{background:#16A05D;box-shadow:0 0 0 3px #E7F8EF}.cfg-profile-mini-icon{width:18px;height:18px;color:#0876D1;display:block}.cfg-profile-mini-icon svg{width:18px;height:18px}.cfg-section-heading{margin:3px 0 4px}.cfg-section-title{font-size:19px!important}.cfg-section-sub{color:#657B90!important}.cfg-section-grid-icon svg{width:19px;height:19px}.cfg-group-label{display:flex;align-items:center;gap:10px;margin:14px 0 7px;color:#6A8094;font-size:10px;font-weight:850;letter-spacing:.65px;text-transform:uppercase}.cfg-group-label:after{content:"";height:1px;background:#DCE7EF;flex:1}.cfg-home-hint-v315{background:#F8FBFD;border:1px dashed #CADCE9;border-radius:11px;padding:10px 12px;margin:8px 0 2px;color:#687E91!important}.cfg-active-head-v315{margin:2px 0 10px!important;padding:12px 14px!important;border-color:#BBD6E8!important;background:linear-gradient(100deg,#F2F8FC,#FAFCFE)!important;box-shadow:0 4px 14px rgba(14,82,133,.045)}.cfg-active-head-v315 .cfg-active-head-icon{background:#EAF3FA}.cfg-active-head-icon svg{width:22px;height:22px}.cfg-active-copy{min-width:0;flex:1}.cfg-active-title-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.cfg-active-head-title{font-size:15px!important}.cfg-active-head-desc{color:#60768A!important}.cfg-active-status{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:850;background:#EEF5FA;color:#537087;border:1px solid #D6E3EC}.cfg-active-status.ok{background:#ECFDF3;color:#087A44;border-color:#C5F2D5}.cfg-active-status.warn{background:#FFF7E8;color:#9A5A00;border-color:#F6DEAF}.cfg-active-status.new{background:#EAF9F0;color:#087A44;border-color:#BFE9D0}.cfg-footer-v315{background:rgba(248,251,253,.96)!important}.cfg-footer-inner-v315{max-width:1280px!important;padding:8px 18px!important}.cfg-footer-indicators{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.cfg-footer-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border:1px solid #D8E5EE;background:#fff;border-radius:999px;color:#63798D;font-size:9.8px;line-height:1}.cfg-footer-pill b{color:#274A67}.cfg-footer-pill.ok{background:#F0FBF5;border-color:#CBEED9;color:#17804D}.cfg-footer-start{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none!important;background:linear-gradient(110deg,#0A70C8,#0E5285);color:#fff!important;padding:9px 15px;border-radius:10px;font-size:11.5px;font-weight:850;box-shadow:0 4px 12px rgba(14,82,133,.18);transition:transform .14s ease,filter .14s ease}.cfg-footer-start:hover{transform:translateY(-1px);filter:brightness(1.04)}.cfg-footer-start.disabled{background:#D7E1E8;color:#8B9AA8!important;box-shadow:none;cursor:not-allowed}.cfg-footer-play{font-size:9px}.cfg-back-top{position:fixed;right:22px;bottom:68px;z-index:999999;width:36px;height:36px;border-radius:50%;background:#fff;border:1px solid #C8DDEB;box-shadow:0 6px 18px rgba(14,82,133,.13);display:flex;align-items:center;justify-content:center;text-decoration:none!important;color:#0E5285!important;font-size:18px;font-weight:850;transition:transform .14s ease,box-shadow .14s ease}.cfg-back-top:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(14,82,133,.18)}.cfg-metric-sub,.cfg-nav-desc,.cfg-section-sub,.cfg-active-head-desc,.cfg-version-sub{color:#60768A!important}@media(max-width:900px){.cfg-hero-v315{flex-direction:column!important}.cfg-version-card{width:100%!important}.cfg-profile-stat{border-left:0;border-top:1px solid #E7EEF4;padding:8px 0 0;margin-top:5px}.cfg-footer-inner-v315{padding:7px 10px!important}.cfg-footer-pill:nth-child(2){display:none}.cfg-back-top{right:14px;bottom:64px}}
     </style>
     """,
     unsafe_allow_html=True,
@@ -2520,25 +2522,22 @@ if not st.session_state.iniciado:
         st.rerun()
 
     # =========================================================
-    # v3.14.0 · HOME DE CONFIGURAÇÕES
+    # v3.15.0 · CENTRAL DE CONFIGURAÇÕES REFINADA
     # =========================================================
     valid_sections = {
         "profiles", "panels", "ticker", "integration", "updates", "agenda",
         "sim_alert", "stability", "visual", "backup", "news"
     }
 
-    # v3.14.2: a navegação das áreas deixou de usar links/query string.
-    # Isso evita a navegação completa do navegador (tela branca) ao abrir uma seção.
-    # O parâmetro antigo `sec` é aceito apenas na primeira carga por compatibilidade.
     legacy_section = str(st.query_params.get("sec", "") or "").strip().lower()
     if legacy_section not in valid_sections:
         legacy_section = ""
-    if "config_active_section_v3142" not in st.session_state:
-        st.session_state["config_active_section_v3142"] = legacy_section
-    active_section = str(st.session_state.get("config_active_section_v3142", "") or "").strip().lower()
+    if "config_active_section_v315" not in st.session_state:
+        st.session_state["config_active_section_v315"] = legacy_section
+    active_section = str(st.session_state.get("config_active_section_v315", "") or "").strip().lower()
     if active_section not in valid_sections:
         active_section = ""
-        st.session_state["config_active_section_v3142"] = ""
+        st.session_state["config_active_section_v315"] = ""
 
     ticker_home = normalizar_ticker(config.get("ticker"))
     sim_alert_home = normalizar_sim_alerts(config.get("sim_alerts"))
@@ -2547,1320 +2546,1253 @@ if not st.session_state.iniciado:
     faixas_ativas = int(bool(ticker_home.get("enabled", True))) + int(bool(ticker_home.get("agenda_enabled", True)))
     integracoes_ativas = int(bool(ticker_home.get("portal_enabled", True))) + int(bool(sim_api_home.get("configured")))
     alertas_ativos = int(bool(sim_alert_home.get("enabled", True)))
+    updates_count = len(noticias_ativas_ticker(ticker_home))
+    agenda_count = len(agenda_ativa_ticker(ticker_home))
+    last_saved = st.session_state.get("ultima_gravacao")
+    last_saved_short = str(last_saved or "Agora")
+
+    def _cfg_icon_svg(name):
+        icons = {
+            "profiles": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+            "panels": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',
+            "ticker": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>',
+            "integration": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1.15 1.15"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1.15-1.15"/></svg>',
+            "updates": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>',
+            "agenda": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
+            "sim_alert": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+            "stability": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1-2.9 2.9-.1-.1A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21H9.5v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1-2.9-2.9.1-.1A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-1.6-1H2V10h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.3-1.8l-.1-.1 2.9-2.9.1.1A1.7 1.7 0 0 0 8 3.6 1.7 1.7 0 0 0 9.5 2H13.5A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.8-.3l.1-.1 2.9 2.9-.1.1A1.7 1.7 0 0 0 19.4 8a1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 2Z"/></svg>',
+            "visual": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+            "backup": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>',
+            "news": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9L12 3Z"/></svg>',
+        }
+        return icons.get(name, icons["panels"])
+
+    def render_config_section(section_key):
+        active_section = section_key
+        # Perfis
+        if active_section == "profiles":
+            p1, p2, p3, p4 = st.columns([2.2, 1, 1, 1])
+            with p1:
+                novo_nome = st.text_input("Novo perfil", placeholder="Ex.: Coordenação, eSocial, SAT...", key="novo_perfil_v23")
+            with p2:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("Criar", use_container_width=True, key="criar_perfil_v23"):
+                    nome = novo_nome.strip()
+                    if not nome:
+                        st.warning("Informe o nome do perfil.")
+                    elif any(p["nome"].strip().lower() == nome.lower() for p in config["profiles"].values()):
+                        st.warning("Já existe um perfil com esse nome.")
+                    else:
+                        pid = novo_id("pr_")
+                        new_profile = copy.deepcopy(_DEFAULT_PROFILE)
+                        new_profile.update({"id": pid, "nome": nome, "paineis": []})
+                        config["profiles"][pid] = new_profile
+                        salvar_config(config, force=True)
+                        st.query_params["perfil"] = pid
+                        st.toast("Perfil criado.")
+                        st.rerun()
+            with p3:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("Duplicar", use_container_width=True, key="duplicar_perfil_v23"):
+                    clone = regenerar_ids(perfil)
+                    base = perfil["nome"]
+                    used = {p["nome"] for p in config["profiles"].values()}
+                    n = 1
+                    candidate = f"{base} - Cópia"
+                    while candidate in used:
+                        n += 1
+                        candidate = f"{base} - Cópia {n}"
+                    clone["nome"] = candidate
+                    config["profiles"][clone["id"]] = clone
+                    salvar_config(config, force=True)
+                    st.query_params["perfil"] = clone["id"]
+                    st.toast("Perfil duplicado.")
+                    st.rerun()
+            with p4:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("Excluir", use_container_width=True, key="pedir_excluir_perfil_v23", disabled=len(config["profiles"]) <= 1):
+                    st.session_state["confirmar_exclusao_perfil_v23"] = True
+                    st.rerun()
+
+            r1, r2, r3 = st.columns([2.2, 1, 1])
+            with r1:
+                nome_editado = st.text_input("Nome do perfil selecionado", value=perfil["nome"], key=f"rename_{active_profile_id}")
+            with r2:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("Renomear", use_container_width=True, key="rename_btn_v23"):
+                    nome = nome_editado.strip()
+                    if nome and not any(pid != active_profile_id and p["nome"].strip().lower() == nome.lower() for pid, p in config["profiles"].items()):
+                        perfil["nome"] = nome
+                        salvar_config(config, force=True)
+                        st.toast("Perfil renomeado.")
+                        st.rerun()
+                    else:
+                        st.warning("Use um nome válido e não repetido.")
+            with r3:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                is_default = active_profile_id == config.get("default_profile_id")
+                if st.button("Perfil padrão ✓" if is_default else "Definir como padrão", use_container_width=True, key="default_profile_v23", disabled=is_default):
+                    config["default_profile_id"] = active_profile_id
+                    salvar_config(config, force=True)
+                    st.toast("Perfil padrão atualizado.")
+                    st.rerun()
+
+            st.markdown("**URL fixa para esta TV/perfil**")
+            st.markdown(f'<div class="profile-url">?perfil={active_profile_id}&amp;iniciado=true</div>', unsafe_allow_html=True)
+            st.caption("Use essa combinação de parâmetros ao fixar uma TV em um perfil específico.")
+
+            if st.session_state.get("confirmar_exclusao_perfil_v23"):
+                st.warning(f"Excluir o perfil **{perfil['nome']}** e todos os painéis dele?")
+                x1, x2 = st.columns(2)
+                with x1:
+                    if st.button("Cancelar", use_container_width=True, key="cancelar_excluir_perfil_v23"):
+                        st.session_state["confirmar_exclusao_perfil_v23"] = False
+                        st.rerun()
+                with x2:
+                    if st.button("Confirmar exclusão", type="primary", use_container_width=True, key="confirmar_excluir_perfil_v23"):
+                        del config["profiles"][active_profile_id]
+                        if config.get("default_profile_id") == active_profile_id:
+                            config["default_profile_id"] = next(iter(config["profiles"]))
+                        next_id = config["default_profile_id"]
+                        salvar_config(config, force=True)
+                        st.session_state["confirmar_exclusao_perfil_v23"] = False
+                        st.query_params["perfil"] = next_id
+                        st.rerun()
+
+        if active_section == "panels":
+            # Cabeçalho dos painéis
+            header_l, header_m, header_r = st.columns([3.25, 1.35, 1])
+            with header_l:
+                st.caption("Os painéis ativos entram na rotação na ordem abaixo. Atualização automática e manter a página aberta são configurações independentes.")
+            with header_m:
+                view_options = ["compact", "detailed"]
+                perfil["config_view"] = st.selectbox(
+                    "Visualização",
+                    view_options,
+                    index=view_options.index(perfil.get("config_view", "compact")),
+                    format_func=lambda x: "Compacta" if x == "compact" else "Detalhada",
+                    key=f"view_{active_profile_id}",
+                    help="Compacta recolhe as configurações avançadas. Detalhada deixa essas opções abertas.",
+                )
+            with header_r:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("＋ Adicionar painel", use_container_width=True, key="add_painel_v23"):
+                    paineis.append(painel_padrao(f"Novo Painel {len(paineis) + 1}", "", 20, True))
+                    salvar_config(config, force=True)
+                    st.toast("Painel adicionado.")
+                    st.rerun()
+
+            pending_delete = st.session_state.get("painel_pendente_exclusao_v23")
+
+            for i, painel in enumerate(paineis):
+                pid = painel["id"]
+                nome_cabecalho = html.escape(str(painel.get("nome") or "Painel sem nome"))
+                ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
+                f5_badge = '<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>'
+                preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if (painel.get("preserve_session", False) or not painel.get("reload_enabled", True)) else ''
+                focus_badge = (
+                    f'<span class="badge badge-amber">FOCO {int(painel.get("focus_seconds", 20))}s · {int(painel.get("focus_zoom", 175))}%</span>'
+                    if painel.get("focus_enabled", False)
+                    else ''
+                )
+                iframe_badge = (
+                    '<span class="badge badge-gray">AVISO S&S</span>'
+                    if painel.get("iframe_mode", "auto") == "fallback"
+                    else ''
+                )
+
+                with st.container(border=True):
+                    st.markdown(
+                        f"""
+                        <div class="panel-headline">
+                            <div class="panel-headline-left">
+                                <span class="panel-number">{i+1:02d}</span>
+                                <span class="panel-headline-name">{nome_cabecalho}</span>
+                            </div>
+                            <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}{focus_badge}{iframe_badge}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    row = st.columns([0.46, 0.46, 1.05, 3.15, 1.0, 1.45, 1.0, 0.9])
+                    with row[0]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("▲", key=f"up_{pid}", help="Mover este painel para cima", disabled=i == 0, use_container_width=True):
+                            paineis[i - 1], paineis[i] = paineis[i], paineis[i - 1]
+                            salvar_config(config, force=True)
+                            st.toast("Ordem atualizada.")
+                            st.rerun()
+                    with row[1]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("▼", key=f"down_{pid}", help="Mover este painel para baixo", disabled=i == len(paineis)-1, use_container_width=True):
+                            paineis[i + 1], paineis[i] = paineis[i], paineis[i + 1]
+                            salvar_config(config, force=True)
+                            st.toast("Ordem atualizada.")
+                            st.rerun()
+                    with row[2]:
+                        painel["ativo"] = st.toggle(
+                            "Exibir",
+                            value=bool(painel.get("ativo", True)),
+                            key=f"ativo_{pid}",
+                            help="Liga ou desliga este painel na rotação. Desligado, ele continua cadastrado.",
+                        )
+                    with row[3]:
+                        painel["nome"] = st.text_input("Nome do painel", value=painel["nome"], key=f"nome_{pid}")
+                    with row[4]:
+                        painel["tempo"] = st.number_input(
+                            "Tempo na tela", 5, 600, int(painel.get("tempo", 20)), 5, key=f"tempo_{pid}",
+                            help="Quantidade de segundos que este painel ficará visível antes de passar para o próximo.",
+                        )
+                    with row[5]:
+                        painel["reload_enabled"] = st.toggle(
+                            "Atualização",
+                            value=bool(painel.get("reload_enabled", True)),
+                            key=f"reload_{pid}",
+                            help="Liga ou desliga a atualização automática (F5) deste painel. O estado também aparece no selo do cabeçalho.",
+                        )
+                    with row[6]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("⧉ Duplicar", key=f"dup_{pid}", help="Criar uma cópia deste painel", use_container_width=True):
+                            clone = copy.deepcopy(painel)
+                            clone["id"] = novo_id("p_")
+                            clone["nome"] = f"{clone['nome']} - Cópia"
+                            paineis.insert(i + 1, clone)
+                            salvar_config(config, force=True)
+                            st.toast("Painel duplicado.")
+                            st.rerun()
+                    with row[7]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("🗑 Excluir", key=f"del_{pid}", help="Excluir este painel", use_container_width=True):
+                            st.session_state["painel_pendente_exclusao_v23"] = pid
+                            st.rerun()
+
+                    u1, u2, u3 = st.columns([6.0, 1.05, 1.2])
+                    with u1:
+                        painel["link"] = st.text_input("Endereço da página (URL)", value=painel["link"], key=f"link_{pid}", placeholder="https://...")
+                    with u2:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if painel["link"].strip():
+                            if url_valida(painel["link"]):
+                                st.markdown('<span class="status-ok">✓ URL válida</span>', unsafe_allow_html=True)
+                            else:
+                                st.markdown('<span class="status-warn">⚠ URL inválida</span>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<span class="muted">URL pendente</span>', unsafe_allow_html=True)
+                    with u3:
+                        st.markdown("<div style='height:21px'></div>", unsafe_allow_html=True)
+                        if url_valida(painel.get("link", "")):
+                            link_safe = html.escape(painel["link"], quote=True)
+                            st.markdown(f'<a href="{link_safe}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#0E5285;font-size:12px;font-weight:700;border:1px solid #C7D9E7;padding:7px 10px;border-radius:8px;">Abrir página ↗</a>', unsafe_allow_html=True)
+
+                    # Configurações avançadas: abertas somente na visualização detalhada.
+                    if st.toggle(
+                        "Configurações avançadas",
+                        value=(perfil.get("config_view") == "detailed" or st.session_state.get("focus_calibration_panel") == pid),
+                        key=f"advanced_visible_{pid}",
+                        help="Mostra ou oculta as opções avançadas deste painel.",
+                    ):
+                        a1, a2, a3, a4 = st.columns([1.1, 1.2, 1.1, 1.25])
+                        with a1:
+                            painel["tipo"] = st.selectbox(
+                                "Tipo do painel",
+                                ["normal", "sim", "personalizado"],
+                                index=["normal", "sim", "personalizado"].index(painel.get("tipo", "normal")),
+                                format_func=lambda x: {"normal":"Normal", "sim":"SIM", "personalizado":"Personalizado"}[x],
+                                key=f"tipo_{pid}",
+                            )
+                        with a2:
+                            if painel["reload_enabled"]:
+                                painel["reload_strategy"] = st.selectbox(
+                                    "Quando atualizar",
+                                    ["on_show", "interval"],
+                                    index=["on_show", "interval"].index(painel.get("reload_strategy", "on_show")),
+                                    format_func=lambda x: "Ao exibir" if x == "on_show" else "Por intervalo",
+                                    key=f"strategy_{pid}",
+                                    help="Ao exibir: garante uma carga recente quando o painel entra na tela. Por intervalo: atualiza repetidamente conforme o tempo configurado.",
+                                )
+                            else:
+                                st.selectbox("Quando atualizar", ["Desativado"], disabled=True, key=f"strategy_off_{pid}")
+                        with a3:
+                            painel["reload_interval"] = st.number_input(
+                                "Intervalo de atualização (s)", 5, 3600, int(painel.get("reload_interval", 60)), 5,
+                                key=f"interval_{pid}", disabled=(not painel["reload_enabled"] or painel.get("reload_strategy") != "interval"),
+                            )
+                        with a4:
+                            if not painel["reload_enabled"]:
+                                st.toggle(
+                                    "Manter painel aberto",
+                                    value=True,
+                                    key=f"preserve_auto_{pid}",
+                                    disabled=True,
+                                    help="Com F5 OFF, o painel é mantido aberto automaticamente para não recarregar quando voltar à tela.",
+                                )
+                            else:
+                                painel["preserve_session"] = st.toggle(
+                                    "Manter painel aberto",
+                                    value=bool(painel.get("preserve_session", False)),
+                                    key=f"preserve_{pid}",
+                                    help="Mantém esta página carregada em segundo plano para preservar login, filtros ou posição, mesmo quando outro painel estiver visível.",
+                                )
+                        if not painel["reload_enabled"]:
+                            st.info("Com **F5 OFF**, este painel é mantido carregado automaticamente. Ao sair e voltar para ele, o monitoramento reutiliza o mesmo iframe e não executa F5.")
+                        elif painel["preserve_session"]:
+                            st.markdown('<span class="badge badge-green">PAINEL MANTIDO ABERTO</span>', unsafe_allow_html=True)
+
+                        st.markdown("---")
+                        st.markdown("**Compatibilidade de incorporação**")
+                        st.caption("Controla o tratamento quando um site impede abertura dentro do monitor por política de segurança do próprio servidor.")
+                        iframe_modes = ["auto", "force_iframe", "fallback"]
+                        iframe_labels = {
+                            "auto": "Automática · recomendada",
+                            "force_iframe": "Forçar iframe",
+                            "fallback": "Sempre mostrar aviso S&S",
+                        }
+                        current_iframe_mode = painel.get("iframe_mode", "auto")
+                        if current_iframe_mode not in iframe_modes:
+                            current_iframe_mode = "auto"
+                        compat_c1, compat_c2 = st.columns([1.45, 3.55])
+                        with compat_c1:
+                            painel["iframe_mode"] = st.selectbox(
+                                "Tratamento do site",
+                                iframe_modes,
+                                index=iframe_modes.index(current_iframe_mode),
+                                format_func=lambda x: iframe_labels[x],
+                                key=f"iframe_mode_{pid}",
+                                help="Automática verifica X-Frame-Options e CSP. Forçar iframe ignora a verificação. Sempre mostrar aviso é útil quando o navegador bloqueia o site mas a verificação automática não consegue confirmar.",
+                            )
+                        with compat_c2:
+                            if painel["iframe_mode"] == "auto":
+                                st.info("O monitor verificará os cabeçalhos do site. Se o bloqueio for confirmado, exibirá o mascote e manterá normalmente o tempo de rotação do painel.")
+                            elif painel["iframe_mode"] == "force_iframe":
+                                st.warning("O monitor tentará abrir este endereço normalmente, mesmo que haja indícios de bloqueio. Use apenas se a detecção automática gerar falso positivo.")
+                            else:
+                                st.info("Este painel exibirá diretamente o aviso personalizado S&S, sem tentar incorporar a página.")
+
+                        st.markdown("---")
+                        st.markdown("**Modo Foco**")
+                        st.caption(
+                            "Amplia automaticamente uma região do painel nos segundos finais, sem acessar o conteúdo interno do site e sem executar F5."
+                        )
+
+                        f1, f2, f3, f4, f5 = st.columns([1.05, 1.15, 1.0, 1.45, 1.3])
+                        with f1:
+                            painel["focus_enabled"] = st.toggle(
+                                "Ativar foco",
+                                value=bool(painel.get("focus_enabled", False)),
+                                key=f"focus_enabled_{pid}",
+                                help="Quando ativado, o painel aplica zoom e centraliza a região configurada perto do fim do tempo de exibição.",
+                            )
+
+                        max_focus_seconds = max(1, int(painel.get("tempo", 20)) - 1)
+                        painel["focus_seconds"] = max(1, min(int(painel.get("focus_seconds", 20)), max_focus_seconds))
+                        focus_seconds_key = f"focus_seconds_{pid}"
+                        if focus_seconds_key in st.session_state:
+                            st.session_state[focus_seconds_key] = max(1, min(int(st.session_state[focus_seconds_key]), max_focus_seconds))
+
+                        with f2:
+                            painel["focus_seconds"] = st.number_input(
+                                "Iniciar quando faltarem (s)",
+                                min_value=1,
+                                max_value=max_focus_seconds,
+                                value=int(painel.get("focus_seconds", min(20, max_focus_seconds))),
+                                step=1,
+                                key=focus_seconds_key,
+                                disabled=not painel["focus_enabled"],
+                                help="Ex.: em um painel de 50s, usar 20 faz o foco começar quando o contador chegar a 00:20.",
+                            )
+
+                        with f3:
+                            zoom_options = [125, 150, 175, 200, 225, 250]
+                            current_zoom = int(painel.get("focus_zoom", 175))
+                            if current_zoom not in zoom_options:
+                                current_zoom = 175
+                            painel["focus_zoom"] = st.selectbox(
+                                "Zoom",
+                                zoom_options,
+                                index=zoom_options.index(current_zoom),
+                                format_func=lambda x: f"{x}%",
+                                key=f"focus_zoom_{pid}",
+                                disabled=not painel["focus_enabled"],
+                            )
+
+                        preset_options = ["custom", "sim_right", "right", "center", "left", "top_right", "bottom_right"]
+                        preset_labels = {
+                            "custom": "Personalizada",
+                            "sim_right": "Direita · SIM",
+                            "right": "Direita",
+                            "center": "Centro",
+                            "left": "Esquerda",
+                            "top_right": "Superior direita",
+                            "bottom_right": "Inferior direita",
+                        }
+                        with f4:
+                            current_preset = painel.get("focus_preset", "custom")
+                            if current_preset not in preset_options:
+                                current_preset = "custom"
+                            painel["focus_preset"] = st.selectbox(
+                                "Área de foco",
+                                preset_options,
+                                index=preset_options.index(current_preset),
+                                format_func=lambda x: preset_labels[x],
+                                key=f"focus_preset_{pid}",
+                                disabled=not painel["focus_enabled"],
+                                help="Direita · SIM usa X=87% e Y=52%, ideal para a coluna de Últimas Entregas mostrada no Monitor SIM.",
+                            )
+
+                        with f5:
+                            transition_options = [0, 300, 600, 1000]
+                            current_transition = int(painel.get("focus_transition_ms", 600))
+                            if current_transition not in transition_options:
+                                current_transition = 600
+                            painel["focus_transition_ms"] = st.selectbox(
+                                "Transição",
+                                transition_options,
+                                index=transition_options.index(current_transition),
+                                format_func=lambda x: "Instantânea" if x == 0 else f"Suave · {x} ms",
+                                key=f"focus_transition_{pid}",
+                                disabled=not painel["focus_enabled"],
+                            )
+
+                        preset_coords = {
+                            "sim_right": (87, 52),
+                            "right": (82, 50),
+                            "center": (50, 50),
+                            "left": (18, 50),
+                            "top_right": (86, 30),
+                            "bottom_right": (86, 70),
+                        }
+
+                        if painel.get("focus_preset") in preset_coords:
+                            painel["focus_x"], painel["focus_y"] = preset_coords[painel["focus_preset"]]
+                            c1, c2, c3 = st.columns([1, 1, 3])
+                            with c1:
+                                st.number_input(
+                                    "Posição horizontal (X)", 0, 100, int(painel["focus_x"]), 1,
+                                    key=f"focus_x_preset_{pid}_{painel['focus_preset']}", disabled=True
+                                )
+                            with c2:
+                                st.number_input(
+                                    "Posição vertical (Y)", 0, 100, int(painel["focus_y"]), 1,
+                                    key=f"focus_y_preset_{pid}_{painel['focus_preset']}", disabled=True
+                                )
+                            with c3:
+                                st.info(
+                                    f"Área selecionada: **{preset_labels[painel['focus_preset']]}** · ponto central X={painel['focus_x']}% / Y={painel['focus_y']}%. "
+                                    "Você pode usar o seletor visual abaixo para substituir este preset por um ponto personalizado."
+                                )
+                        else:
+                            c1, c2, c3 = st.columns([1, 1, 3])
+                            with c1:
+                                painel["focus_x"] = st.number_input(
+                                    "Posição horizontal (X)", 0, 100, int(painel.get("focus_x", 50)), 1,
+                                    key=f"focus_x_{pid}", disabled=not painel["focus_enabled"],
+                                    help="0% = extremo esquerdo; 50% = centro; 100% = extremo direito.",
+                                )
+                            with c2:
+                                painel["focus_y"] = st.number_input(
+                                    "Posição vertical (Y)", 0, 100, int(painel.get("focus_y", 50)), 1,
+                                    key=f"focus_y_{pid}", disabled=not painel["focus_enabled"],
+                                    help="0% = topo; 50% = centro; 100% = parte inferior.",
+                                )
+                            with c3:
+                                st.info(
+                                    f"Ponto atual: **X={int(painel.get('focus_x', 50))}% · Y={int(painel.get('focus_y', 50))}%**. "
+                                    "Os campos continuam disponíveis para ajuste técnico, mas o seletor visual é a forma recomendada."
+                                )
+
+                        visual_left, visual_right = st.columns([1.35, 3.65])
+                        with visual_left:
+                            calibrator_supported = hasattr(st.components, "v2")
+                            if st.button(
+                                "🎯 Selecionar visualmente",
+                                key=f"open_focus_calibrator_{pid}",
+                                use_container_width=True,
+                                disabled=(not painel["focus_enabled"] or not url_valida(painel.get("link", "")) or not calibrator_supported),
+                                help="Abre uma prévia do painel. Clique diretamente na informação que deseja levar para o centro do zoom.",
+                            ):
+                                st.session_state["focus_calibration_panel"] = pid
+                                st.rerun()
+                        with visual_right:
+                            if not hasattr(st.components, "v2"):
+                                st.warning("A calibração visual requer Streamlit 1.54 ou superior.")
+                            elif not painel["focus_enabled"]:
+                                st.caption("Ative o Modo Foco para habilitar a seleção visual da área.")
+                            elif not url_valida(painel.get("link", "")):
+                                st.caption("Informe uma URL válida para abrir a calibração visual.")
+                            else:
+                                st.caption(
+                                    "Clique em **Selecionar visualmente**, marque o ponto diretamente sobre o painel e use **Testar zoom** antes de salvar. "
+                                    "Ao salvar, a área passa automaticamente para **Personalizada**."
+                                )
+
+                        if st.session_state.get("focus_calibration_panel") == pid:
+                            st.markdown("##### Calibração visual da área de foco")
+                            st.caption(
+                                "A camada de seleção fica sobre o painel apenas durante a calibração. Ela não acessa o HTML interno do sistema externo."
+                            )
+                            render_focus_calibrator(painel)
+
+                    if pending_delete == pid:
+                        st.warning(f"Excluir o painel **{painel['nome']}**? Esta ação remove apenas este cadastro do perfil.")
+                        d1, d2 = st.columns(2)
+                        with d1:
+                            if st.button("Cancelar", key=f"cancel_del_{pid}", use_container_width=True):
+                                st.session_state["painel_pendente_exclusao_v23"] = None
+                                st.rerun()
+                        with d2:
+                            if st.button("Confirmar exclusão", key=f"confirm_del_{pid}", type="primary", use_container_width=True):
+                                perfil["paineis"] = [p for p in paineis if p["id"] != pid]
+                                st.session_state["painel_pendente_exclusao_v23"] = None
+                                salvar_config(config, force=True)
+                                st.toast("Painel excluído.")
+                                st.rerun()
+
+        # =========================================================
+        # TICKER CORPORATIVO S&S - Atualizações + Agenda
+        # =========================================================
+        ticker = config.setdefault("ticker", ticker_padrao())
+        ticker["news"] = ticker.get("news", []) if isinstance(ticker.get("news"), list) else []
+        ticker["agenda"] = ticker.get("agenda", []) if isinstance(ticker.get("agenda"), list) else []
+
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        if active_section == "ticker":
+            th1, th2 = st.columns([3.6, 1])
+            with th1:
+                st.caption("Uma única faixa global alterna entre notícias de atualização e compromissos da agenda. Os tempos de cada faixa são independentes e configuráveis.")
+            with th2:
+                ticker["enabled"] = st.toggle(
+                    "Exibir faixas",
+                    value=bool(ticker.get("enabled", True)),
+                    key="ticker_enabled_v290",
+                    help="Se não existir conteúdo ativo em nenhuma das duas faixas, o rodapé desaparece automaticamente.",
+                )
+
+            tc1, tc2, tc3, tc4, tc5 = st.columns([1.25, 1.0, .9, .9, 1.25])
+            with tc1:
+                speed_options = ["slow", "normal", "fast"]
+                speed_current = ticker.get("speed", "normal") if ticker.get("speed", "normal") in speed_options else "normal"
+                ticker["speed"] = st.selectbox(
+                    "Velocidade",
+                    speed_options,
+                    index=speed_options.index(speed_current),
+                    format_func=lambda x: {"slow": "Lenta", "normal": "Normal", "fast": "Rápida"}[x],
+                    key="ticker_speed_v290",
+                )
+            with tc2:
+                ticker["height"] = st.number_input(
+                    "Altura (px)", min_value=36, max_value=64,
+                    value=max(36, min(64, int(ticker.get("height", 46)))), step=1,
+                    key="ticker_height_v290",
+                )
+            with tc3:
+                ticker["font_size"] = st.number_input(
+                    "Texto (px)", min_value=14, max_value=24,
+                    value=max(14, min(24, int(ticker.get("font_size", 19)))), step=1,
+                    key="ticker_font_v290",
+                    help="Para TV, 18 a 20 px costuma oferecer boa leitura à distância.",
+                )
+            with tc4:
+                ticker["news_seconds"] = st.number_input(
+                    "Atualizações (s)", min_value=5, max_value=300,
+                    value=max(5, min(300, int(ticker.get("news_seconds", 30)))), step=5,
+                    key="ticker_news_seconds_v290",
+                    help="Tempo que a faixa Atualizações S&S permanece visível antes de alternar.",
+                )
+            with tc5:
+                ticker["agenda_seconds"] = st.number_input(
+                    "Agenda (s)", min_value=5, max_value=300,
+                    value=max(5, min(300, int(ticker.get("agenda_seconds", 30)))), step=5,
+                    key="ticker_agenda_seconds_v290",
+                    help="Tempo que a faixa Agenda S&S permanece visível antes de voltar para Atualizações.",
+                )
+
+            to1, to2, to3, to4 = st.columns([1, 1, 1.2, 2.0])
+            with to1:
+                ticker["pause_on_hover"] = st.toggle("Pausar no mouse", value=bool(ticker.get("pause_on_hover", True)), key="ticker_pause_hover_v290")
+            with to2:
+                ticker["show_category"] = st.toggle("Mostrar categoria", value=bool(ticker.get("show_category", True)), key="ticker_show_category_v290")
+            with to3:
+                ticker["show_system"] = st.toggle("Mostrar sistema", value=bool(ticker.get("show_system", True)), key="ticker_show_system_v290")
+            with to4:
+                st.caption("Quando as duas faixas tiverem conteúdo ativo, a aplicação alterna automaticamente. Se apenas uma tiver conteúdo, ela permanece contínua.")
+
+            st.markdown("---")
+            u1, u2 = st.columns([1, 1])
+            with u1:
+                ticker["label"] = st.text_input("Nome da faixa de atualizações", value=str(ticker.get("label") or "ATUALIZAÇÕES S&S"), key="ticker_label_v290", max_chars=60)
+            with u2:
+                ticker["agenda_label"] = st.text_input("Nome da faixa de agenda", value=str(ticker.get("agenda_label") or "AGENDA S&S"), key="ticker_agenda_label_v300", max_chars=60)
+
+
+        if active_section == "integration":
+            st.caption("Busca Atualizações e Agenda diretamente do portal autenticado. As credenciais ficam somente nos Secrets do Streamlit e nunca são gravadas no JSON da aplicação.")
+            pi1, pi2, pi3, pi4 = st.columns([1.35, 1.15, 1.0, 1.1])
+            source_options = ["portal_manual", "portal", "manual"]
+            source_labels = {
+                "portal_manual": "Portal + manual",
+                "portal": "Somente Portal",
+                "manual": "Somente manual",
+            }
+            current_source = ticker.get("source_mode", "portal_manual") if ticker.get("source_mode", "portal_manual") in source_options else "portal_manual"
+            with pi1:
+                ticker["source_mode"] = st.selectbox("Fonte das faixas", source_options, index=source_options.index(current_source), format_func=lambda x: source_labels[x], key="ticker_source_v300")
+            with pi2:
+                ticker["portal_interval_minutes"] = st.number_input("Sincronizar a cada (min)", min_value=1, max_value=60, value=max(1, min(60, int(ticker.get("portal_interval_minutes", 5)))), step=1, key="portal_interval_v300")
+            with pi3:
+                ticker["portal_agenda_days"] = st.number_input("Agenda futura (dias)", min_value=0, max_value=30, value=max(0, min(30, int(ticker.get("portal_agenda_days", 7)))), step=1, key="portal_days_v300", help="Consulta hoje e os próximos dias selecionados.")
+            with pi4:
+                ticker["portal_enabled"] = st.toggle("Integração Portal", value=bool(ticker.get("portal_enabled", True)), key="portal_enabled_v300")
+
+            cache = ticker.get("portal_cache") if isinstance(ticker.get("portal_cache"), dict) else {}
+            email_cfg, senha_cfg = _portal_credentials()
+            status = str(cache.get("last_status") or "never")
+            last_sync = str(cache.get("last_sync") or "")
+            last_error = str(cache.get("last_error") or "")
+            cached_news = cache.get("news", []) if isinstance(cache.get("news"), list) else []
+            cached_agenda = cache.get("agenda", []) if isinstance(cache.get("agenda"), list) else []
+            ps1, ps2, ps3, ps4 = st.columns([1.25, 1.0, 1.0, 1.35])
+            with ps1:
+                if not email_cfg or not senha_cfg:
+                    st.markdown('<span class="status-warn">⚠ Secrets não configurados</span>', unsafe_allow_html=True)
+                elif status == "ok":
+                    st.markdown('<span class="status-ok">● Portal conectado</span>', unsafe_allow_html=True)
+                elif status == "error":
+                    st.markdown('<span class="status-warn">⚠ Falha na última sincronização</span>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<span class="status-ok">● Credenciais disponíveis</span>', unsafe_allow_html=True)
+            with ps2:
+                st.metric("Atualizações", len(cached_news))
+            with ps3:
+                st.metric("Compromissos", len(cached_agenda))
+            with ps4:
+                last_fmt = "Ainda não sincronizado"
+                if last_sync:
+                    try:
+                        last_fmt = datetime.fromisoformat(last_sync).strftime("%d/%m/%Y %H:%M:%S")
+                    except Exception:
+                        last_fmt = last_sync
+                st.caption(f"Última sincronização: **{last_fmt}**")
+
+            pbtn1, pbtn2 = st.columns([1.2, 4.8])
+            with pbtn1:
+                if st.button("↻ Sincronizar agora", use_container_width=True, key="portal_sync_now_v300", disabled=not ticker.get("portal_enabled", True) or ticker.get("source_mode") == "manual"):
+                    changed, sync_state = sincronizar_portal_ticker(ticker, force=True)
+                    salvar_config(config, force=True)
+                    if sync_state == "ok":
+                        st.toast("Portal S&S sincronizado com sucesso.")
+                    elif sync_state == "not_configured":
+                        st.error("Configure [portal_ss] em Settings → Secrets no Streamlit Cloud.")
+                    else:
+                        st.error(ticker.get("portal_cache", {}).get("last_error") or "Não foi possível sincronizar o portal.")
+                    st.rerun()
+            with pbtn2:
+                if not email_cfg or not senha_cfg:
+                    st.code('[portal_ss]\nemail = "SEU_EMAIL"\nsenha = "SUA_SENHA"', language="toml")
+                elif status == "error" and last_error:
+                    st.caption(f"Último erro: {last_error}")
+                else:
+                    st.caption("Modo Portal + manual: itens do portal têm prioridade e os cadastros manuais continuam disponíveis como contingência.")
+
+
+        if active_section == "updates":
+            active_preview = noticias_ativas_ticker(ticker)
+            active_agenda_preview = agenda_ativa_ticker(ticker)
+            if ticker.get("enabled", True) and active_preview:
+                parts = []
+                cat_labels = {"novo": "NOVO", "melhoria": "MELHORIA", "correcao": "CORREÇÃO", "aviso": "AVISO", "importante": "IMPORTANTE"}
+                for item in active_preview[:5]:
+                    bits = []
+                    if ticker.get("show_category", True): bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
+                    if ticker.get("show_system", True) and item.get("sistema"): bits.append(str(item.get("sistema")))
+                    title = str(item.get("titulo") or "").strip(); msg = str(item.get("mensagem") or "").strip()
+                    text = " — ".join([b for b in bits if b]); content = title + ((": " + msg) if title and msg else msg)
+                    if text and content: text += " — " + content
+                    elif content: text = content
+                    if item.get("url") and url_valida(item.get("url")): text += " ↗"
+                    parts.append(html.escape(text))
+                st.markdown(f'<div class="ticker-preview ticker-preview-news"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
+
+            if ticker.get("enabled", True) and ticker.get("agenda_enabled", True) and active_agenda_preview:
+                parts = []
+                hoje = datetime.now().date().isoformat()
+                for item in active_agenda_preview[:5]:
+                    data_txt = "HOJE" if item.get("data") == hoje else datetime.strptime(item.get("data"), "%Y-%m-%d").strftime("%d/%m")
+                    details = [f"{data_txt} {item.get('hora') or ''}".strip(), str(item.get("titulo") or "Compromisso")]
+                    if item.get("sistema"): details.append(str(item.get("sistema")))
+                    if item.get("entidade"): details.append(str(item.get("entidade")))
+                    if item.get("responsavel"): details.append(str(item.get("responsavel")))
+                    if item.get("local"): details.append(str(item.get("local")))
+                    text = " · ".join([d for d in details if d])
+                    if item.get("url") and url_valida(item.get("url")): text += " ↗"
+                    parts.append(html.escape(text))
+                st.markdown(f'<div class="ticker-preview ticker-preview-agenda"><div class="ticker-preview-label">{html.escape(str(ticker.get("agenda_label") or "AGENDA S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
+
+            if ticker.get("enabled", True) and not active_preview and not active_agenda_preview:
+                st.info("As faixas estão ligadas, mas não há atualização nem compromisso ativo para exibir agora. O rodapé não ocupará espaço no monitoramento.")
+
+            st.markdown("### Atualizações S&S")
+            st.caption("Os itens do portal aparecem automaticamente na prévia/faixa. Use os cadastros abaixo apenas para conteúdo manual ou contingência.")
+            add_left, add_right = st.columns([4, 1])
+            with add_right:
+                if st.button("＋ Adicionar notícia", use_container_width=True, key="add_news_v290"):
+                    ticker["news"].append(noticia_padrao()); salvar_config(config, force=True); st.toast("Notícia adicionada."); st.rerun()
+
+            pending_news_delete = st.session_state.get("news_pendente_exclusao_v290")
+            category_options = ["novo", "melhoria", "correcao", "aviso", "importante"]
+            category_labels = {"novo": "Novo", "melhoria": "Melhoria", "correcao": "Correção", "aviso": "Aviso", "importante": "Importante"}
+            for ni, news in enumerate(ticker.get("news", [])):
+                nid = news.get("id") or novo_id("news_"); news["id"] = nid
+                cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
+                state_badge = '<span class="badge badge-blue">ATIVA</span>' if news.get("ativo", True) else '<span class="badge badge-gray">INATIVA</span>'
+                cat_class = "badge-amber" if cat in {"aviso", "importante"} else ("badge-green" if cat == "melhoria" else "badge-blue")
+                link_badge = '<span class="badge badge-green">LINK</span>' if news.get("url") and url_valida(news.get("url")) else ''
+                headline = html.escape(str(news.get("titulo") or news.get("mensagem") or "Notícia sem título")[:100])
+                with st.container(border=True):
+                    st.markdown(f'<div class="news-headline"><div class="news-title">{ni+1:02d} · {headline}</div><div class="news-meta">{state_badge}<span class="badge {cat_class}">{category_labels[cat].upper()}</span>{link_badge}</div></div>', unsafe_allow_html=True)
+                    nr = st.columns([0.46, 0.46, 1.0, 1.35, 1.25, 3.0, 0.9, 0.85])
+                    with nr[0]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("▲", key=f"news_up_{nid}", disabled=ni == 0, use_container_width=True): ticker["news"][ni-1],ticker["news"][ni]=ticker["news"][ni],ticker["news"][ni-1]; salvar_config(config, force=True); st.rerun()
+                    with nr[1]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("▼", key=f"news_down_{nid}", disabled=ni == len(ticker["news"])-1, use_container_width=True): ticker["news"][ni+1],ticker["news"][ni]=ticker["news"][ni],ticker["news"][ni+1]; salvar_config(config, force=True); st.rerun()
+                    with nr[2]: news["ativo"] = st.toggle("Exibir", value=bool(news.get("ativo", True)), key=f"news_active_{nid}")
+                    with nr[3]: news["sistema"] = st.text_input("Sistema", value=str(news.get("sistema") or "Geral"), key=f"news_system_{nid}")
+                    with nr[4]:
+                        current_cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
+                        news["categoria"] = st.selectbox("Categoria", category_options, index=category_options.index(current_cat), format_func=lambda x: category_labels[x], key=f"news_cat_{nid}")
+                    with nr[5]: news["titulo"] = st.text_input("Título curto", value=str(news.get("titulo") or ""), key=f"news_title_{nid}", max_chars=160)
+                    with nr[6]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("⧉", key=f"news_dup_{nid}", use_container_width=True):
+                            clone=copy.deepcopy(news); clone["id"]=novo_id("news_"); clone["titulo"]=(clone.get("titulo") or "Notícia")+" - Cópia"; ticker["news"].insert(ni+1,clone); salvar_config(config,force=True); st.rerun()
+                    with nr[7]:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        if st.button("🗑", key=f"news_del_{nid}", use_container_width=True): st.session_state["news_pendente_exclusao_v290"]=nid; st.rerun()
+                    nb1,nb2=st.columns([3.2,2.1])
+                    with nb1: news["mensagem"] = st.text_area("Mensagem", value=str(news.get("mensagem") or ""), key=f"news_msg_{nid}", height=74, max_chars=700, placeholder="Ex.: Disponibilizadas melhorias no envio dos eventos do eSocial.")
+                    with nb2:
+                        news["url"] = st.text_input("Link da atualização (opcional)", value=str(news.get("url") or ""), key=f"news_url_{nid}", placeholder="https://...")
+                        if news["url"].strip(): st.markdown('<span class="status-ok">✓ Link clicável · abrirá em nova aba</span>' if url_valida(news["url"]) else '<span class="status-warn">⚠ Link inválido · será exibida sem clique</span>', unsafe_allow_html=True)
+                    nd1,nd2,nd3=st.columns([1.2,1.15,2.95]); start_value=_data_from_iso(news.get("inicio"),datetime.now().date())
+                    with nd1: start_date=st.date_input("Início da exibição",value=start_value,key=f"news_start_{nid}",format="DD/MM/YYYY"); news["inicio"]=start_date.isoformat()
+                    with nd2:
+                        sem_fim=st.toggle("Sem data final",value=not bool(news.get("fim")),key=f"news_no_end_{nid}")
+                        if sem_fim: news["fim"]=""
+                        else: end_default=_data_from_iso(news.get("fim"),start_date); end_date=st.date_input("Fim da exibição",value=end_default,key=f"news_end_{nid}",format="DD/MM/YYYY"); news["fim"]=end_date.isoformat()
+                    with nd3:
+                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                        st.caption(f"Situação: **{'ativa hoje' if news in noticias_ativas_ticker(ticker) else 'fora do período atual ou desativada'}**.")
+                    if pending_news_delete == nid:
+                        st.warning(f"Excluir a notícia **{news.get('titulo') or 'sem título'}**?"); dc1,dc2=st.columns(2)
+                        with dc1:
+                            if st.button("Cancelar",key=f"news_cancel_del_{nid}",use_container_width=True): st.session_state["news_pendente_exclusao_v290"]=None; st.rerun()
+                        with dc2:
+                            if st.button("Confirmar exclusão",key=f"news_confirm_del_{nid}",type="primary",use_container_width=True): ticker["news"]=[n for n in ticker["news"] if n.get("id")!=nid]; st.session_state["news_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
+
+
+        if active_section == "agenda":
+            ag_head, ag_toggle, ag_add = st.columns([3.1, 1.1, 1.15])
+            with ag_head:
+                st.caption("Compromissos do portal e manuais aparecem na faixa verde-petróleo. Itens realizados, cancelados ou vencidos deixam de ser exibidos automaticamente.")
+            with ag_toggle:
+                ticker["agenda_enabled"] = st.toggle("Exibir Agenda", value=bool(ticker.get("agenda_enabled", True)), key="agenda_enabled_v290")
+            with ag_add:
+                st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+                if st.button("＋ Adicionar compromisso", use_container_width=True, key="add_agenda_v290"):
+                    ticker["agenda"].append(agenda_item_padrao()); salvar_config(config, force=True); st.toast("Compromisso adicionado."); st.rerun()
+
+            pending_agenda_delete = st.session_state.get("agenda_pendente_exclusao_v290")
+            modalidade_options=["presencial","online","hibrido","outro"]
+            modalidade_labels={"presencial":"Presencial","online":"Online","hibrido":"Híbrido","outro":"Outro"}
+            status_options=["agendado","realizado","cancelado"]
+            status_labels={"agendado":"Agendado","realizado":"Realizado","cancelado":"Cancelado"}
+            for ai,item in enumerate(ticker.get("agenda", [])):
+                aid=item.get("id") or novo_id("agenda_"); item["id"]=aid
+                headline=html.escape(str(item.get("titulo") or "Compromisso")[:100])
+                status=item.get("status","agendado") if item.get("status","agendado") in status_options else "agendado"
+                state_class="badge-green" if status=="agendado" else ("badge-blue" if status=="realizado" else "badge-gray")
+                with st.container(border=True):
+                    st.markdown(f'<div class="news-headline"><div class="news-title">{ai+1:02d} · {headline}</div><div class="news-meta"><span class="badge {state_class}">{status_labels[status].upper()}</span></div></div>', unsafe_allow_html=True)
+                    ar=st.columns([.46,.46,.9,1.25,.85,1.15,1.3,2.3,.8])
+                    with ar[0]:
+                        st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
+                        if st.button("▲",key=f"agenda_up_{aid}",disabled=ai==0,use_container_width=True): ticker["agenda"][ai-1],ticker["agenda"][ai]=ticker["agenda"][ai],ticker["agenda"][ai-1]; salvar_config(config,force=True); st.rerun()
+                    with ar[1]:
+                        st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
+                        if st.button("▼",key=f"agenda_down_{aid}",disabled=ai==len(ticker["agenda"])-1,use_container_width=True): ticker["agenda"][ai+1],ticker["agenda"][ai]=ticker["agenda"][ai],ticker["agenda"][ai+1]; salvar_config(config,force=True); st.rerun()
+                    with ar[2]: item["ativo"]=st.toggle("Exibir",value=bool(item.get("ativo",True)),key=f"agenda_active_{aid}")
+                    with ar[3]:
+                        data_val=_data_from_iso(item.get("data"),datetime.now().date()); data_ag=st.date_input("Data",value=data_val,key=f"agenda_date_{aid}",format="DD/MM/YYYY"); item["data"]=data_ag.isoformat()
+                    with ar[4]: item["hora"]=st.text_input("Hora",value=str(item.get("hora") or "08:00"),key=f"agenda_time_{aid}",max_chars=5,placeholder="08:00")
+                    with ar[5]: item["status"]=st.selectbox("Status",status_options,index=status_options.index(status),format_func=lambda x:status_labels[x],key=f"agenda_status_{aid}")
+                    with ar[6]:
+                        mod=item.get("modalidade","presencial") if item.get("modalidade","presencial") in modalidade_options else "presencial"
+                        item["modalidade"]=st.selectbox("Modalidade",modalidade_options,index=modalidade_options.index(mod),format_func=lambda x:modalidade_labels[x],key=f"agenda_mod_{aid}")
+                    with ar[7]: item["titulo"]=st.text_input("Compromisso",value=str(item.get("titulo") or "Relacionamento"),key=f"agenda_title_{aid}",max_chars=120)
+                    with ar[8]:
+                        st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
+                        if st.button("🗑",key=f"agenda_del_{aid}",use_container_width=True): st.session_state["agenda_pendente_exclusao_v290"]=aid; st.rerun()
+                    ab1,ab2,ab3=st.columns([1.5,1.5,1.4])
+                    with ab1: item["sistema"]=st.text_input("Sistema",value=str(item.get("sistema") or ""),key=f"agenda_system_{aid}",placeholder="Sistema de Arrecadação Tributária")
+                    with ab2: item["entidade"]=st.text_input("Entidade",value=str(item.get("entidade") or ""),key=f"agenda_entity_{aid}",placeholder="Município de Aracoiaba")
+                    with ab3: item["responsavel"]=st.text_input("Responsável",value=str(item.get("responsavel") or ""),key=f"agenda_resp_{aid}",placeholder="Thiago Silva")
+                    ac1,ac2=st.columns([2.4,1.6])
+                    with ac1: item["local"]=st.text_input("Local",value=str(item.get("local") or ""),key=f"agenda_local_{aid}",placeholder="Av. Independência - Aracoiaba, CE")
+                    with ac2:
+                        item["url"]=st.text_input("Link do compromisso (opcional)",value=str(item.get("url") or ""),key=f"agenda_url_{aid}",placeholder="https://...")
+                        if item["url"].strip(): st.caption("O compromisso ficará clicável e abrirá em nova aba." if url_valida(item["url"]) else "Link inválido: será exibido sem clique.")
+                    st.caption(f"Exibição na faixa: **{'ativa' if item in agenda_ativa_ticker(ticker) else 'não ativa'}**.")
+                    if pending_agenda_delete == aid:
+                        st.warning(f"Excluir o compromisso **{item.get('titulo') or 'sem título'}**?"); ec1,ec2=st.columns(2)
+                        with ec1:
+                            if st.button("Cancelar",key=f"agenda_cancel_del_{aid}",use_container_width=True): st.session_state["agenda_pendente_exclusao_v290"]=None; st.rerun()
+                        with ec2:
+                            if st.button("Confirmar exclusão",key=f"agenda_confirm_del_{aid}",type="primary",use_container_width=True): ticker["agenda"]=[a for a in ticker["agenda"] if a.get("id")!=aid]; st.session_state["agenda_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
+
+        # =========================================================
+        # ALERTA DE NOVA ENTREGA SIM
+        # =========================================================
+        sim_alerts = config.setdefault("sim_alerts", sim_alerts_padrao())
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        if active_section == "sim_alert":
+            sa1, sa2 = st.columns([3.7, 1])
+            with sa1:
+                st.caption("Mostra um único alerta verde quando uma entidade monitorada passa de pendente para entregue na competência consultada.")
+            with sa2:
+                sim_alerts["enabled"] = st.toggle("Exibir alerta SIM", value=bool(sim_alerts.get("enabled", True)), key="sim_alert_enabled_v390")
+
+            sim_alerts["partial_enabled"] = False
+            sim_alerts["deadline_enabled"] = False
+            sim_alerts["audio_partial"] = False
+            sim_alerts["audio_deadline"] = False
+
+            c1, c2, c3 = st.columns([1.2, 1.2, 2.6])
+            with c1:
+                sim_alerts["display_seconds"] = st.number_input("Tempo na tela (s)", 3, 30, int(sim_alerts.get("display_seconds", 8)), 1, key="sim_alert_display_v390")
+            with c2:
+                sim_alerts["poll_seconds"] = st.number_input("Verificar a cada (s)", 5, 120, int(sim_alerts.get("poll_seconds", 15)), 5, key="sim_alert_poll_v390")
+            with c3:
+                sim_alerts["title_template"] = st.text_input("Título do alerta", value=str(sim_alerts.get("title_template") or "Nova entrega SIM confirmada"), key="sim_alert_template_v390", max_chars=180)
+
+            st.markdown("**Competência e API**")
+            sim_api_credentials = _sim_api_credentials()
+            api1, api2, api3 = st.columns([1.4, 1.4, 2.2])
+            with api1:
+                mode = str(sim_alerts.get("competence_mode") or "previous_month")
+                sim_alerts["competence_mode"] = st.selectbox("Competência consultada", ["previous_month", "manual"], index=0 if mode != "manual" else 1, format_func=lambda x: "Automática · mês anterior" if x == "previous_month" else "Manual", key="sim_api_competence_mode_v390")
+            with api2:
+                if sim_alerts.get("competence_mode") == "manual":
+                    mc1, mc2 = st.columns(2)
+                    with mc1:
+                        sim_alerts["manual_month"] = st.number_input("Mês", 1, 12, int(sim_alerts.get("manual_month", 1)), 1, key="sim_api_manual_month_v390")
+                    with mc2:
+                        sim_alerts["manual_year"] = st.number_input("Ano", 2020, 2100, int(sim_alerts.get("manual_year", datetime.now().year)), 1, key="sim_api_manual_year_v390")
+                else:
+                    api_year, api_month = _sim_api_competencia(sim_alerts)
+                    st.metric("Competência", f"{api_month:02d}/{api_year}")
+            with api3:
+                st.success("API SIM configurada nos Secrets.") if sim_api_credentials.get("configured") else st.warning("Configure `[sim_api]` nos Secrets.")
+            if not sim_api_credentials.get("configured"):
+                st.code('[sim_api]\nemail = "SEU_EMAIL"\nsenha = "SUA_SENHA"\napi_key = "CHAVE_DA_API"', language="toml")
+
+            sim_panel_cfg = next((p for p in paineis if _is_sim_panel_config(p) and url_valida(p.get("link", ""))), None)
+            t1, t2 = st.columns([1.5, 3.5])
+            with t1:
+                if st.button("Testar conexão API SIM", use_container_width=True, key="sim_api_test_v390", disabled=not bool(sim_panel_cfg) or not sim_api_credentials.get("configured")):
+                    test_result = buscar_sim_submissions_servidor(sim_panel_cfg.get("link", ""), sim_alerts) if sim_panel_cfg else {"ok": False, "error": "Painel SIM não encontrado"}
+                    st.session_state[f"_sim_api_manual_test_{active_profile_id}"] = test_result
+            with t2:
+                runtime_api = st.session_state.get(f"_sim_api_runtime_status_{active_profile_id}")
+                if isinstance(runtime_api, dict) and runtime_api.get("ok"):
+                    st.caption(f"Última leitura: **{runtime_api.get('rows', 0)} entidades** · **{runtime_api.get('delivered_rows', 0)} entregues** · competência {int(runtime_api.get('mes') or 0):02d}/{runtime_api.get('ano') or '-' }.")
+                elif isinstance(runtime_api, dict) and runtime_api.get("error"):
+                    st.error(f"Última leitura automática: {runtime_api.get('error')}")
+                else:
+                    st.caption("A leitura automática começa quando o monitoramento é iniciado.")
+
+            manual_test = st.session_state.get(f"_sim_api_manual_test_{active_profile_id}")
+            if isinstance(manual_test, dict):
+                if manual_test.get("ok"):
+                    yy, mm = _sim_api_competencia(sim_alerts)
+                    rows = _sim_rows_competencia(manual_test.get("data"), yy, mm)
+                    confirmed = sum(1 for r in rows if _sim_server_delivered(r))
+                    latest = _sim_latest_confirmed_delivery_raw(manual_test.get("data"), yy, mm)
+                    latest_desc = latest.get("entity_description") if latest else "nenhuma"
+                    st.success(f"API respondendo: {len(rows)} entidades · {confirmed} entregues · última confirmada: {latest_desc}.")
+                elif manual_test.get("error"):
+                    st.error(f"Teste da API SIM: {manual_test.get('error')}")
+
+            st.markdown("**Teste do alerta**")
+            direct_test_key = f"_sim_direct_tests_v341_{active_profile_id}"
+            if st.button("✓ Testar última entrega confirmada", use_container_width=True, key="sim_direct_test_last_v390", disabled=not bool(sim_panel_cfg) or not sim_api_credentials.get("configured")):
+                test_now = buscar_sim_submissions_servidor(sim_panel_cfg.get("link", ""), sim_alerts) if sim_panel_cfg else {"ok": False}
+                if test_now.get("ok"):
+                    yy, mm = _sim_api_competencia(sim_alerts)
+                    latest_now = _sim_latest_confirmed_delivery_raw(test_now.get("data"), yy, mm)
+                    if latest_now:
+                        latest_now = dict(latest_now)
+                        latest_now["alert_key"] = f"test-last-{time.time_ns()}"
+                        st.session_state.setdefault(direct_test_key, []).append(latest_now)
+                        st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest_now
+                        st.rerun()
+                    else:
+                        st.warning("A API respondeu, mas não há entrega confirmada na competência selecionada.")
+                else:
+                    st.error(f"Não foi possível consultar a API SIM: {test_now.get('error') or 'erro desconhecido'}")
+
+            snd1, snd2, snd3 = st.columns([1.2, 1.8, 1.0])
+            with snd1:
+                sim_alerts["audio_enabled"] = st.toggle("Alerta sonoro", value=bool(sim_alerts.get("audio_enabled", True)), key="sim_alert_audio_enabled_v390")
+            with snd2:
+                sim_alerts["audio_volume"] = st.slider("Volume", 0, 100, int(sim_alerts.get("audio_volume", 60)), 5, key="sim_alert_audio_volume_v390")
+            with snd3:
+                sim_alerts["audio_green"] = st.toggle("Som verde", value=bool(sim_alerts.get("audio_green", True)), key="sim_alert_audio_green_v390")
+
+            st.caption("Fonte: API oficial `/api/sim_submissions`. O alerta acompanha novas entregas por entidade. A API oficial aceita `data_envio` preenchida mesmo quando `status` usa código; o endpoint visual também aceita `entregue`/`no_prazo`.")
+            st.info("No menu ⋮ fica apenas **Testar última entrega confirmada**.")
+
+        # Salva somente se houve alteração efetiva.
+        salvar_config(config)
+
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+
+        # Estabilidade e operação
+        if active_section == "stability":
+            st.caption("Watchdog e pré-carregamento funcionam sem recarregar a aplicação. Na v3.6.0 o reinício completo automático foi desativado para preservar os iframes com F5 OFF.")
+            perfil["full_restart_enabled"] = False
+            perfil["horas_reload_geral"] = 0
+            e0, e2, e3, e4 = st.columns([1.35, 1.0, 1.0, 1.0])
+            with e0:
+                st.toggle(
+                    "Reinício completo automático",
+                    value=False,
+                    key=f"full_restart_disabled_{active_profile_id}",
+                    disabled=True,
+                    help="Desativado nesta versão para impedir que a aplicação recrie os iframes periodicamente.",
+                )
+            with e2:
+                perfil["preload_seconds"] = st.number_input(
+                    "Pré-carregar antes (s)", 0, 30, int(perfil.get("preload_seconds", 8)), 1,
+                    key=f"preload_{active_profile_id}",
+                    help="O próximo iframe só é criado perto da troca, reduzindo consumo de memória/CPU.",
+                )
+            with e3:
+                perfil["watchdog_seconds"] = st.number_input(
+                    "Watchdog (s)", 30, 600, int(perfil.get("watchdog_seconds", 90)), 10,
+                    key=f"watchdog_{active_profile_id}",
+                    help="Se a rotação deixar de emitir sinais por esse tempo, o monitor tenta se recuperar automaticamente.",
+                )
+            with e4:
+                perfil["auto_ocultar_controles"] = st.toggle(
+                    "Ocultar controles",
+                    value=bool(perfil.get("auto_ocultar_controles", True)),
+                    key=f"autohide_{active_profile_id}",
+                )
+            st.caption("✓ Reinício completo automático desativado: o F5 OFF pode preservar o mesmo iframe durante toda a sessão do monitor.")
+
+        # Experiência e visual
+        if active_section == "visual":
+            st.caption("Ajustes específicos para distância de visualização, posição da barra e modo TV.")
+            v1, v2, v3, v4 = st.columns(4)
+            with v1:
+                perfil["modo_tv_padrao"] = st.toggle("Iniciar em Modo TV", value=bool(perfil.get("modo_tv_padrao", False)), key=f"tv_{active_profile_id}")
+                perfil["show_status"] = st.toggle("Mostrar status", value=bool(perfil.get("show_status", True)), key=f"showstatus_{active_profile_id}")
+            with v2:
+                scales = [90, 100, 110, 125]
+                perfil["ui_scale"] = st.selectbox("Escala da barra", scales, index=scales.index(perfil.get("ui_scale", 100)), format_func=lambda x: f"{x}%", key=f"scale_{active_profile_id}")
+                perfil["show_clock"] = st.toggle("Mostrar relógio", value=bool(perfil.get("show_clock", True)), key=f"clock_{active_profile_id}")
+            with v3:
+                positions = ["top", "bottom"]
+                perfil["toolbar_position"] = st.selectbox("Posição da barra", positions, index=positions.index(perfil.get("toolbar_position", "top")), format_func=lambda x: "Superior" if x == "top" else "Inferior", key=f"barpos_{active_profile_id}")
+                perfil["show_dots"] = st.toggle("Mostrar indicadores", value=bool(perfil.get("show_dots", True)), key=f"dots_{active_profile_id}")
+            with v4:
+                trans = [0, 150, 220, 400]
+                perfil["transition_ms"] = st.selectbox("Transição", trans, index=trans.index(perfil.get("transition_ms", 220)), format_func=lambda x: "Instantânea" if x == 0 else f"Fade {x} ms", key=f"transition_{active_profile_id}")
+
+        salvar_config(config)
+
+        # Backup/importação/diagnóstico
+        if active_section == "backup":
+            b1, b2, b3 = st.columns(3)
+            with b1:
+                st.download_button(
+                    "Exportar configuração",
+                    data=json.dumps(config, ensure_ascii=False, indent=2),
+                    file_name=f"monitoramento_config_v{APP_VERSION.replace('.', '_')}.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+            with b2:
+                if BACKUP_PATH.exists() and st.button("Restaurar último backup", use_container_width=True, key="restore_backup_v23"):
+                    try:
+                        restored = normalizar_config(json.loads(BACKUP_PATH.read_text(encoding="utf-8")))
+                        st.session_state.config_v23 = restored
+                        salvar_config(restored, force=True)
+                        st.toast("Backup restaurado.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"Falha ao restaurar backup: {exc}")
+            with b3:
+                if st.button("Restaurar perfil padrão SS", use_container_width=True, key="restore_profile_default_v23"):
+                    novo = copy.deepcopy(_DEFAULT_PROFILE)
+                    novo["id"] = active_profile_id
+                    novo["nome"] = perfil["nome"]
+                    # novos IDs evitam conflito com estados antigos do navegador
+                    for p in novo["paineis"]:
+                        p["id"] = novo_id("p_")
+                    config["profiles"][active_profile_id] = novo
+                    salvar_config(config, force=True)
+                    st.toast("Perfil restaurado para a configuração padrão.")
+                    st.rerun()
+
+            imported = st.file_uploader("Importar configuração JSON", type=["json"], key="import_v23")
+            if imported is not None:
+                try:
+                    raw_import = json.loads(imported.getvalue().decode("utf-8"))
+                    erros, avisos = validar_config_importada(raw_import)
+                    normalized_import = normalizar_config(raw_import) if not erros else None
+                    if normalized_import:
+                        total_profiles = len(normalized_import["profiles"])
+                        total_panels = sum(len(p["paineis"]) for p in normalized_import["profiles"].values())
+                        total_active = sum(len(perfil_ativos(p)) for p in normalized_import["profiles"].values())
+                        st.info(f"Prévia da importação: {total_profiles} perfil(is), {total_panels} painel(is), {total_active} painel(is) ativo(s) com URL válida.")
+                    for aviso in avisos[:8]:
+                        st.warning(aviso)
+                    for erro in erros[:8]:
+                        st.error(erro)
+                    if normalized_import and st.button("Confirmar importação", type="primary", use_container_width=True, key="confirm_import_v23"):
+                        st.session_state.config_v23 = normalized_import
+                        salvar_config(normalized_import, force=True)
+                        st.query_params["perfil"] = normalized_import["default_profile_id"]
+                        st.toast("Configuração importada.")
+                        st.rerun()
+                except Exception as exc:
+                    st.error(f"JSON inválido: {exc}")
+
+            st.markdown("**Diagnóstico da configuração**")
+            st.write(f"Versão: `{APP_VERSION}` / esquema `{CONFIG_VERSION}`")
+            st.write(f"Perfil desta tela: `{perfil['nome']}` (`{active_profile_id}`)")
+            st.write(f"Perfil padrão global: `{config['profiles'][config['default_profile_id']]['nome']}`")
+            st.write(f"Painéis ativos com URL válida: `{len(ativos)}`")
+            st.write(f"URLs inválidas ativas: `{urls_invalidas}`")
+            st.write(f"Painéis mantidos abertos: `{preservados}`")
+            st.write(f"Persistência local: `{CONFIG_PATH.name}` com gravação atômica + backup")
+            st.info("Em hospedagens Streamlit com filesystem efêmero, o arquivo local pode ser recriado após redeploy/reinício da infraestrutura. O backup/exportação continua recomendado para mudanças importantes.")
+            if st.session_state.get("config_corrompida_backup"):
+                st.warning(f"Uma configuração corrompida foi preservada como `{st.session_state['config_corrompida_backup']}`.")
+            if st.session_state.get("ultimo_erro_persistencia"):
+                st.error(f"Último erro de persistência: {st.session_state['ultimo_erro_persistencia']}")
+
+        if active_section == "news":
+            st.markdown(
+                """
+                **3.4.0 – Alertas SIM e organização:** alerta detectado pelo backend passa a ter uma camada nativa sobre o próprio Streamlit, independente do iframe; diagnóstico da API SIM; configurações principais recolhíveis; e reinício completo passa a exigir habilitação explícita, evitando recriação inesperada dos painéis com F5 OFF.
+
+                **2.2 – Estabilidade e Operação:** perfil por URL/monitor, IDs permanentes, F5 temporário sem sobrescrever configuração, preservação independente de sessão, pré-carregamento inteligente, timer por horário-alvo, watchdog, status de conexão, reinício no fim do ciclo, diagnóstico expandido e gravação atômica com backup.
+
+                **2.3 – Experiência e Visual:** modo compacto/detalhado, barra superior/inferior, escala para TV, indicadores/relógio opcionais, transição configurável, badges de estado e refinamento completo na paleta `#0E5285`.
+
+                **2.8 – News Ticker S&S:** faixa corporativa global, notícias manuais com categoria, sistema, período de validade, link clicável em nova aba e ocultação automática quando não houver conteúdo ativo.
+
+                **2.4 – Primeiro Uso:** linguagem mais simples, guia inicial em 3 passos, resumo mais autoexplicativo, prévia da ordem de rotação, cards numerados, estados visuais claros, controles com tooltips, visualização compacta/detalhada e ação “Iniciar monitoramento” sempre acessível.
+
+                **2.4.1 – Refinamento visual:** cor ativa dos controles alinhada ao azul #0E5285, campos dos cards redistribuídos para evitar cortes e remoção da indicação F5 duplicada na linha do painel.
+
+                **2.4.2 – Preservação com F5 OFF:** painel com F5 desligado permanece em memória e reutiliza o mesmo iframe ao retornar.
+
+                **2.4.3 – Ajustes:** o botão ⚙ agora usa um link direto com `target="_top"`, permitindo sair do iframe e voltar à tela de configuração.
+
+                **2.4.4 – Ajustes robustos:** o botão ⚙ passa a enviar um evento do monitor para o Streamlit por `postMessage`; o Python recebe o evento, encerra a apresentação e retorna para a tela de ajustes. Isso elimina a dependência de `window.parent`, `window.top` e `target="_top"`, que podem ser bloqueados pelo sandbox do navegador.
+
+                **2.5 – Modo Monitor Profissional:** apresentação ocupa toda a área útil do navegador, removendo folgas do Streamlit; barra superior mais compacta com somente controles principais; Atualizar agora, Modo TV e Diagnóstico foram agrupados no menu `⋮`; contador ganhou maior destaque; status usa “1 de 3”; barra auto-ocultável deixa apenas uma faixa de 4 px para recuperação rápida dos controles; e o iframe monitorado ocupa 100% da área restante sem criar rolagem externa do Streamlit.
+
+                **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
+            
+                **3.15.0 – Central refinada:** cabeçalho compacto, perfil integrado, cards-resumo clicáveis, navegação agrupada, busca operacional, badges de estado, conteúdo aberto logo abaixo da linha selecionada, rodapé operacional, responsividade e microinterações.
+
+                **3.14.3 – Refinamento da central:** removido o contêiner vazio abaixo do cabeçalho e unificada a ação “Iniciar monitoramento” em um único CTA funcional, eliminando botões duplicados.
+
+                **3.14.1 – Ajuste visual do cabeçalho:** logotipo do Grupo S&S exibido em formato horizontal, sem caixa, borda ou sombra, mantendo a nova central de configurações.
+
+                **3.14.0 – Nova central de configurações:** tela inicial redesenhada com identidade visual do Grupo S&S, cards-resumo, busca de configurações e navegação em grade; cada área abre isoladamente em largura total, reduzindo a poluição visual sem alterar as regras existentes.
+
+                **3.12.0 – Alerta simplificado:** usa somente a última entrega confirmada; o teste é executado localmente com os dados já carregados e não fica preso em “Consultando...”.
+
+                **3.11.0 – Correção estrutural SIM:** o Monitor SIM passa a ser reconhecido por tipo, nome ou URL. O polling da API e o F5 OFF não dependem mais de perfis antigos salvos como painel normal.
+
+                **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
+
+                **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
+                """
+            )
+
+
+    st.markdown('<div id="config-top"></div>', unsafe_allow_html=True)
 
     st.markdown(
         f"""
-        <div class="cfg-hero">
+        <div class="cfg-hero cfg-hero-v315">
             <div class="cfg-hero-main">
                 <div class="cfg-brand-box"><img src="https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png" alt="Grupo S&S"></div>
                 <div>
                     <div class="cfg-hero-title">Configurações do Painel de Monitoramento</div>
-                    <div class="cfg-hero-subtitle">Personalize o comportamento, conteúdo e integrações do painel de monitoramento.<br>Mantenha tudo configurado para uma operação mais eficiente e alinhada às suas necessidades.</div>
+                    <div class="cfg-hero-subtitle">Centralize painéis, integrações, comunicação e experiência de exibição em um único lugar.</div>
                 </div>
             </div>
             <div class="cfg-version-card">
-                <div class="cfg-version-icon">◇</div>
-                <div><div class="cfg-version-title"><span class="cfg-dot"></span>Painel de Monitoramento v{APP_VERSION}</div><div class="cfg-version-sub">Sua versão está atualizada</div></div>
+                <div class="cfg-version-icon">{_cfg_icon_svg('news')}</div>
+                <div><div class="cfg-version-title"><span class="cfg-dot"></span>v{APP_VERSION} · Estável</div><div class="cfg-version-sub">Último salvamento: {html.escape(last_saved_short)}</div></div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Perfil permanece operacional e acessível, sem wrapper HTML vazio.
-    ph1, ph2 = st.columns([2.8, 1])
-    with ph1:
-        profile_ids = list(config["profiles"].keys())
-        selected = st.selectbox(
-            "Perfil deste monitor",
-            options=profile_ids,
-            index=profile_ids.index(active_profile_id),
-            format_func=lambda pid: config["profiles"][pid]["nome"],
-            key="perfil_select_v314",
-            help="Cada TV ou monitor pode utilizar um perfil diferente.",
-        )
-        if selected != active_profile_id:
-            st.query_params["perfil"] = selected
-            st.query_params["iniciado"] = "false"
-            st.session_state.iniciado = False
-            st.rerun()
-    with ph2:
-        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-        last_saved = st.session_state.get("ultima_gravacao")
-        saved_text = f"✓ Salvo automaticamente · {last_saved}" if last_saved else "✓ Salvamento automático ativo"
-        st.markdown(f'<div style="text-align:right;color:#64748B;font-size:11px;padding-top:8px">{html.escape(saved_text)}</div>', unsafe_allow_html=True)
+    with st.container(border=True, key="cfg_profile_card_v315"):
+        pc1, pc2, pc3 = st.columns([2.5, 1.05, 1.15])
+        with pc1:
+            st.markdown('<div class="cfg-profile-eyebrow">MONITOR ATUAL</div><div class="cfg-profile-title">Perfil de monitoramento</div>', unsafe_allow_html=True)
+            profile_ids = list(config["profiles"].keys())
+            selected = st.selectbox(
+                "Perfil deste monitor", options=profile_ids, index=profile_ids.index(active_profile_id),
+                format_func=lambda pid: config["profiles"][pid]["nome"], key="perfil_select_v315",
+                help="Cada TV ou monitor pode utilizar um perfil diferente.", label_visibility="collapsed",
+            )
+            if selected != active_profile_id:
+                st.query_params["perfil"] = selected
+                st.query_params["iniciado"] = "false"
+                st.session_state.iniciado = False
+                st.rerun()
+        with pc2:
+            st.markdown('<div class="cfg-profile-stat"><span class="cfg-status-dot ok"></span><strong>Salvamento</strong><span>Automático</span></div>', unsafe_allow_html=True)
+        with pc3:
+            default_label = "Padrão" if active_profile_id == config.get("default_profile_id") else "Personalizado"
+            st.markdown(f'<div class="cfg-profile-stat"><span class="cfg-profile-mini-icon">{_cfg_icon_svg("profiles")}</span><strong>{html.escape(default_label)}</strong><span>{len(ativos)} painel(is) ativo(s)</span></div>', unsafe_allow_html=True)
 
-    st.markdown(
-        f"""
-        <div class="cfg-metrics">
-            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-blue">◎</div><div><div class="cfg-metric-value">{profiles_count}</div><div class="cfg-metric-label">Perfis ativos</div><div class="cfg-metric-sub">de monitoramento</div></div></div>
-            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-green">▥</div><div><div class="cfg-metric-value">{len(paineis)}</div><div class="cfg-metric-label">Painéis configurados</div><div class="cfg-metric-sub">{len(ativos)} ativo(s) na rotação</div></div></div>
-            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-purple">▱</div><div><div class="cfg-metric-value">{faixas_ativas}</div><div class="cfg-metric-label">Faixas corporativas</div><div class="cfg-metric-sub">Atualizações + Agenda S&S</div></div></div>
-            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-orange">↗</div><div><div class="cfg-metric-value">{integracoes_ativas}</div><div class="cfg-metric-label">Integrações ativas</div><div class="cfg-metric-sub">Portal e Monitor SIM</div></div></div>
-            <div class="cfg-metric"><div class="cfg-metric-icon cfg-ic-red">!</div><div><div class="cfg-metric-value">{alertas_ativos}</div><div class="cfg-metric-label">Alertas ativos</div><div class="cfg-metric-sub">Nova Entrega SIM</div></div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    sh1, sh2 = st.columns([2.4, 1])
-    with sh1:
-        st.markdown(
-            '<div class="cfg-section-heading"><div class="cfg-section-grid-icon">▦</div><div><div class="cfg-section-title">Áreas de configuração</div><div class="cfg-section-sub">Acesse e configure cada aspecto do seu painel de monitoramento.</div></div></div>',
-            unsafe_allow_html=True,
-        )
-    with sh2:
-        config_search = st.text_input("Buscar configuração", placeholder="⌕  Buscar configuração...", label_visibility="collapsed", key="config_search_v314")
-
-    nav_items = [
-        ("profiles", "◎", "cfg-ic-blue", "Perfis de monitoramento", "Gerencie perfis e defina qual conjunto de painéis cada monitor utiliza."),
-        ("panels", "▣", "cfg-ic-green", "Painéis e ordem de exibição", "Configure quais painéis são exibidos, ordem, tempo e comportamento de cada tela."),
-        ("ticker", "▱", "cfg-ic-purple", "Faixas corporativas · Atualizações S&S + Agenda S&S", "Gerencie as faixas corporativas exibidas no rodapé do monitoramento."),
-        ("integration", "↗", "cfg-ic-orange", "Integração automática · S&S Conecta", "Configure a sincronização automática de atualizações e compromissos do portal."),
-        ("updates", "▤", "cfg-ic-blue", "Atualizações S&S · conteúdo e prévia", "Defina o conteúdo das atualizações e visualize como será apresentado na faixa."),
-        ("agenda", "□", "cfg-ic-green", "Agenda S&S", "Ajuste compromissos, período de exibição e conteúdo da Agenda S&S."),
-        ("sim_alert", "!", "cfg-ic-red", "Alerta de Nova Entrega SIM", "Configure o alerta visual e sonoro para novas entregas do Monitor SIM."),
-        ("stability", "⚙", "cfg-ic-blue", "Estabilidade e operação", "Parâmetros de desempenho, preservação de sessão e operação do painel."),
-        ("visual", "✎", "cfg-ic-purple", "Experiência e visual", "Personalize escala, barra de controles, transições, relógio e indicadores."),
-        ("backup", "▰", "cfg-ic-blue", "Backup, importação, restauração e diagnóstico", "Exporte, restaure, importe configurações e consulte o diagnóstico do ambiente."),
-        ("news", "✦", "cfg-ic-green", "Novidades desta versão", "Confira melhorias e mudanças implementadas nas versões do painel."),
-    ]
-
-    q = (config_search or "").strip().lower()
-    if q:
-        nav_items = [item for item in nav_items if q in (item[3] + " " + item[4]).lower()]
-
-    # Navegação instantânea: componente V2 em vez de <a href="?...">.
-    # O clique envia somente o identificador da seção para o Streamlit, sem
-    # recarregar a página do navegador. O conteúdo abaixo é atualizado pelo
-    # ciclo normal do Streamlit e o componente faz scroll suave até ele.
-    nav_payload = [
-        {"key": key, "icon": icon, "colorClass": color_class, "title": title, "desc": desc}
-        for key, icon, color_class, title, desc in nav_items
+    metric_payload = [
+        {"section":"profiles","icon":"profiles","value":profiles_count,"label":"Perfis ativos","sub":"de monitoramento","tone":"blue"},
+        {"section":"panels","icon":"panels","value":len(paineis),"label":"Painéis configurados","sub":f"{len(ativos)} ativo(s) na rotação","tone":"green"},
+        {"section":"ticker","icon":"ticker","value":faixas_ativas,"label":"Faixas corporativas","sub":"Atualizações + Agenda S&S","tone":"purple"},
+        {"section":"integration","icon":"integration","value":integracoes_ativas,"label":"Integrações ativas","sub":"Portal e Monitor SIM","tone":"orange"},
+        {"section":"sim_alert","icon":"sim_alert","value":alertas_ativos,"label":"Alertas ativos","sub":"Nova Entrega SIM","tone":"red"},
     ]
 
     if hasattr(st.components, "v2"):
-        config_nav_component = st.components.v2.component(
-            "config_home_nav_v3142",
-            html='<div class="cfg-v2-nav" role="navigation" aria-label="Áreas de configuração"></div>',
+        metric_component = st.components.v2.component(
+            "config_metrics_v315", html='<div class="cfg-metrics-v315"></div>',
             css=r'''
-                :host{display:block;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-                .cfg-v2-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;width:100%}
-                .cfg-v2-card{appearance:none;width:100%;min-height:82px;border:1px solid #D7E3EE;border-radius:13px;background:#fff;display:grid;grid-template-columns:46px minmax(0,1fr) 30px;align-items:center;gap:12px;padding:13px 14px;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.025);transition:border-color .16s ease,box-shadow .16s ease,transform .12s ease,background .16s ease;color:#0A1D3A}
-                .cfg-v2-card:hover{border-color:#8CC2E8;box-shadow:0 5px 18px rgba(14,82,133,.08);transform:translateY(-1px)}
-                .cfg-v2-card:active{transform:translateY(0) scale(.997)}
-                .cfg-v2-card.active{border-color:#1685D1;box-shadow:0 0 0 1px rgba(22,133,209,.12),0 5px 18px rgba(14,82,133,.07)}
-                .cfg-v2-card.opening{pointer-events:none;background:#F8FBFE;border-color:#1685D1}
-                .cfg-v2-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:900;flex:0 0 auto}
-                .cfg-ic-blue{background:#EAF3FA;color:#0876D1}.cfg-ic-green{background:#E8FAF1;color:#07955A}.cfg-ic-purple{background:#F3EAFE;color:#7C3AED}.cfg-ic-orange{background:#FFF1E5;color:#EA6A00}.cfg-ic-red{background:#FFE8EA;color:#E11D48}
-                .cfg-v2-title{font-size:14px;font-weight:820;line-height:1.2;color:#071B37;margin:0 0 5px}
-                .cfg-v2-desc{font-size:11.5px;line-height:1.35;color:#718197;white-space:normal}
-                .cfg-v2-arrow{width:28px;height:28px;border-radius:999px;background:#F1F7FC;color:#0876D1;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;transition:transform .15s ease,background .15s ease}
-                .cfg-v2-card:hover .cfg-v2-arrow{background:#E7F3FC;transform:translateX(2px)}
-                .cfg-v2-card.opening .cfg-v2-arrow{font-size:0;transform:none}
-                .cfg-v2-card.opening .cfg-v2-arrow:after{content:"";width:13px;height:13px;border:2px solid #B8D8EE;border-top-color:#0876D1;border-radius:50%;animation:cfgspin .65s linear infinite}
-                @keyframes cfgspin{to{transform:rotate(360deg)}}
-                @media(max-width:850px){.cfg-v2-nav{grid-template-columns:1fr}.cfg-v2-card{min-height:76px}}
-            ''',
-            isolate_styles=True,
+                :host{display:block;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.cfg-metrics-v315{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:12px 0 22px}.metric{appearance:none;border:1px solid #D9E5EF;background:#fff;border-radius:14px;min-height:91px;padding:13px;display:grid;grid-template-columns:45px minmax(0,1fr) 18px;gap:11px;align-items:center;text-align:left;cursor:pointer;box-shadow:0 4px 15px rgba(14,82,133,.04);transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}.metric:hover{transform:translateY(-2px);border-color:#A8CBE3;box-shadow:0 9px 22px rgba(14,82,133,.09)}.metric:active{transform:translateY(0)}.mi{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}.mi svg{width:22px;height:22px}.blue{background:#E9F3FF;color:#0877E3}.green{background:#E7FBF1;color:#07945A}.purple{background:#F3EAFE;color:#7426E7}.orange{background:#FFF0E4;color:#F06A00}.red{background:#FFE9EC;color:#DC243D}.mv{font-size:23px;line-height:1;font-weight:850;color:#071A3B}.ml{font-size:11.5px;font-weight:800;color:#23415C;margin-top:4px}.ms{font-size:9.8px;color:#6E8194;margin-top:3px;line-height:1.25}.ma{color:#9AB1C4;font-size:18px;text-align:right;transition:transform .14s}.metric:hover .ma{transform:translateX(2px);color:#0877E3}@media(max-width:1050px){.cfg-metrics-v315{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:680px){.cfg-metrics-v315{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{min-height:82px}}
+            ''', isolate_styles=True,
             js=r'''
-                export default function(component) {
-                    const { data, parentElement, setTriggerValue } = component;
-                    const host = parentElement.querySelector('.cfg-v2-nav');
-                    if (!host || !data) return;
-                    const items = Array.isArray(data.items) ? data.items : [];
-                    const active = String(data.active || '');
-                    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-
-                    host.innerHTML = items.map(item => {
-                        const key = String(item.key || '');
-                        const cls = key === active ? ' active' : '';
-                        return `<button type="button" class="cfg-v2-card${cls}" data-section="${esc(key)}" aria-pressed="${key===active?'true':'false'}">
-                            <span class="cfg-v2-icon ${esc(item.colorClass || '')}">${esc(item.icon || '')}</span>
-                            <span><div class="cfg-v2-title">${esc(item.title || '')}</div><div class="cfg-v2-desc">${esc(item.desc || '')}</div></span>
-                            <span class="cfg-v2-arrow">›</span>
-                        </button>`;
-                    }).join('');
-
-                    host.querySelectorAll('.cfg-v2-card').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const section = btn.dataset.section || '';
-                            host.querySelectorAll('.cfg-v2-card').forEach(el => el.classList.remove('opening'));
-                            btn.classList.add('opening');
-                            try { sessionStorage.setItem('ss_cfg_scroll_pending_v3142', section); } catch(e) {}
-                            setTriggerValue('nav_event', JSON.stringify({section, sentAt: Date.now()}));
-                        });
-                    });
-
-                    let pending = '';
-                    try { pending = sessionStorage.getItem('ss_cfg_scroll_pending_v3142') || ''; } catch(e) {}
-                    if (pending && pending === active) {
-                        try { sessionStorage.removeItem('ss_cfg_scroll_pending_v3142'); } catch(e) {}
-                        const scrollToContent = () => {
-                            const target = document.getElementById('config-content');
-                            if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
-                            else setTimeout(scrollToContent, 80);
-                        };
-                        setTimeout(scrollToContent, 80);
-                    }
-                }
-            ''',
-        )
-        nav_result = config_nav_component(
-            data={"items": nav_payload, "active": active_section},
-            key=f"config_home_nav_{active_profile_id}",
-            on_nav_event_change=lambda: None,
-        )
-        raw_nav_event = getattr(nav_result, "nav_event", None)
-        if raw_nav_event:
+                export default function(component){const {data,parentElement,setTriggerValue}=component;const host=parentElement.querySelector('.cfg-metrics-v315');if(!host||!data)return;const esc=(v)=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));const icons={profiles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',panels:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',ticker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>',integration:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1 1"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1-1"/></svg>',sim_alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'};const items=Array.isArray(data.items)?data.items:[];host.innerHTML=items.map(x=>`<button class="metric" type="button" data-section="${esc(x.section)}"><span class="mi ${esc(x.tone)}">${icons[x.icon]||icons.panels}</span><span><div class="mv">${esc(x.value)}</div><div class="ml">${esc(x.label)}</div><div class="ms">${esc(x.sub)}</div></span><span class="ma">›</span></button>`).join('');host.querySelectorAll('.metric').forEach(btn=>btn.onclick=()=>{const section=btn.dataset.section||'';try{sessionStorage.setItem('ss_cfg_scroll_pending_v315',section)}catch(e){}setTriggerValue('metric_event',JSON.stringify({section,sentAt:Date.now()}));});}
+            ''')
+        metric_result = metric_component(data={"items": metric_payload}, key=f"config_metrics_{active_profile_id}", on_metric_event_change=lambda: None)
+        raw_metric_event = getattr(metric_result, "metric_event", None)
+        if raw_metric_event:
             try:
-                nav_event = json.loads(raw_nav_event)
-                event_id = f"{nav_event.get('section')}:{nav_event.get('sentAt')}"
-                if event_id != st.session_state.get("config_nav_last_event_v3142"):
-                    st.session_state["config_nav_last_event_v3142"] = event_id
-                    requested_section = str(nav_event.get("section") or "").strip().lower()
-                    if requested_section in valid_sections:
-                        active_section = requested_section
-                        st.session_state["config_active_section_v3142"] = requested_section
+                metric_event = json.loads(raw_metric_event)
+                event_id = f"metric:{metric_event.get('section')}:{metric_event.get('sentAt')}"
+                if event_id != st.session_state.get("config_nav_last_event_v315"):
+                    st.session_state["config_nav_last_event_v315"] = event_id
+                    requested = str(metric_event.get("section") or "").strip().lower()
+                    if requested in valid_sections:
+                        st.session_state["config_active_section_v315"] = requested
+                        st.rerun()
             except Exception:
                 pass
+
+    nh1, nh2 = st.columns([2.15, 1])
+    with nh1:
+        st.markdown('<div class="cfg-section-heading"><div class="cfg-section-grid-icon">' + _cfg_icon_svg('panels') + '</div><div><div class="cfg-section-title">Áreas de configuração</div><div class="cfg-section-sub">Encontre rapidamente a área desejada ou navegue pelos grupos abaixo.</div></div></div>', unsafe_allow_html=True)
+    with nh2:
+        config_search = st.text_input("Buscar configuração", placeholder="⌕  Buscar por agenda, F5, backup, alerta...", label_visibility="collapsed", key="config_search_v315")
+
+    nav_items = [
+        {"key":"profiles","icon":"profiles","tone":"blue","group":"Monitoramento","title":"Perfis de monitoramento","desc":"Gerencie perfis e defina qual conjunto de painéis cada monitor utiliza.","status":f"{profiles_count} perfil(is)","state":"info","keywords":"perfil monitor tv"},
+        {"key":"panels","icon":"panels","tone":"green","group":"Monitoramento","title":"Painéis e ordem de exibição","desc":"Configure painéis, ordem, tempo, F5 e comportamento de cada tela.","status":f"{len(ativos)}/{len(paineis)} ativos","state":"ok","keywords":"painel ordem f5 tempo iframe sessão foco"},
+        {"key":"stability","icon":"stability","tone":"blue","group":"Monitoramento","title":"Estabilidade e operação","desc":"Parâmetros de desempenho, preservação de sessão e operação do painel.","status":"SIM · F5 OFF","state":"ok","keywords":"f5 estabilidade sessão desempenho watchdog"},
+        {"key":"visual","icon":"visual","tone":"purple","group":"Monitoramento","title":"Experiência e visual","desc":"Personalize escala, controles, transições, relógio e indicadores.","status":f"Escala {perfil.get('ui_scale',100)}%","state":"info","keywords":"visual escala tv relógio barra transição"},
+        {"key":"ticker","icon":"ticker","tone":"purple","group":"Comunicação","title":"Faixas corporativas · Atualizações + Agenda","desc":"Gerencie as faixas corporativas exibidas no rodapé do monitoramento.","status":f"{faixas_ativas} ativa(s)","state":"ok" if faixas_ativas else "muted","keywords":"ticker news faixa rodapé agenda atualizações"},
+        {"key":"updates","icon":"updates","tone":"blue","group":"Comunicação","title":"Atualizações S&S · conteúdo e prévia","desc":"Defina o conteúdo das atualizações e visualize como será apresentado na faixa.","status":f"{updates_count} ativa(s)","state":"info","keywords":"notícia atualização preview portal"},
+        {"key":"agenda","icon":"agenda","tone":"green","group":"Comunicação","title":"Agenda S&S","desc":"Ajuste compromissos, período de exibição e conteúdo da Agenda S&S.","status":f"{agenda_count} compromisso(s)","state":"info","keywords":"agenda compromisso visita reunião"},
+        {"key":"integration","icon":"integration","tone":"orange","group":"Integrações e alertas","title":"Integração automática · S&S Conecta","desc":"Configure a sincronização automática de atualizações e compromissos do portal.","status":f"{integracoes_ativas} ativa(s)","state":"ok" if integracoes_ativas else "warn","keywords":"portal conecta integração sincronizar"},
+        {"key":"sim_alert","icon":"sim_alert","tone":"red","group":"Integrações e alertas","title":"Alerta de Nova Entrega SIM","desc":"Configure o alerta visual e sonoro para novas entregas do Monitor SIM.","status":"Ativo" if alertas_ativos else "Desativado","state":"ok" if alertas_ativos else "muted","keywords":"sim alerta som entrega tce api"},
+        {"key":"backup","icon":"backup","tone":"blue","group":"Administração","title":"Backup, restauração e diagnóstico","desc":"Exporte, restaure, importe configurações e consulte o diagnóstico do ambiente.","status":"Disponível","state":"info","keywords":"backup importar exportar restaurar diagnóstico json"},
+        {"key":"news","icon":"news","tone":"green","group":"Administração","title":"Novidades desta versão","desc":"Confira melhorias e mudanças implementadas na versão atual do painel.","status":f"NOVO · v{APP_VERSION}","state":"new","keywords":"versão novidade changelog novo"},
+    ]
+    q = (config_search or "").strip().lower()
+    if q:
+        nav_items = [item for item in nav_items if q in (item["title"] + " " + item["desc"] + " " + item["status"] + " " + item["group"] + " " + item["keywords"]).lower()]
+
+    if hasattr(st.components, "v2"):
+        nav_row_component = st.components.v2.component(
+            "config_nav_row_v315", html='<div class="cfg-row"></div>',
+            css=r'''
+                :host{display:block;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.cfg-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;margin-bottom:12px}.card{appearance:none;position:relative;width:100%;min-height:84px;border:1px solid #D7E3EE;border-radius:14px;background:#fff;display:grid;grid-template-columns:46px minmax(0,1fr) auto 28px;align-items:center;gap:11px;padding:13px;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(14,82,133,.035);transition:border-color .15s ease,box-shadow .15s ease,transform .14s ease,background .15s ease;overflow:hidden;color:#0A1D3A}.card:hover{border-color:#9EC8E5;box-shadow:0 8px 22px rgba(14,82,133,.09);transform:translateY(-2px)}.card:active{transform:translateY(0)}.card.active{border-color:#1987D1;background:linear-gradient(90deg,#F5FAFE 0%,#fff 55%);box-shadow:0 0 0 1px rgba(25,135,209,.09),0 8px 22px rgba(14,82,133,.07)}.card.active:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:#1685D1}.icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}.icon svg{width:22px;height:22px}.blue{background:#E9F3FF;color:#0877E3}.green{background:#E7FBF1;color:#07945A}.purple{background:#F3EAFE;color:#7426E7}.orange{background:#FFF0E4;color:#F06A00}.red{background:#FFE9EC;color:#DC243D}.title{font-size:13px;font-weight:830;line-height:1.22;color:#071B37;margin-bottom:4px}.desc{font-size:10.8px;line-height:1.35;color:#60758A}.badge{white-space:nowrap;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;border:1px solid #D7E4EE;background:#F5F9FC;color:#577086}.badge.ok{background:#ECFDF3;border-color:#C5F2D5;color:#087A44}.badge.warn{background:#FFF7E8;border-color:#F6DEAF;color:#9A5A00}.badge.new{background:#EDF9F2;border-color:#BFE9D0;color:#087A44}.badge.muted{background:#F5F6F8;color:#8A96A4}.arrow{width:28px;height:28px;border-radius:50%;background:#F1F7FC;color:#0876D1;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;transition:transform .15s,background .15s}.card:hover .arrow{transform:translateX(2px);background:#E7F3FC}.card.active .arrow{transform:rotate(90deg)}@media(max-width:820px){.cfg-row{grid-template-columns:1fr}.badge{display:none}}
+            ''', isolate_styles=True,
+            js=r'''
+                export default function(component){const {data,parentElement,setTriggerValue}=component;const host=parentElement.querySelector('.cfg-row');if(!host||!data)return;const esc=(v)=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));const icons={profiles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',panels:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',ticker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>',integration:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1 1"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1-1"/></svg>',updates:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>',agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',sim_alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg>',stability:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',visual:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',backup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>',news:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9L12 3Z"/></svg>'};const items=Array.isArray(data.items)?data.items:[];const active=String(data.active||'');host.innerHTML=items.map(x=>`<button type="button" class="card ${x.key===active?'active':''}" data-section="${esc(x.key)}"><span class="icon ${esc(x.tone)}">${icons[x.icon]||icons.panels}</span><span><div class="title">${esc(x.title)}</div><div class="desc">${esc(x.desc)}</div></span><span class="badge ${esc(x.state)}">${esc(x.status)}</span><span class="arrow">›</span></button>`).join('');host.querySelectorAll('.card').forEach(btn=>btn.onclick=()=>{const section=btn.dataset.section||'';try{sessionStorage.setItem('ss_cfg_scroll_pending_v315',section)}catch(e){}setTriggerValue('nav_event',JSON.stringify({section,sentAt:Date.now()}));});let pending='';try{pending=sessionStorage.getItem('ss_cfg_scroll_pending_v315')||''}catch(e){}if(pending&&pending===active){try{sessionStorage.removeItem('ss_cfg_scroll_pending_v315')}catch(e){};const go=()=>{const t=document.getElementById('config-content-'+active);if(t)t.scrollIntoView({behavior:'smooth',block:'center'});else setTimeout(go,70)};setTimeout(go,90)}}
+            ''')
     else:
-        cards_html = []
-        for key, icon, color_class, title, desc in nav_items:
-            active_class = " active" if active_section == key else ""
-            href = f"?perfil={html.escape(active_profile_id, quote=True)}&amp;iniciado=false&amp;sec={key}#config-content"
-            cards_html.append(
-                f'<a class="cfg-nav-card{active_class}" href="{href}" target="_self">'
-                f'<div class="cfg-nav-icon {color_class}">{html.escape(icon)}</div>'
-                f'<div class="cfg-nav-copy"><div class="cfg-nav-title">{html.escape(title)}</div><div class="cfg-nav-desc">{html.escape(desc)}</div></div>'
-                f'<div class="cfg-nav-arrow">›</div></a>'
-            )
-        if cards_html:
-            st.markdown('<div class="cfg-nav-grid">' + ''.join(cards_html) + '</div>', unsafe_allow_html=True)
+        nav_row_component = None
 
-    if not nav_items:
-        st.info("Nenhuma área de configuração corresponde à busca.")
-
-    section_meta = {key: (icon, title, desc) for key, icon, _, title, desc in [
-        ("profiles", "◎", "", "Perfis de monitoramento", "Gerencie perfis, duplicações, nomes e URL fixa por monitor."),
-        ("panels", "▣", "", "Painéis e ordem de exibição", "Configure painéis, ordem, tempo, F5, preservação e Modo Foco."),
-        ("ticker", "▱", "", "Faixas corporativas · Atualizações S&S + Agenda S&S", "Defina comportamento, tamanho e alternância das faixas corporativas."),
-        ("integration", "↗", "", "Integração automática · S&S Conecta", "Gerencie sincronização automática com o portal corporativo."),
-        ("updates", "▤", "", "Atualizações S&S · conteúdo e prévia", "Cadastre e confira as notícias apresentadas na faixa de atualizações."),
-        ("agenda", "□", "", "Agenda S&S", "Gerencie compromissos e conteúdo exibido na faixa de agenda."),
-        ("sim_alert", "!", "", "Alerta de Nova Entrega SIM", "Configurações do alerta de entrega do Monitor SIM."),
-        ("stability", "⚙", "", "Estabilidade e operação", "Ajustes operacionais e de estabilidade do monitoramento."),
-        ("visual", "✎", "", "Experiência e visual", "Personalização da experiência de visualização na TV ou monitor."),
-        ("backup", "▰", "", "Backup, importação, restauração e diagnóstico", "Ferramentas para proteger, restaurar e diagnosticar a configuração."),
-        ("news", "✦", "", "Novidades desta versão", "Histórico das principais melhorias do Painel de Monitoramento."),
-    ]}
-
-    if active_section:
-        sec_icon, sec_title, sec_desc = section_meta[active_section]
-        st.markdown(
-            f'<div id="config-content" class="cfg-active-head"><div class="cfg-active-head-icon">{html.escape(sec_icon)}</div><div><div class="cfg-active-head-title">{html.escape(sec_title)}</div><div class="cfg-active-head-desc">{html.escape(sec_desc)}</div></div></div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown('<div class="cfg-home-hint">Selecione uma área acima para abrir suas configurações. As demais permanecem recolhidas, deixando a página mais limpa.</div>', unsafe_allow_html=True)
-
-    # Perfis
-    if active_section == "profiles":
-        p1, p2, p3, p4 = st.columns([2.2, 1, 1, 1])
-        with p1:
-            novo_nome = st.text_input("Novo perfil", placeholder="Ex.: Coordenação, eSocial, SAT...", key="novo_perfil_v23")
-        with p2:
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-            if st.button("Criar", use_container_width=True, key="criar_perfil_v23"):
-                nome = novo_nome.strip()
-                if not nome:
-                    st.warning("Informe o nome do perfil.")
-                elif any(p["nome"].strip().lower() == nome.lower() for p in config["profiles"].values()):
-                    st.warning("Já existe um perfil com esse nome.")
-                else:
-                    pid = novo_id("pr_")
-                    new_profile = copy.deepcopy(_DEFAULT_PROFILE)
-                    new_profile.update({"id": pid, "nome": nome, "paineis": []})
-                    config["profiles"][pid] = new_profile
-                    salvar_config(config, force=True)
-                    st.query_params["perfil"] = pid
-                    st.toast("Perfil criado.")
-                    st.rerun()
-        with p3:
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-            if st.button("Duplicar", use_container_width=True, key="duplicar_perfil_v23"):
-                clone = regenerar_ids(perfil)
-                base = perfil["nome"]
-                used = {p["nome"] for p in config["profiles"].values()}
-                n = 1
-                candidate = f"{base} - Cópia"
-                while candidate in used:
-                    n += 1
-                    candidate = f"{base} - Cópia {n}"
-                clone["nome"] = candidate
-                config["profiles"][clone["id"]] = clone
-                salvar_config(config, force=True)
-                st.query_params["perfil"] = clone["id"]
-                st.toast("Perfil duplicado.")
-                st.rerun()
-        with p4:
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-            if st.button("Excluir", use_container_width=True, key="pedir_excluir_perfil_v23", disabled=len(config["profiles"]) <= 1):
-                st.session_state["confirmar_exclusao_perfil_v23"] = True
-                st.rerun()
-
-        r1, r2, r3 = st.columns([2.2, 1, 1])
-        with r1:
-            nome_editado = st.text_input("Nome do perfil selecionado", value=perfil["nome"], key=f"rename_{active_profile_id}")
-        with r2:
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-            if st.button("Renomear", use_container_width=True, key="rename_btn_v23"):
-                nome = nome_editado.strip()
-                if nome and not any(pid != active_profile_id and p["nome"].strip().lower() == nome.lower() for pid, p in config["profiles"].items()):
-                    perfil["nome"] = nome
-                    salvar_config(config, force=True)
-                    st.toast("Perfil renomeado.")
-                    st.rerun()
-                else:
-                    st.warning("Use um nome válido e não repetido.")
-        with r3:
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-            is_default = active_profile_id == config.get("default_profile_id")
-            if st.button("Perfil padrão ✓" if is_default else "Definir como padrão", use_container_width=True, key="default_profile_v23", disabled=is_default):
-                config["default_profile_id"] = active_profile_id
-                salvar_config(config, force=True)
-                st.toast("Perfil padrão atualizado.")
-                st.rerun()
-
-        st.markdown("**URL fixa para esta TV/perfil**")
-        st.markdown(f'<div class="profile-url">?perfil={active_profile_id}&amp;iniciado=true</div>', unsafe_allow_html=True)
-        st.caption("Use essa combinação de parâmetros ao fixar uma TV em um perfil específico.")
-
-        if st.session_state.get("confirmar_exclusao_perfil_v23"):
-            st.warning(f"Excluir o perfil **{perfil['nome']}** e todos os painéis dele?")
-            x1, x2 = st.columns(2)
-            with x1:
-                if st.button("Cancelar", use_container_width=True, key="cancelar_excluir_perfil_v23"):
-                    st.session_state["confirmar_exclusao_perfil_v23"] = False
-                    st.rerun()
-            with x2:
-                if st.button("Confirmar exclusão", type="primary", use_container_width=True, key="confirmar_excluir_perfil_v23"):
-                    del config["profiles"][active_profile_id]
-                    if config.get("default_profile_id") == active_profile_id:
-                        config["default_profile_id"] = next(iter(config["profiles"]))
-                    next_id = config["default_profile_id"]
-                    salvar_config(config, force=True)
-                    st.session_state["confirmar_exclusao_perfil_v23"] = False
-                    st.query_params["perfil"] = next_id
-                    st.rerun()
-
-    if active_section == "panels":
-        # Cabeçalho dos painéis
-        header_l, header_m, header_r = st.columns([3.25, 1.35, 1])
-        with header_l:
-            st.caption("Os painéis ativos entram na rotação na ordem abaixo. Atualização automática e manter a página aberta são configurações independentes.")
-        with header_m:
-            view_options = ["compact", "detailed"]
-            perfil["config_view"] = st.selectbox(
-                "Visualização",
-                view_options,
-                index=view_options.index(perfil.get("config_view", "compact")),
-                format_func=lambda x: "Compacta" if x == "compact" else "Detalhada",
-                key=f"view_{active_profile_id}",
-                help="Compacta recolhe as configurações avançadas. Detalhada deixa essas opções abertas.",
-            )
-        with header_r:
-            st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-            if st.button("＋ Adicionar painel", use_container_width=True, key="add_painel_v23"):
-                paineis.append(painel_padrao(f"Novo Painel {len(paineis) + 1}", "", 20, True))
-                salvar_config(config, force=True)
-                st.toast("Painel adicionado.")
-                st.rerun()
-
-        pending_delete = st.session_state.get("painel_pendente_exclusao_v23")
-
-        for i, painel in enumerate(paineis):
-            pid = painel["id"]
-            nome_cabecalho = html.escape(str(painel.get("nome") or "Painel sem nome"))
-            ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
-            f5_badge = '<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>'
-            preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if (painel.get("preserve_session", False) or not painel.get("reload_enabled", True)) else ''
-            focus_badge = (
-                f'<span class="badge badge-amber">FOCO {int(painel.get("focus_seconds", 20))}s · {int(painel.get("focus_zoom", 175))}%</span>'
-                if painel.get("focus_enabled", False)
-                else ''
-            )
-            iframe_badge = (
-                '<span class="badge badge-gray">AVISO S&S</span>'
-                if painel.get("iframe_mode", "auto") == "fallback"
-                else ''
-            )
-
-            with st.container(border=True):
-                st.markdown(
-                    f"""
-                    <div class="panel-headline">
-                        <div class="panel-headline-left">
-                            <span class="panel-number">{i+1:02d}</span>
-                            <span class="panel-headline-name">{nome_cabecalho}</span>
-                        </div>
-                        <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}{focus_badge}{iframe_badge}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-                row = st.columns([0.46, 0.46, 1.05, 3.15, 1.0, 1.45, 1.0, 0.9])
-                with row[0]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("▲", key=f"up_{pid}", help="Mover este painel para cima", disabled=i == 0, use_container_width=True):
-                        paineis[i - 1], paineis[i] = paineis[i], paineis[i - 1]
-                        salvar_config(config, force=True)
-                        st.toast("Ordem atualizada.")
-                        st.rerun()
-                with row[1]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("▼", key=f"down_{pid}", help="Mover este painel para baixo", disabled=i == len(paineis)-1, use_container_width=True):
-                        paineis[i + 1], paineis[i] = paineis[i], paineis[i + 1]
-                        salvar_config(config, force=True)
-                        st.toast("Ordem atualizada.")
-                        st.rerun()
-                with row[2]:
-                    painel["ativo"] = st.toggle(
-                        "Exibir",
-                        value=bool(painel.get("ativo", True)),
-                        key=f"ativo_{pid}",
-                        help="Liga ou desliga este painel na rotação. Desligado, ele continua cadastrado.",
-                    )
-                with row[3]:
-                    painel["nome"] = st.text_input("Nome do painel", value=painel["nome"], key=f"nome_{pid}")
-                with row[4]:
-                    painel["tempo"] = st.number_input(
-                        "Tempo na tela", 5, 600, int(painel.get("tempo", 20)), 5, key=f"tempo_{pid}",
-                        help="Quantidade de segundos que este painel ficará visível antes de passar para o próximo.",
-                    )
-                with row[5]:
-                    painel["reload_enabled"] = st.toggle(
-                        "Atualização",
-                        value=bool(painel.get("reload_enabled", True)),
-                        key=f"reload_{pid}",
-                        help="Liga ou desliga a atualização automática (F5) deste painel. O estado também aparece no selo do cabeçalho.",
-                    )
-                with row[6]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("⧉ Duplicar", key=f"dup_{pid}", help="Criar uma cópia deste painel", use_container_width=True):
-                        clone = copy.deepcopy(painel)
-                        clone["id"] = novo_id("p_")
-                        clone["nome"] = f"{clone['nome']} - Cópia"
-                        paineis.insert(i + 1, clone)
-                        salvar_config(config, force=True)
-                        st.toast("Painel duplicado.")
-                        st.rerun()
-                with row[7]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("🗑 Excluir", key=f"del_{pid}", help="Excluir este painel", use_container_width=True):
-                        st.session_state["painel_pendente_exclusao_v23"] = pid
-                        st.rerun()
-
-                u1, u2, u3 = st.columns([6.0, 1.05, 1.2])
-                with u1:
-                    painel["link"] = st.text_input("Endereço da página (URL)", value=painel["link"], key=f"link_{pid}", placeholder="https://...")
-                with u2:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if painel["link"].strip():
-                        if url_valida(painel["link"]):
-                            st.markdown('<span class="status-ok">✓ URL válida</span>', unsafe_allow_html=True)
-                        else:
-                            st.markdown('<span class="status-warn">⚠ URL inválida</span>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<span class="muted">URL pendente</span>', unsafe_allow_html=True)
-                with u3:
-                    st.markdown("<div style='height:21px'></div>", unsafe_allow_html=True)
-                    if url_valida(painel.get("link", "")):
-                        link_safe = html.escape(painel["link"], quote=True)
-                        st.markdown(f'<a href="{link_safe}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;color:#0E5285;font-size:12px;font-weight:700;border:1px solid #C7D9E7;padding:7px 10px;border-radius:8px;">Abrir página ↗</a>', unsafe_allow_html=True)
-
-                # Configurações avançadas: abertas somente na visualização detalhada.
-                if st.toggle(
-                    "Configurações avançadas",
-                    value=(perfil.get("config_view") == "detailed" or st.session_state.get("focus_calibration_panel") == pid),
-                    key=f"advanced_visible_{pid}",
-                    help="Mostra ou oculta as opções avançadas deste painel.",
-                ):
-                    a1, a2, a3, a4 = st.columns([1.1, 1.2, 1.1, 1.25])
-                    with a1:
-                        painel["tipo"] = st.selectbox(
-                            "Tipo do painel",
-                            ["normal", "sim", "personalizado"],
-                            index=["normal", "sim", "personalizado"].index(painel.get("tipo", "normal")),
-                            format_func=lambda x: {"normal":"Normal", "sim":"SIM", "personalizado":"Personalizado"}[x],
-                            key=f"tipo_{pid}",
-                        )
-                    with a2:
-                        if painel["reload_enabled"]:
-                            painel["reload_strategy"] = st.selectbox(
-                                "Quando atualizar",
-                                ["on_show", "interval"],
-                                index=["on_show", "interval"].index(painel.get("reload_strategy", "on_show")),
-                                format_func=lambda x: "Ao exibir" if x == "on_show" else "Por intervalo",
-                                key=f"strategy_{pid}",
-                                help="Ao exibir: garante uma carga recente quando o painel entra na tela. Por intervalo: atualiza repetidamente conforme o tempo configurado.",
-                            )
-                        else:
-                            st.selectbox("Quando atualizar", ["Desativado"], disabled=True, key=f"strategy_off_{pid}")
-                    with a3:
-                        painel["reload_interval"] = st.number_input(
-                            "Intervalo de atualização (s)", 5, 3600, int(painel.get("reload_interval", 60)), 5,
-                            key=f"interval_{pid}", disabled=(not painel["reload_enabled"] or painel.get("reload_strategy") != "interval"),
-                        )
-                    with a4:
-                        if not painel["reload_enabled"]:
-                            st.toggle(
-                                "Manter painel aberto",
-                                value=True,
-                                key=f"preserve_auto_{pid}",
-                                disabled=True,
-                                help="Com F5 OFF, o painel é mantido aberto automaticamente para não recarregar quando voltar à tela.",
-                            )
-                        else:
-                            painel["preserve_session"] = st.toggle(
-                                "Manter painel aberto",
-                                value=bool(painel.get("preserve_session", False)),
-                                key=f"preserve_{pid}",
-                                help="Mantém esta página carregada em segundo plano para preservar login, filtros ou posição, mesmo quando outro painel estiver visível.",
-                            )
-                    if not painel["reload_enabled"]:
-                        st.info("Com **F5 OFF**, este painel é mantido carregado automaticamente. Ao sair e voltar para ele, o monitoramento reutiliza o mesmo iframe e não executa F5.")
-                    elif painel["preserve_session"]:
-                        st.markdown('<span class="badge badge-green">PAINEL MANTIDO ABERTO</span>', unsafe_allow_html=True)
-
-                    st.markdown("---")
-                    st.markdown("**Compatibilidade de incorporação**")
-                    st.caption("Controla o tratamento quando um site impede abertura dentro do monitor por política de segurança do próprio servidor.")
-                    iframe_modes = ["auto", "force_iframe", "fallback"]
-                    iframe_labels = {
-                        "auto": "Automática · recomendada",
-                        "force_iframe": "Forçar iframe",
-                        "fallback": "Sempre mostrar aviso S&S",
-                    }
-                    current_iframe_mode = painel.get("iframe_mode", "auto")
-                    if current_iframe_mode not in iframe_modes:
-                        current_iframe_mode = "auto"
-                    compat_c1, compat_c2 = st.columns([1.45, 3.55])
-                    with compat_c1:
-                        painel["iframe_mode"] = st.selectbox(
-                            "Tratamento do site",
-                            iframe_modes,
-                            index=iframe_modes.index(current_iframe_mode),
-                            format_func=lambda x: iframe_labels[x],
-                            key=f"iframe_mode_{pid}",
-                            help="Automática verifica X-Frame-Options e CSP. Forçar iframe ignora a verificação. Sempre mostrar aviso é útil quando o navegador bloqueia o site mas a verificação automática não consegue confirmar.",
-                        )
-                    with compat_c2:
-                        if painel["iframe_mode"] == "auto":
-                            st.info("O monitor verificará os cabeçalhos do site. Se o bloqueio for confirmado, exibirá o mascote e manterá normalmente o tempo de rotação do painel.")
-                        elif painel["iframe_mode"] == "force_iframe":
-                            st.warning("O monitor tentará abrir este endereço normalmente, mesmo que haja indícios de bloqueio. Use apenas se a detecção automática gerar falso positivo.")
-                        else:
-                            st.info("Este painel exibirá diretamente o aviso personalizado S&S, sem tentar incorporar a página.")
-
-                    st.markdown("---")
-                    st.markdown("**Modo Foco**")
-                    st.caption(
-                        "Amplia automaticamente uma região do painel nos segundos finais, sem acessar o conteúdo interno do site e sem executar F5."
-                    )
-
-                    f1, f2, f3, f4, f5 = st.columns([1.05, 1.15, 1.0, 1.45, 1.3])
-                    with f1:
-                        painel["focus_enabled"] = st.toggle(
-                            "Ativar foco",
-                            value=bool(painel.get("focus_enabled", False)),
-                            key=f"focus_enabled_{pid}",
-                            help="Quando ativado, o painel aplica zoom e centraliza a região configurada perto do fim do tempo de exibição.",
-                        )
-
-                    max_focus_seconds = max(1, int(painel.get("tempo", 20)) - 1)
-                    painel["focus_seconds"] = max(1, min(int(painel.get("focus_seconds", 20)), max_focus_seconds))
-                    focus_seconds_key = f"focus_seconds_{pid}"
-                    if focus_seconds_key in st.session_state:
-                        st.session_state[focus_seconds_key] = max(1, min(int(st.session_state[focus_seconds_key]), max_focus_seconds))
-
-                    with f2:
-                        painel["focus_seconds"] = st.number_input(
-                            "Iniciar quando faltarem (s)",
-                            min_value=1,
-                            max_value=max_focus_seconds,
-                            value=int(painel.get("focus_seconds", min(20, max_focus_seconds))),
-                            step=1,
-                            key=focus_seconds_key,
-                            disabled=not painel["focus_enabled"],
-                            help="Ex.: em um painel de 50s, usar 20 faz o foco começar quando o contador chegar a 00:20.",
-                        )
-
-                    with f3:
-                        zoom_options = [125, 150, 175, 200, 225, 250]
-                        current_zoom = int(painel.get("focus_zoom", 175))
-                        if current_zoom not in zoom_options:
-                            current_zoom = 175
-                        painel["focus_zoom"] = st.selectbox(
-                            "Zoom",
-                            zoom_options,
-                            index=zoom_options.index(current_zoom),
-                            format_func=lambda x: f"{x}%",
-                            key=f"focus_zoom_{pid}",
-                            disabled=not painel["focus_enabled"],
-                        )
-
-                    preset_options = ["custom", "sim_right", "right", "center", "left", "top_right", "bottom_right"]
-                    preset_labels = {
-                        "custom": "Personalizada",
-                        "sim_right": "Direita · SIM",
-                        "right": "Direita",
-                        "center": "Centro",
-                        "left": "Esquerda",
-                        "top_right": "Superior direita",
-                        "bottom_right": "Inferior direita",
-                    }
-                    with f4:
-                        current_preset = painel.get("focus_preset", "custom")
-                        if current_preset not in preset_options:
-                            current_preset = "custom"
-                        painel["focus_preset"] = st.selectbox(
-                            "Área de foco",
-                            preset_options,
-                            index=preset_options.index(current_preset),
-                            format_func=lambda x: preset_labels[x],
-                            key=f"focus_preset_{pid}",
-                            disabled=not painel["focus_enabled"],
-                            help="Direita · SIM usa X=87% e Y=52%, ideal para a coluna de Últimas Entregas mostrada no Monitor SIM.",
-                        )
-
-                    with f5:
-                        transition_options = [0, 300, 600, 1000]
-                        current_transition = int(painel.get("focus_transition_ms", 600))
-                        if current_transition not in transition_options:
-                            current_transition = 600
-                        painel["focus_transition_ms"] = st.selectbox(
-                            "Transição",
-                            transition_options,
-                            index=transition_options.index(current_transition),
-                            format_func=lambda x: "Instantânea" if x == 0 else f"Suave · {x} ms",
-                            key=f"focus_transition_{pid}",
-                            disabled=not painel["focus_enabled"],
-                        )
-
-                    preset_coords = {
-                        "sim_right": (87, 52),
-                        "right": (82, 50),
-                        "center": (50, 50),
-                        "left": (18, 50),
-                        "top_right": (86, 30),
-                        "bottom_right": (86, 70),
-                    }
-
-                    if painel.get("focus_preset") in preset_coords:
-                        painel["focus_x"], painel["focus_y"] = preset_coords[painel["focus_preset"]]
-                        c1, c2, c3 = st.columns([1, 1, 3])
-                        with c1:
-                            st.number_input(
-                                "Posição horizontal (X)", 0, 100, int(painel["focus_x"]), 1,
-                                key=f"focus_x_preset_{pid}_{painel['focus_preset']}", disabled=True
-                            )
-                        with c2:
-                            st.number_input(
-                                "Posição vertical (Y)", 0, 100, int(painel["focus_y"]), 1,
-                                key=f"focus_y_preset_{pid}_{painel['focus_preset']}", disabled=True
-                            )
-                        with c3:
-                            st.info(
-                                f"Área selecionada: **{preset_labels[painel['focus_preset']]}** · ponto central X={painel['focus_x']}% / Y={painel['focus_y']}%. "
-                                "Você pode usar o seletor visual abaixo para substituir este preset por um ponto personalizado."
-                            )
-                    else:
-                        c1, c2, c3 = st.columns([1, 1, 3])
-                        with c1:
-                            painel["focus_x"] = st.number_input(
-                                "Posição horizontal (X)", 0, 100, int(painel.get("focus_x", 50)), 1,
-                                key=f"focus_x_{pid}", disabled=not painel["focus_enabled"],
-                                help="0% = extremo esquerdo; 50% = centro; 100% = extremo direito.",
-                            )
-                        with c2:
-                            painel["focus_y"] = st.number_input(
-                                "Posição vertical (Y)", 0, 100, int(painel.get("focus_y", 50)), 1,
-                                key=f"focus_y_{pid}", disabled=not painel["focus_enabled"],
-                                help="0% = topo; 50% = centro; 100% = parte inferior.",
-                            )
-                        with c3:
-                            st.info(
-                                f"Ponto atual: **X={int(painel.get('focus_x', 50))}% · Y={int(painel.get('focus_y', 50))}%**. "
-                                "Os campos continuam disponíveis para ajuste técnico, mas o seletor visual é a forma recomendada."
-                            )
-
-                    visual_left, visual_right = st.columns([1.35, 3.65])
-                    with visual_left:
-                        calibrator_supported = hasattr(st.components, "v2")
-                        if st.button(
-                            "🎯 Selecionar visualmente",
-                            key=f"open_focus_calibrator_{pid}",
-                            use_container_width=True,
-                            disabled=(not painel["focus_enabled"] or not url_valida(painel.get("link", "")) or not calibrator_supported),
-                            help="Abre uma prévia do painel. Clique diretamente na informação que deseja levar para o centro do zoom.",
-                        ):
-                            st.session_state["focus_calibration_panel"] = pid
-                            st.rerun()
-                    with visual_right:
-                        if not hasattr(st.components, "v2"):
-                            st.warning("A calibração visual requer Streamlit 1.54 ou superior.")
-                        elif not painel["focus_enabled"]:
-                            st.caption("Ative o Modo Foco para habilitar a seleção visual da área.")
-                        elif not url_valida(painel.get("link", "")):
-                            st.caption("Informe uma URL válida para abrir a calibração visual.")
-                        else:
-                            st.caption(
-                                "Clique em **Selecionar visualmente**, marque o ponto diretamente sobre o painel e use **Testar zoom** antes de salvar. "
-                                "Ao salvar, a área passa automaticamente para **Personalizada**."
-                            )
-
-                    if st.session_state.get("focus_calibration_panel") == pid:
-                        st.markdown("##### Calibração visual da área de foco")
-                        st.caption(
-                            "A camada de seleção fica sobre o painel apenas durante a calibração. Ela não acessa o HTML interno do sistema externo."
-                        )
-                        render_focus_calibrator(painel)
-
-                if pending_delete == pid:
-                    st.warning(f"Excluir o painel **{painel['nome']}**? Esta ação remove apenas este cadastro do perfil.")
-                    d1, d2 = st.columns(2)
-                    with d1:
-                        if st.button("Cancelar", key=f"cancel_del_{pid}", use_container_width=True):
-                            st.session_state["painel_pendente_exclusao_v23"] = None
-                            st.rerun()
-                    with d2:
-                        if st.button("Confirmar exclusão", key=f"confirm_del_{pid}", type="primary", use_container_width=True):
-                            perfil["paineis"] = [p for p in paineis if p["id"] != pid]
-                            st.session_state["painel_pendente_exclusao_v23"] = None
-                            salvar_config(config, force=True)
-                            st.toast("Painel excluído.")
+    section_meta = {item["key"]: item for item in nav_items}
+    group_order = ["Monitoramento", "Comunicação", "Integrações e alertas", "Administração"]
+    any_rendered = False
+    for group_name in group_order:
+        group_items = [item for item in nav_items if item["group"] == group_name]
+        if not group_items:
+            continue
+        any_rendered = True
+        st.markdown(f'<div class="cfg-group-label"><span>{html.escape(group_name)}</span></div>', unsafe_allow_html=True)
+        for row_index in range(0, len(group_items), 2):
+            row_items = group_items[row_index:row_index + 2]
+            if nav_row_component is not None:
+                nav_result = nav_row_component(data={"items": row_items, "active": active_section}, key=f"config_nav_{active_profile_id}_{group_name}_{row_index}", on_nav_event_change=lambda: None)
+                raw_event = getattr(nav_result, "nav_event", None)
+                if raw_event:
+                    try:
+                        evt = json.loads(raw_event)
+                        event_id = f"nav:{evt.get('section')}:{evt.get('sentAt')}"
+                        if event_id != st.session_state.get("config_nav_last_event_v315"):
+                            st.session_state["config_nav_last_event_v315"] = event_id
+                            requested = str(evt.get("section") or "").strip().lower()
+                            if requested in valid_sections:
+                                st.session_state["config_active_section_v315"] = "" if requested == active_section else requested
+                                st.rerun()
+                    except Exception:
+                        pass
+            else:
+                cols = st.columns(len(row_items))
+                for col, item in zip(cols, row_items):
+                    with col:
+                        if st.button(item["title"], use_container_width=True, key=f"fallback_nav_{item['key']}"):
+                            st.session_state["config_active_section_v315"] = "" if item["key"] == active_section else item["key"]
                             st.rerun()
 
-    # =========================================================
-    # TICKER CORPORATIVO S&S - Atualizações + Agenda
-    # =========================================================
-    ticker = config.setdefault("ticker", ticker_padrao())
-    ticker["news"] = ticker.get("news", []) if isinstance(ticker.get("news"), list) else []
-    ticker["agenda"] = ticker.get("agenda", []) if isinstance(ticker.get("agenda"), list) else []
+            row_keys = {item["key"] for item in row_items}
+            if active_section in row_keys:
+                item = section_meta[active_section]
+                status_badge = f'<span class="cfg-active-status {html.escape(item["state"])}">{html.escape(item["status"])}</span>'
+                st.markdown(f'<div id="config-content-{html.escape(active_section)}" class="cfg-active-head cfg-active-head-v315"><div class="cfg-active-head-icon">{_cfg_icon_svg(item["icon"])}</div><div class="cfg-active-copy"><div class="cfg-active-title-line"><div class="cfg-active-head-title">{html.escape(item["title"])}</div>{status_badge}</div><div class="cfg-active-head-desc">{html.escape(item["desc"])}</div></div></div>', unsafe_allow_html=True)
+                render_config_section(active_section)
 
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    if active_section == "ticker":
-        th1, th2 = st.columns([3.6, 1])
-        with th1:
-            st.caption("Uma única faixa global alterna entre notícias de atualização e compromissos da agenda. Os tempos de cada faixa são independentes e configuráveis.")
-        with th2:
-            ticker["enabled"] = st.toggle(
-                "Exibir faixas",
-                value=bool(ticker.get("enabled", True)),
-                key="ticker_enabled_v290",
-                help="Se não existir conteúdo ativo em nenhuma das duas faixas, o rodapé desaparece automaticamente.",
-            )
+    if not any_rendered:
+        st.info("Nenhuma área de configuração corresponde à busca. Tente outro termo.")
+    if not active_section:
+        st.markdown('<div class="cfg-home-hint cfg-home-hint-v315">Selecione uma área para configurar. Os cards exibem o estado atual sem precisar abrir cada seção.</div>', unsafe_allow_html=True)
 
-        tc1, tc2, tc3, tc4, tc5 = st.columns([1.25, 1.0, .9, .9, 1.25])
-        with tc1:
-            speed_options = ["slow", "normal", "fast"]
-            speed_current = ticker.get("speed", "normal") if ticker.get("speed", "normal") in speed_options else "normal"
-            ticker["speed"] = st.selectbox(
-                "Velocidade",
-                speed_options,
-                index=speed_options.index(speed_current),
-                format_func=lambda x: {"slow": "Lenta", "normal": "Normal", "fast": "Rápida"}[x],
-                key="ticker_speed_v290",
-            )
-        with tc2:
-            ticker["height"] = st.number_input(
-                "Altura (px)", min_value=36, max_value=64,
-                value=max(36, min(64, int(ticker.get("height", 46)))), step=1,
-                key="ticker_height_v290",
-            )
-        with tc3:
-            ticker["font_size"] = st.number_input(
-                "Texto (px)", min_value=14, max_value=24,
-                value=max(14, min(24, int(ticker.get("font_size", 19)))), step=1,
-                key="ticker_font_v290",
-                help="Para TV, 18 a 20 px costuma oferecer boa leitura à distância.",
-            )
-        with tc4:
-            ticker["news_seconds"] = st.number_input(
-                "Atualizações (s)", min_value=5, max_value=300,
-                value=max(5, min(300, int(ticker.get("news_seconds", 30)))), step=5,
-                key="ticker_news_seconds_v290",
-                help="Tempo que a faixa Atualizações S&S permanece visível antes de alternar.",
-            )
-        with tc5:
-            ticker["agenda_seconds"] = st.number_input(
-                "Agenda (s)", min_value=5, max_value=300,
-                value=max(5, min(300, int(ticker.get("agenda_seconds", 30)))), step=5,
-                key="ticker_agenda_seconds_v290",
-                help="Tempo que a faixa Agenda S&S permanece visível antes de voltar para Atualizações.",
-            )
-
-        to1, to2, to3, to4 = st.columns([1, 1, 1.2, 2.0])
-        with to1:
-            ticker["pause_on_hover"] = st.toggle("Pausar no mouse", value=bool(ticker.get("pause_on_hover", True)), key="ticker_pause_hover_v290")
-        with to2:
-            ticker["show_category"] = st.toggle("Mostrar categoria", value=bool(ticker.get("show_category", True)), key="ticker_show_category_v290")
-        with to3:
-            ticker["show_system"] = st.toggle("Mostrar sistema", value=bool(ticker.get("show_system", True)), key="ticker_show_system_v290")
-        with to4:
-            st.caption("Quando as duas faixas tiverem conteúdo ativo, a aplicação alterna automaticamente. Se apenas uma tiver conteúdo, ela permanece contínua.")
-
-        st.markdown("---")
-        u1, u2 = st.columns([1, 1])
-        with u1:
-            ticker["label"] = st.text_input("Nome da faixa de atualizações", value=str(ticker.get("label") or "ATUALIZAÇÕES S&S"), key="ticker_label_v290", max_chars=60)
-        with u2:
-            ticker["agenda_label"] = st.text_input("Nome da faixa de agenda", value=str(ticker.get("agenda_label") or "AGENDA S&S"), key="ticker_agenda_label_v300", max_chars=60)
-
-
-    if active_section == "integration":
-        st.caption("Busca Atualizações e Agenda diretamente do portal autenticado. As credenciais ficam somente nos Secrets do Streamlit e nunca são gravadas no JSON da aplicação.")
-        pi1, pi2, pi3, pi4 = st.columns([1.35, 1.15, 1.0, 1.1])
-        source_options = ["portal_manual", "portal", "manual"]
-        source_labels = {
-            "portal_manual": "Portal + manual",
-            "portal": "Somente Portal",
-            "manual": "Somente manual",
-        }
-        current_source = ticker.get("source_mode", "portal_manual") if ticker.get("source_mode", "portal_manual") in source_options else "portal_manual"
-        with pi1:
-            ticker["source_mode"] = st.selectbox("Fonte das faixas", source_options, index=source_options.index(current_source), format_func=lambda x: source_labels[x], key="ticker_source_v300")
-        with pi2:
-            ticker["portal_interval_minutes"] = st.number_input("Sincronizar a cada (min)", min_value=1, max_value=60, value=max(1, min(60, int(ticker.get("portal_interval_minutes", 5)))), step=1, key="portal_interval_v300")
-        with pi3:
-            ticker["portal_agenda_days"] = st.number_input("Agenda futura (dias)", min_value=0, max_value=30, value=max(0, min(30, int(ticker.get("portal_agenda_days", 7)))), step=1, key="portal_days_v300", help="Consulta hoje e os próximos dias selecionados.")
-        with pi4:
-            ticker["portal_enabled"] = st.toggle("Integração Portal", value=bool(ticker.get("portal_enabled", True)), key="portal_enabled_v300")
-
-        cache = ticker.get("portal_cache") if isinstance(ticker.get("portal_cache"), dict) else {}
-        email_cfg, senha_cfg = _portal_credentials()
-        status = str(cache.get("last_status") or "never")
-        last_sync = str(cache.get("last_sync") or "")
-        last_error = str(cache.get("last_error") or "")
-        cached_news = cache.get("news", []) if isinstance(cache.get("news"), list) else []
-        cached_agenda = cache.get("agenda", []) if isinstance(cache.get("agenda"), list) else []
-        ps1, ps2, ps3, ps4 = st.columns([1.25, 1.0, 1.0, 1.35])
-        with ps1:
-            if not email_cfg or not senha_cfg:
-                st.markdown('<span class="status-warn">⚠ Secrets não configurados</span>', unsafe_allow_html=True)
-            elif status == "ok":
-                st.markdown('<span class="status-ok">● Portal conectado</span>', unsafe_allow_html=True)
-            elif status == "error":
-                st.markdown('<span class="status-warn">⚠ Falha na última sincronização</span>', unsafe_allow_html=True)
-            else:
-                st.markdown('<span class="status-ok">● Credenciais disponíveis</span>', unsafe_allow_html=True)
-        with ps2:
-            st.metric("Atualizações", len(cached_news))
-        with ps3:
-            st.metric("Compromissos", len(cached_agenda))
-        with ps4:
-            last_fmt = "Ainda não sincronizado"
-            if last_sync:
-                try:
-                    last_fmt = datetime.fromisoformat(last_sync).strftime("%d/%m/%Y %H:%M:%S")
-                except Exception:
-                    last_fmt = last_sync
-            st.caption(f"Última sincronização: **{last_fmt}**")
-
-        pbtn1, pbtn2 = st.columns([1.2, 4.8])
-        with pbtn1:
-            if st.button("↻ Sincronizar agora", use_container_width=True, key="portal_sync_now_v300", disabled=not ticker.get("portal_enabled", True) or ticker.get("source_mode") == "manual"):
-                changed, sync_state = sincronizar_portal_ticker(ticker, force=True)
-                salvar_config(config, force=True)
-                if sync_state == "ok":
-                    st.toast("Portal S&S sincronizado com sucesso.")
-                elif sync_state == "not_configured":
-                    st.error("Configure [portal_ss] em Settings → Secrets no Streamlit Cloud.")
-                else:
-                    st.error(ticker.get("portal_cache", {}).get("last_error") or "Não foi possível sincronizar o portal.")
-                st.rerun()
-        with pbtn2:
-            if not email_cfg or not senha_cfg:
-                st.code('[portal_ss]\nemail = "SEU_EMAIL"\nsenha = "SUA_SENHA"', language="toml")
-            elif status == "error" and last_error:
-                st.caption(f"Último erro: {last_error}")
-            else:
-                st.caption("Modo Portal + manual: itens do portal têm prioridade e os cadastros manuais continuam disponíveis como contingência.")
-
-
-    if active_section == "updates":
-        active_preview = noticias_ativas_ticker(ticker)
-        active_agenda_preview = agenda_ativa_ticker(ticker)
-        if ticker.get("enabled", True) and active_preview:
-            parts = []
-            cat_labels = {"novo": "NOVO", "melhoria": "MELHORIA", "correcao": "CORREÇÃO", "aviso": "AVISO", "importante": "IMPORTANTE"}
-            for item in active_preview[:5]:
-                bits = []
-                if ticker.get("show_category", True): bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
-                if ticker.get("show_system", True) and item.get("sistema"): bits.append(str(item.get("sistema")))
-                title = str(item.get("titulo") or "").strip(); msg = str(item.get("mensagem") or "").strip()
-                text = " — ".join([b for b in bits if b]); content = title + ((": " + msg) if title and msg else msg)
-                if text and content: text += " — " + content
-                elif content: text = content
-                if item.get("url") and url_valida(item.get("url")): text += " ↗"
-                parts.append(html.escape(text))
-            st.markdown(f'<div class="ticker-preview ticker-preview-news"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
-
-        if ticker.get("enabled", True) and ticker.get("agenda_enabled", True) and active_agenda_preview:
-            parts = []
-            hoje = datetime.now().date().isoformat()
-            for item in active_agenda_preview[:5]:
-                data_txt = "HOJE" if item.get("data") == hoje else datetime.strptime(item.get("data"), "%Y-%m-%d").strftime("%d/%m")
-                details = [f"{data_txt} {item.get('hora') or ''}".strip(), str(item.get("titulo") or "Compromisso")]
-                if item.get("sistema"): details.append(str(item.get("sistema")))
-                if item.get("entidade"): details.append(str(item.get("entidade")))
-                if item.get("responsavel"): details.append(str(item.get("responsavel")))
-                if item.get("local"): details.append(str(item.get("local")))
-                text = " · ".join([d for d in details if d])
-                if item.get("url") and url_valida(item.get("url")): text += " ↗"
-                parts.append(html.escape(text))
-            st.markdown(f'<div class="ticker-preview ticker-preview-agenda"><div class="ticker-preview-label">{html.escape(str(ticker.get("agenda_label") or "AGENDA S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
-
-        if ticker.get("enabled", True) and not active_preview and not active_agenda_preview:
-            st.info("As faixas estão ligadas, mas não há atualização nem compromisso ativo para exibir agora. O rodapé não ocupará espaço no monitoramento.")
-
-        st.markdown("### Atualizações S&S")
-        st.caption("Os itens do portal aparecem automaticamente na prévia/faixa. Use os cadastros abaixo apenas para conteúdo manual ou contingência.")
-        add_left, add_right = st.columns([4, 1])
-        with add_right:
-            if st.button("＋ Adicionar notícia", use_container_width=True, key="add_news_v290"):
-                ticker["news"].append(noticia_padrao()); salvar_config(config, force=True); st.toast("Notícia adicionada."); st.rerun()
-
-        pending_news_delete = st.session_state.get("news_pendente_exclusao_v290")
-        category_options = ["novo", "melhoria", "correcao", "aviso", "importante"]
-        category_labels = {"novo": "Novo", "melhoria": "Melhoria", "correcao": "Correção", "aviso": "Aviso", "importante": "Importante"}
-        for ni, news in enumerate(ticker.get("news", [])):
-            nid = news.get("id") or novo_id("news_"); news["id"] = nid
-            cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
-            state_badge = '<span class="badge badge-blue">ATIVA</span>' if news.get("ativo", True) else '<span class="badge badge-gray">INATIVA</span>'
-            cat_class = "badge-amber" if cat in {"aviso", "importante"} else ("badge-green" if cat == "melhoria" else "badge-blue")
-            link_badge = '<span class="badge badge-green">LINK</span>' if news.get("url") and url_valida(news.get("url")) else ''
-            headline = html.escape(str(news.get("titulo") or news.get("mensagem") or "Notícia sem título")[:100])
-            with st.container(border=True):
-                st.markdown(f'<div class="news-headline"><div class="news-title">{ni+1:02d} · {headline}</div><div class="news-meta">{state_badge}<span class="badge {cat_class}">{category_labels[cat].upper()}</span>{link_badge}</div></div>', unsafe_allow_html=True)
-                nr = st.columns([0.46, 0.46, 1.0, 1.35, 1.25, 3.0, 0.9, 0.85])
-                with nr[0]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("▲", key=f"news_up_{nid}", disabled=ni == 0, use_container_width=True): ticker["news"][ni-1],ticker["news"][ni]=ticker["news"][ni],ticker["news"][ni-1]; salvar_config(config, force=True); st.rerun()
-                with nr[1]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("▼", key=f"news_down_{nid}", disabled=ni == len(ticker["news"])-1, use_container_width=True): ticker["news"][ni+1],ticker["news"][ni]=ticker["news"][ni],ticker["news"][ni+1]; salvar_config(config, force=True); st.rerun()
-                with nr[2]: news["ativo"] = st.toggle("Exibir", value=bool(news.get("ativo", True)), key=f"news_active_{nid}")
-                with nr[3]: news["sistema"] = st.text_input("Sistema", value=str(news.get("sistema") or "Geral"), key=f"news_system_{nid}")
-                with nr[4]:
-                    current_cat = news.get("categoria", "melhoria") if news.get("categoria", "melhoria") in category_options else "melhoria"
-                    news["categoria"] = st.selectbox("Categoria", category_options, index=category_options.index(current_cat), format_func=lambda x: category_labels[x], key=f"news_cat_{nid}")
-                with nr[5]: news["titulo"] = st.text_input("Título curto", value=str(news.get("titulo") or ""), key=f"news_title_{nid}", max_chars=160)
-                with nr[6]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("⧉", key=f"news_dup_{nid}", use_container_width=True):
-                        clone=copy.deepcopy(news); clone["id"]=novo_id("news_"); clone["titulo"]=(clone.get("titulo") or "Notícia")+" - Cópia"; ticker["news"].insert(ni+1,clone); salvar_config(config,force=True); st.rerun()
-                with nr[7]:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    if st.button("🗑", key=f"news_del_{nid}", use_container_width=True): st.session_state["news_pendente_exclusao_v290"]=nid; st.rerun()
-                nb1,nb2=st.columns([3.2,2.1])
-                with nb1: news["mensagem"] = st.text_area("Mensagem", value=str(news.get("mensagem") or ""), key=f"news_msg_{nid}", height=74, max_chars=700, placeholder="Ex.: Disponibilizadas melhorias no envio dos eventos do eSocial.")
-                with nb2:
-                    news["url"] = st.text_input("Link da atualização (opcional)", value=str(news.get("url") or ""), key=f"news_url_{nid}", placeholder="https://...")
-                    if news["url"].strip(): st.markdown('<span class="status-ok">✓ Link clicável · abrirá em nova aba</span>' if url_valida(news["url"]) else '<span class="status-warn">⚠ Link inválido · será exibida sem clique</span>', unsafe_allow_html=True)
-                nd1,nd2,nd3=st.columns([1.2,1.15,2.95]); start_value=_data_from_iso(news.get("inicio"),datetime.now().date())
-                with nd1: start_date=st.date_input("Início da exibição",value=start_value,key=f"news_start_{nid}",format="DD/MM/YYYY"); news["inicio"]=start_date.isoformat()
-                with nd2:
-                    sem_fim=st.toggle("Sem data final",value=not bool(news.get("fim")),key=f"news_no_end_{nid}")
-                    if sem_fim: news["fim"]=""
-                    else: end_default=_data_from_iso(news.get("fim"),start_date); end_date=st.date_input("Fim da exibição",value=end_default,key=f"news_end_{nid}",format="DD/MM/YYYY"); news["fim"]=end_date.isoformat()
-                with nd3:
-                    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                    st.caption(f"Situação: **{'ativa hoje' if news in noticias_ativas_ticker(ticker) else 'fora do período atual ou desativada'}**.")
-                if pending_news_delete == nid:
-                    st.warning(f"Excluir a notícia **{news.get('titulo') or 'sem título'}**?"); dc1,dc2=st.columns(2)
-                    with dc1:
-                        if st.button("Cancelar",key=f"news_cancel_del_{nid}",use_container_width=True): st.session_state["news_pendente_exclusao_v290"]=None; st.rerun()
-                    with dc2:
-                        if st.button("Confirmar exclusão",key=f"news_confirm_del_{nid}",type="primary",use_container_width=True): ticker["news"]=[n for n in ticker["news"] if n.get("id")!=nid]; st.session_state["news_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
-
-
-    if active_section == "agenda":
-        ag_head, ag_toggle, ag_add = st.columns([3.1, 1.1, 1.15])
-        with ag_head:
-            st.caption("Compromissos do portal e manuais aparecem na faixa verde-petróleo. Itens realizados, cancelados ou vencidos deixam de ser exibidos automaticamente.")
-        with ag_toggle:
-            ticker["agenda_enabled"] = st.toggle("Exibir Agenda", value=bool(ticker.get("agenda_enabled", True)), key="agenda_enabled_v290")
-        with ag_add:
-            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-            if st.button("＋ Adicionar compromisso", use_container_width=True, key="add_agenda_v290"):
-                ticker["agenda"].append(agenda_item_padrao()); salvar_config(config, force=True); st.toast("Compromisso adicionado."); st.rerun()
-
-        pending_agenda_delete = st.session_state.get("agenda_pendente_exclusao_v290")
-        modalidade_options=["presencial","online","hibrido","outro"]
-        modalidade_labels={"presencial":"Presencial","online":"Online","hibrido":"Híbrido","outro":"Outro"}
-        status_options=["agendado","realizado","cancelado"]
-        status_labels={"agendado":"Agendado","realizado":"Realizado","cancelado":"Cancelado"}
-        for ai,item in enumerate(ticker.get("agenda", [])):
-            aid=item.get("id") or novo_id("agenda_"); item["id"]=aid
-            headline=html.escape(str(item.get("titulo") or "Compromisso")[:100])
-            status=item.get("status","agendado") if item.get("status","agendado") in status_options else "agendado"
-            state_class="badge-green" if status=="agendado" else ("badge-blue" if status=="realizado" else "badge-gray")
-            with st.container(border=True):
-                st.markdown(f'<div class="news-headline"><div class="news-title">{ai+1:02d} · {headline}</div><div class="news-meta"><span class="badge {state_class}">{status_labels[status].upper()}</span></div></div>', unsafe_allow_html=True)
-                ar=st.columns([.46,.46,.9,1.25,.85,1.15,1.3,2.3,.8])
-                with ar[0]:
-                    st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
-                    if st.button("▲",key=f"agenda_up_{aid}",disabled=ai==0,use_container_width=True): ticker["agenda"][ai-1],ticker["agenda"][ai]=ticker["agenda"][ai],ticker["agenda"][ai-1]; salvar_config(config,force=True); st.rerun()
-                with ar[1]:
-                    st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
-                    if st.button("▼",key=f"agenda_down_{aid}",disabled=ai==len(ticker["agenda"])-1,use_container_width=True): ticker["agenda"][ai+1],ticker["agenda"][ai]=ticker["agenda"][ai],ticker["agenda"][ai+1]; salvar_config(config,force=True); st.rerun()
-                with ar[2]: item["ativo"]=st.toggle("Exibir",value=bool(item.get("ativo",True)),key=f"agenda_active_{aid}")
-                with ar[3]:
-                    data_val=_data_from_iso(item.get("data"),datetime.now().date()); data_ag=st.date_input("Data",value=data_val,key=f"agenda_date_{aid}",format="DD/MM/YYYY"); item["data"]=data_ag.isoformat()
-                with ar[4]: item["hora"]=st.text_input("Hora",value=str(item.get("hora") or "08:00"),key=f"agenda_time_{aid}",max_chars=5,placeholder="08:00")
-                with ar[5]: item["status"]=st.selectbox("Status",status_options,index=status_options.index(status),format_func=lambda x:status_labels[x],key=f"agenda_status_{aid}")
-                with ar[6]:
-                    mod=item.get("modalidade","presencial") if item.get("modalidade","presencial") in modalidade_options else "presencial"
-                    item["modalidade"]=st.selectbox("Modalidade",modalidade_options,index=modalidade_options.index(mod),format_func=lambda x:modalidade_labels[x],key=f"agenda_mod_{aid}")
-                with ar[7]: item["titulo"]=st.text_input("Compromisso",value=str(item.get("titulo") or "Relacionamento"),key=f"agenda_title_{aid}",max_chars=120)
-                with ar[8]:
-                    st.markdown("<div style='height:28px'></div>",unsafe_allow_html=True)
-                    if st.button("🗑",key=f"agenda_del_{aid}",use_container_width=True): st.session_state["agenda_pendente_exclusao_v290"]=aid; st.rerun()
-                ab1,ab2,ab3=st.columns([1.5,1.5,1.4])
-                with ab1: item["sistema"]=st.text_input("Sistema",value=str(item.get("sistema") or ""),key=f"agenda_system_{aid}",placeholder="Sistema de Arrecadação Tributária")
-                with ab2: item["entidade"]=st.text_input("Entidade",value=str(item.get("entidade") or ""),key=f"agenda_entity_{aid}",placeholder="Município de Aracoiaba")
-                with ab3: item["responsavel"]=st.text_input("Responsável",value=str(item.get("responsavel") or ""),key=f"agenda_resp_{aid}",placeholder="Thiago Silva")
-                ac1,ac2=st.columns([2.4,1.6])
-                with ac1: item["local"]=st.text_input("Local",value=str(item.get("local") or ""),key=f"agenda_local_{aid}",placeholder="Av. Independência - Aracoiaba, CE")
-                with ac2:
-                    item["url"]=st.text_input("Link do compromisso (opcional)",value=str(item.get("url") or ""),key=f"agenda_url_{aid}",placeholder="https://...")
-                    if item["url"].strip(): st.caption("O compromisso ficará clicável e abrirá em nova aba." if url_valida(item["url"]) else "Link inválido: será exibido sem clique.")
-                st.caption(f"Exibição na faixa: **{'ativa' if item in agenda_ativa_ticker(ticker) else 'não ativa'}**.")
-                if pending_agenda_delete == aid:
-                    st.warning(f"Excluir o compromisso **{item.get('titulo') or 'sem título'}**?"); ec1,ec2=st.columns(2)
-                    with ec1:
-                        if st.button("Cancelar",key=f"agenda_cancel_del_{aid}",use_container_width=True): st.session_state["agenda_pendente_exclusao_v290"]=None; st.rerun()
-                    with ec2:
-                        if st.button("Confirmar exclusão",key=f"agenda_confirm_del_{aid}",type="primary",use_container_width=True): ticker["agenda"]=[a for a in ticker["agenda"] if a.get("id")!=aid]; st.session_state["agenda_pendente_exclusao_v290"]=None; salvar_config(config,force=True); st.rerun()
-
-    # =========================================================
-    # ALERTA DE NOVA ENTREGA SIM
-    # =========================================================
-    sim_alerts = config.setdefault("sim_alerts", sim_alerts_padrao())
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    if active_section == "sim_alert":
-        sa1, sa2 = st.columns([3.7, 1])
-        with sa1:
-            st.caption("Mostra um único alerta verde quando uma entidade monitorada passa de pendente para entregue na competência consultada.")
-        with sa2:
-            sim_alerts["enabled"] = st.toggle("Exibir alerta SIM", value=bool(sim_alerts.get("enabled", True)), key="sim_alert_enabled_v390")
-
-        sim_alerts["partial_enabled"] = False
-        sim_alerts["deadline_enabled"] = False
-        sim_alerts["audio_partial"] = False
-        sim_alerts["audio_deadline"] = False
-
-        c1, c2, c3 = st.columns([1.2, 1.2, 2.6])
-        with c1:
-            sim_alerts["display_seconds"] = st.number_input("Tempo na tela (s)", 3, 30, int(sim_alerts.get("display_seconds", 8)), 1, key="sim_alert_display_v390")
-        with c2:
-            sim_alerts["poll_seconds"] = st.number_input("Verificar a cada (s)", 5, 120, int(sim_alerts.get("poll_seconds", 15)), 5, key="sim_alert_poll_v390")
-        with c3:
-            sim_alerts["title_template"] = st.text_input("Título do alerta", value=str(sim_alerts.get("title_template") or "Nova entrega SIM confirmada"), key="sim_alert_template_v390", max_chars=180)
-
-        st.markdown("**Competência e API**")
-        sim_api_credentials = _sim_api_credentials()
-        api1, api2, api3 = st.columns([1.4, 1.4, 2.2])
-        with api1:
-            mode = str(sim_alerts.get("competence_mode") or "previous_month")
-            sim_alerts["competence_mode"] = st.selectbox("Competência consultada", ["previous_month", "manual"], index=0 if mode != "manual" else 1, format_func=lambda x: "Automática · mês anterior" if x == "previous_month" else "Manual", key="sim_api_competence_mode_v390")
-        with api2:
-            if sim_alerts.get("competence_mode") == "manual":
-                mc1, mc2 = st.columns(2)
-                with mc1:
-                    sim_alerts["manual_month"] = st.number_input("Mês", 1, 12, int(sim_alerts.get("manual_month", 1)), 1, key="sim_api_manual_month_v390")
-                with mc2:
-                    sim_alerts["manual_year"] = st.number_input("Ano", 2020, 2100, int(sim_alerts.get("manual_year", datetime.now().year)), 1, key="sim_api_manual_year_v390")
-            else:
-                api_year, api_month = _sim_api_competencia(sim_alerts)
-                st.metric("Competência", f"{api_month:02d}/{api_year}")
-        with api3:
-            st.success("API SIM configurada nos Secrets.") if sim_api_credentials.get("configured") else st.warning("Configure `[sim_api]` nos Secrets.")
-        if not sim_api_credentials.get("configured"):
-            st.code('[sim_api]\nemail = "SEU_EMAIL"\nsenha = "SUA_SENHA"\napi_key = "CHAVE_DA_API"', language="toml")
-
-        sim_panel_cfg = next((p for p in paineis if _is_sim_panel_config(p) and url_valida(p.get("link", ""))), None)
-        t1, t2 = st.columns([1.5, 3.5])
-        with t1:
-            if st.button("Testar conexão API SIM", use_container_width=True, key="sim_api_test_v390", disabled=not bool(sim_panel_cfg) or not sim_api_credentials.get("configured")):
-                test_result = buscar_sim_submissions_servidor(sim_panel_cfg.get("link", ""), sim_alerts) if sim_panel_cfg else {"ok": False, "error": "Painel SIM não encontrado"}
-                st.session_state[f"_sim_api_manual_test_{active_profile_id}"] = test_result
-        with t2:
-            runtime_api = st.session_state.get(f"_sim_api_runtime_status_{active_profile_id}")
-            if isinstance(runtime_api, dict) and runtime_api.get("ok"):
-                st.caption(f"Última leitura: **{runtime_api.get('rows', 0)} entidades** · **{runtime_api.get('delivered_rows', 0)} entregues** · competência {int(runtime_api.get('mes') or 0):02d}/{runtime_api.get('ano') or '-' }.")
-            elif isinstance(runtime_api, dict) and runtime_api.get("error"):
-                st.error(f"Última leitura automática: {runtime_api.get('error')}")
-            else:
-                st.caption("A leitura automática começa quando o monitoramento é iniciado.")
-
-        manual_test = st.session_state.get(f"_sim_api_manual_test_{active_profile_id}")
-        if isinstance(manual_test, dict):
-            if manual_test.get("ok"):
-                yy, mm = _sim_api_competencia(sim_alerts)
-                rows = _sim_rows_competencia(manual_test.get("data"), yy, mm)
-                confirmed = sum(1 for r in rows if _sim_server_delivered(r))
-                latest = _sim_latest_confirmed_delivery_raw(manual_test.get("data"), yy, mm)
-                latest_desc = latest.get("entity_description") if latest else "nenhuma"
-                st.success(f"API respondendo: {len(rows)} entidades · {confirmed} entregues · última confirmada: {latest_desc}.")
-            elif manual_test.get("error"):
-                st.error(f"Teste da API SIM: {manual_test.get('error')}")
-
-        st.markdown("**Teste do alerta**")
-        direct_test_key = f"_sim_direct_tests_v341_{active_profile_id}"
-        if st.button("✓ Testar última entrega confirmada", use_container_width=True, key="sim_direct_test_last_v390", disabled=not bool(sim_panel_cfg) or not sim_api_credentials.get("configured")):
-            test_now = buscar_sim_submissions_servidor(sim_panel_cfg.get("link", ""), sim_alerts) if sim_panel_cfg else {"ok": False}
-            if test_now.get("ok"):
-                yy, mm = _sim_api_competencia(sim_alerts)
-                latest_now = _sim_latest_confirmed_delivery_raw(test_now.get("data"), yy, mm)
-                if latest_now:
-                    latest_now = dict(latest_now)
-                    latest_now["alert_key"] = f"test-last-{time.time_ns()}"
-                    st.session_state.setdefault(direct_test_key, []).append(latest_now)
-                    st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest_now
-                    st.rerun()
-                else:
-                    st.warning("A API respondeu, mas não há entrega confirmada na competência selecionada.")
-            else:
-                st.error(f"Não foi possível consultar a API SIM: {test_now.get('error') or 'erro desconhecido'}")
-
-        snd1, snd2, snd3 = st.columns([1.2, 1.8, 1.0])
-        with snd1:
-            sim_alerts["audio_enabled"] = st.toggle("Alerta sonoro", value=bool(sim_alerts.get("audio_enabled", True)), key="sim_alert_audio_enabled_v390")
-        with snd2:
-            sim_alerts["audio_volume"] = st.slider("Volume", 0, 100, int(sim_alerts.get("audio_volume", 60)), 5, key="sim_alert_audio_volume_v390")
-        with snd3:
-            sim_alerts["audio_green"] = st.toggle("Som verde", value=bool(sim_alerts.get("audio_green", True)), key="sim_alert_audio_green_v390")
-
-        st.caption("Fonte: API oficial `/api/sim_submissions`. O alerta acompanha novas entregas por entidade. A API oficial aceita `data_envio` preenchida mesmo quando `status` usa código; o endpoint visual também aceita `entregue`/`no_prazo`.")
-        st.info("No menu ⋮ fica apenas **Testar última entrega confirmada**.")
-
-    # Salva somente se houve alteração efetiva.
-    salvar_config(config)
-
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-
-    # Estabilidade e operação
-    if active_section == "stability":
-        st.caption("Watchdog e pré-carregamento funcionam sem recarregar a aplicação. Na v3.6.0 o reinício completo automático foi desativado para preservar os iframes com F5 OFF.")
-        perfil["full_restart_enabled"] = False
-        perfil["horas_reload_geral"] = 0
-        e0, e2, e3, e4 = st.columns([1.35, 1.0, 1.0, 1.0])
-        with e0:
-            st.toggle(
-                "Reinício completo automático",
-                value=False,
-                key=f"full_restart_disabled_{active_profile_id}",
-                disabled=True,
-                help="Desativado nesta versão para impedir que a aplicação recrie os iframes periodicamente.",
-            )
-        with e2:
-            perfil["preload_seconds"] = st.number_input(
-                "Pré-carregar antes (s)", 0, 30, int(perfil.get("preload_seconds", 8)), 1,
-                key=f"preload_{active_profile_id}",
-                help="O próximo iframe só é criado perto da troca, reduzindo consumo de memória/CPU.",
-            )
-        with e3:
-            perfil["watchdog_seconds"] = st.number_input(
-                "Watchdog (s)", 30, 600, int(perfil.get("watchdog_seconds", 90)), 10,
-                key=f"watchdog_{active_profile_id}",
-                help="Se a rotação deixar de emitir sinais por esse tempo, o monitor tenta se recuperar automaticamente.",
-            )
-        with e4:
-            perfil["auto_ocultar_controles"] = st.toggle(
-                "Ocultar controles",
-                value=bool(perfil.get("auto_ocultar_controles", True)),
-                key=f"autohide_{active_profile_id}",
-            )
-        st.caption("✓ Reinício completo automático desativado: o F5 OFF pode preservar o mesmo iframe durante toda a sessão do monitor.")
-
-    # Experiência e visual
-    if active_section == "visual":
-        st.caption("Ajustes específicos para distância de visualização, posição da barra e modo TV.")
-        v1, v2, v3, v4 = st.columns(4)
-        with v1:
-            perfil["modo_tv_padrao"] = st.toggle("Iniciar em Modo TV", value=bool(perfil.get("modo_tv_padrao", False)), key=f"tv_{active_profile_id}")
-            perfil["show_status"] = st.toggle("Mostrar status", value=bool(perfil.get("show_status", True)), key=f"showstatus_{active_profile_id}")
-        with v2:
-            scales = [90, 100, 110, 125]
-            perfil["ui_scale"] = st.selectbox("Escala da barra", scales, index=scales.index(perfil.get("ui_scale", 100)), format_func=lambda x: f"{x}%", key=f"scale_{active_profile_id}")
-            perfil["show_clock"] = st.toggle("Mostrar relógio", value=bool(perfil.get("show_clock", True)), key=f"clock_{active_profile_id}")
-        with v3:
-            positions = ["top", "bottom"]
-            perfil["toolbar_position"] = st.selectbox("Posição da barra", positions, index=positions.index(perfil.get("toolbar_position", "top")), format_func=lambda x: "Superior" if x == "top" else "Inferior", key=f"barpos_{active_profile_id}")
-            perfil["show_dots"] = st.toggle("Mostrar indicadores", value=bool(perfil.get("show_dots", True)), key=f"dots_{active_profile_id}")
-        with v4:
-            trans = [0, 150, 220, 400]
-            perfil["transition_ms"] = st.selectbox("Transição", trans, index=trans.index(perfil.get("transition_ms", 220)), format_func=lambda x: "Instantânea" if x == 0 else f"Fade {x} ms", key=f"transition_{active_profile_id}")
-
-    salvar_config(config)
-
-    # Backup/importação/diagnóstico
-    if active_section == "backup":
-        b1, b2, b3 = st.columns(3)
-        with b1:
-            st.download_button(
-                "Exportar configuração",
-                data=json.dumps(config, ensure_ascii=False, indent=2),
-                file_name=f"monitoramento_config_v{APP_VERSION.replace('.', '_')}.json",
-                mime="application/json",
-                use_container_width=True,
-            )
-        with b2:
-            if BACKUP_PATH.exists() and st.button("Restaurar último backup", use_container_width=True, key="restore_backup_v23"):
-                try:
-                    restored = normalizar_config(json.loads(BACKUP_PATH.read_text(encoding="utf-8")))
-                    st.session_state.config_v23 = restored
-                    salvar_config(restored, force=True)
-                    st.toast("Backup restaurado.")
-                    st.rerun()
-                except Exception as exc:
-                    st.error(f"Falha ao restaurar backup: {exc}")
-        with b3:
-            if st.button("Restaurar perfil padrão SS", use_container_width=True, key="restore_profile_default_v23"):
-                novo = copy.deepcopy(_DEFAULT_PROFILE)
-                novo["id"] = active_profile_id
-                novo["nome"] = perfil["nome"]
-                # novos IDs evitam conflito com estados antigos do navegador
-                for p in novo["paineis"]:
-                    p["id"] = novo_id("p_")
-                config["profiles"][active_profile_id] = novo
-                salvar_config(config, force=True)
-                st.toast("Perfil restaurado para a configuração padrão.")
-                st.rerun()
-
-        imported = st.file_uploader("Importar configuração JSON", type=["json"], key="import_v23")
-        if imported is not None:
-            try:
-                raw_import = json.loads(imported.getvalue().decode("utf-8"))
-                erros, avisos = validar_config_importada(raw_import)
-                normalized_import = normalizar_config(raw_import) if not erros else None
-                if normalized_import:
-                    total_profiles = len(normalized_import["profiles"])
-                    total_panels = sum(len(p["paineis"]) for p in normalized_import["profiles"].values())
-                    total_active = sum(len(perfil_ativos(p)) for p in normalized_import["profiles"].values())
-                    st.info(f"Prévia da importação: {total_profiles} perfil(is), {total_panels} painel(is), {total_active} painel(is) ativo(s) com URL válida.")
-                for aviso in avisos[:8]:
-                    st.warning(aviso)
-                for erro in erros[:8]:
-                    st.error(erro)
-                if normalized_import and st.button("Confirmar importação", type="primary", use_container_width=True, key="confirm_import_v23"):
-                    st.session_state.config_v23 = normalized_import
-                    salvar_config(normalized_import, force=True)
-                    st.query_params["perfil"] = normalized_import["default_profile_id"]
-                    st.toast("Configuração importada.")
-                    st.rerun()
-            except Exception as exc:
-                st.error(f"JSON inválido: {exc}")
-
-        st.markdown("**Diagnóstico da configuração**")
-        st.write(f"Versão: `{APP_VERSION}` / esquema `{CONFIG_VERSION}`")
-        st.write(f"Perfil desta tela: `{perfil['nome']}` (`{active_profile_id}`)")
-        st.write(f"Perfil padrão global: `{config['profiles'][config['default_profile_id']]['nome']}`")
-        st.write(f"Painéis ativos com URL válida: `{len(ativos)}`")
-        st.write(f"URLs inválidas ativas: `{urls_invalidas}`")
-        st.write(f"Painéis mantidos abertos: `{preservados}`")
-        st.write(f"Persistência local: `{CONFIG_PATH.name}` com gravação atômica + backup")
-        st.info("Em hospedagens Streamlit com filesystem efêmero, o arquivo local pode ser recriado após redeploy/reinício da infraestrutura. O backup/exportação continua recomendado para mudanças importantes.")
-        if st.session_state.get("config_corrompida_backup"):
-            st.warning(f"Uma configuração corrompida foi preservada como `{st.session_state['config_corrompida_backup']}`.")
-        if st.session_state.get("ultimo_erro_persistencia"):
-            st.error(f"Último erro de persistência: {st.session_state['ultimo_erro_persistencia']}")
-
-    if active_section == "news":
-        st.markdown(
-            """
-            **3.4.0 – Alertas SIM e organização:** alerta detectado pelo backend passa a ter uma camada nativa sobre o próprio Streamlit, independente do iframe; diagnóstico da API SIM; configurações principais recolhíveis; e reinício completo passa a exigir habilitação explícita, evitando recriação inesperada dos painéis com F5 OFF.
-
-            **2.2 – Estabilidade e Operação:** perfil por URL/monitor, IDs permanentes, F5 temporário sem sobrescrever configuração, preservação independente de sessão, pré-carregamento inteligente, timer por horário-alvo, watchdog, status de conexão, reinício no fim do ciclo, diagnóstico expandido e gravação atômica com backup.
-
-            **2.3 – Experiência e Visual:** modo compacto/detalhado, barra superior/inferior, escala para TV, indicadores/relógio opcionais, transição configurável, badges de estado e refinamento completo na paleta `#0E5285`.
-
-            **2.8 – News Ticker S&S:** faixa corporativa global, notícias manuais com categoria, sistema, período de validade, link clicável em nova aba e ocultação automática quando não houver conteúdo ativo.
-
-            **2.4 – Primeiro Uso:** linguagem mais simples, guia inicial em 3 passos, resumo mais autoexplicativo, prévia da ordem de rotação, cards numerados, estados visuais claros, controles com tooltips, visualização compacta/detalhada e ação “Iniciar monitoramento” sempre acessível.
-
-            **2.4.1 – Refinamento visual:** cor ativa dos controles alinhada ao azul #0E5285, campos dos cards redistribuídos para evitar cortes e remoção da indicação F5 duplicada na linha do painel.
-
-            **2.4.2 – Preservação com F5 OFF:** painel com F5 desligado permanece em memória e reutiliza o mesmo iframe ao retornar.
-
-            **2.4.3 – Ajustes:** o botão ⚙ agora usa um link direto com `target="_top"`, permitindo sair do iframe e voltar à tela de configuração.
-
-            **2.4.4 – Ajustes robustos:** o botão ⚙ passa a enviar um evento do monitor para o Streamlit por `postMessage`; o Python recebe o evento, encerra a apresentação e retorna para a tela de ajustes. Isso elimina a dependência de `window.parent`, `window.top` e `target="_top"`, que podem ser bloqueados pelo sandbox do navegador.
-
-            **2.5 – Modo Monitor Profissional:** apresentação ocupa toda a área útil do navegador, removendo folgas do Streamlit; barra superior mais compacta com somente controles principais; Atualizar agora, Modo TV e Diagnóstico foram agrupados no menu `⋮`; contador ganhou maior destaque; status usa “1 de 3”; barra auto-ocultável deixa apenas uma faixa de 4 px para recuperação rápida dos controles; e o iframe monitorado ocupa 100% da área restante sem criar rolagem externa do Streamlit.
-
-            **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
-            
-            **3.14.3 – Refinamento da central:** removido o contêiner vazio abaixo do cabeçalho e unificada a ação “Iniciar monitoramento” em um único CTA funcional, eliminando botões duplicados.
-
-            **3.14.1 – Ajuste visual do cabeçalho:** logotipo do Grupo S&S exibido em formato horizontal, sem caixa, borda ou sombra, mantendo a nova central de configurações.
-
-            **3.14.0 – Nova central de configurações:** tela inicial redesenhada com identidade visual do Grupo S&S, cards-resumo, busca de configurações e navegação em grade; cada área abre isoladamente em largura total, reduzindo a poluição visual sem alterar as regras existentes.
-
-            **3.12.0 – Alerta simplificado:** usa somente a última entrega confirmada; o teste é executado localmente com os dados já carregados e não fica preso em “Consultando...”.
-
-            **3.11.0 – Correção estrutural SIM:** o Monitor SIM passa a ser reconhecido por tipo, nome ou URL. O polling da API e o F5 OFF não dependem mais de perfis antigos salvos como painel normal.
-
-            **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
-
-            **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
-            """
-        )
-
-    # CTA único e funcional. O card inteiro é clicável e substitui o antigo
-    # bloco decorativo + botão Streamlit + botão fixo duplicado.
     fixed_ativos = perfil_ativos(perfil)
     fixed_invalid = [p for p in perfil.get("paineis", []) if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
     perfil_nome_safe = html.escape(str(perfil.get("nome", "Perfil")))
     if fixed_ativos and not fixed_invalid:
-        launch_href = f'?perfil={active_profile_id}&amp;iniciado=true'
-        st.markdown(
-            f"""
-            <a class="cfg-launch-card" href="{launch_href}" target="_self" aria-label="Iniciar monitoramento">
-                <div class="cfg-launch-play">▶</div>
-                <div><div class="cfg-launch-kicker">Tudo configurado?</div><div class="cfg-launch-title">Iniciar monitoramento</div><div class="cfg-launch-sub">Aplique as configurações e inicie a rotação dos painéis.</div></div>
-            </a>
-            """,
-            unsafe_allow_html=True,
-        )
+        footer_cta = f'<a class="cfg-footer-start" href="?perfil={html.escape(active_profile_id, quote=True)}&amp;iniciado=true" target="_self"><span class="cfg-footer-play">▶</span><span>Iniciar monitoramento</span></a>'
     else:
-        st.markdown(
-            """
-            <div class="cfg-launch-card" style="opacity:.55;cursor:not-allowed" title="Corrija os painéis antes de iniciar">
-                <div class="cfg-launch-play">▶</div>
-                <div><div class="cfg-launch-kicker">Atenção</div><div class="cfg-launch-title">Iniciar monitoramento</div><div class="cfg-launch-sub">Corrija os painéis ativos com URL inválida antes de iniciar.</div></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        footer_cta = '<span class="cfg-footer-start disabled" title="Corrija os painéis antes de iniciar"><span class="cfg-footer-play">▶</span><span>Iniciar monitoramento</span></span>'
 
-    # Rodapé fixo mostra somente o estado de salvamento. A ação de iniciar
-    # existe uma única vez no CTA acima.
-    st.markdown(
-        f"""
-        <div class="ux24-fixed-bar">
-            <div class="ux24-fixed-inner" style="justify-content:flex-start">
-                <div class="ux24-fixed-copy"><strong>✓ Salvo automaticamente</strong><span> &nbsp;•&nbsp; Perfil: {perfil_nome_safe} &nbsp;•&nbsp; {len(fixed_ativos)} painel(is) ativo(s)</span></div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    st.markdown(f'''<a class="cfg-back-top" href="#config-top" title="Voltar ao topo">↑</a><div class="ux24-fixed-bar cfg-footer-v315"><div class="ux24-fixed-inner cfg-footer-inner-v315"><div class="cfg-footer-indicators"><span class="cfg-footer-pill ok"><b>✓</b> Salvo automaticamente</span><span class="cfg-footer-pill"><b>Perfil</b> {perfil_nome_safe}</span><span class="cfg-footer-pill"><b>{len(fixed_ativos)}</b> painéis ativos</span></div>{footer_cta}</div></div>''', unsafe_allow_html=True)
 # =========================================================
 # TELA 2 - APRESENTAÇÃO
 # =========================================================
