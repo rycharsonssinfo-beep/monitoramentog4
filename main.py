@@ -46,7 +46,8 @@ import streamlit.components.v1 as components
 # 3.3.3: polling SIM híbrido - servidor Streamlit + navegador, sem recarregar os iframes
 # 3.3.1: Mascotes por status nos alertas SIM - celebração (verde), trabalho (laranja) e preocupação (vermelho)
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
-# 3.4.1: alerta SIM nativo no DOM principal + fila controlada pelo fragmento + diagnóstico de eventos
+# 3.4.1: alerta SIM nativo no DOM principal + diagnóstico de eventos
+# 3.13.0: remove polling por st.fragment; polling SIM direto no navegador sem rerun do Streamlit
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
 # 3.7.0: eventos oficiais por entidade+data_envio, teste da última entrega real e F5 OFF persistente no navegador
@@ -56,7 +57,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.12.0"
+APP_VERSION = "3.13.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -3872,7 +3873,7 @@ else:
                 const frames = Array.from(document.querySelectorAll('iframe'));
                 const statusMessage = {
                     source: 'sim-monitor',
-                    sourceLabel: data.sourceLabel || 'API oficial · servidor Streamlit',
+                    sourceLabel: data.sourceLabel || 'endpoint visual · navegador',
                     serverError: data.error || '',
                     serverCounts: data.counts || null,
                     serverAlerts: data.alerts || [],
@@ -3909,132 +3910,46 @@ else:
     sim_poll_cfg = normalizar_sim_alerts(config.get("sim_alerts"))
     sim_server_interval = max(5, min(120, int(sim_poll_cfg.get("poll_seconds", 15))))
 
-    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and hasattr(st, "fragment"):
-        @st.fragment(run_every=max(5, sim_server_interval))
-        def _sim_server_poll_fragment():
-            now_ts = time.time()
-            last_poll_key = f"_sim_api_last_poll_ts_v341_{active_profile_id}"
-            last_payload_key = f"_sim_api_last_payload_v341_{active_profile_id}"
-            last_alerts_key = f"_sim_api_last_alerts_v341_{active_profile_id}"
-            last_poll = float(st.session_state.get(last_poll_key, 0) or 0)
-            should_poll = (now_ts - last_poll) >= sim_server_interval or last_payload_key not in st.session_state
-
-            if should_poll:
-                result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
-                alerts = []
-                grouped = {"states": [], "ano": None, "mes": None}
-                if result.get("ok"):
-                    grouped = agrupar_sim_submissions_servidor(result.get("data"))
-                    yy, mm = _sim_api_competencia(sim_poll_cfg)
-                    alerts = detectar_nova_ultima_entrega(result.get("data"), sim_poll_cfg, active_profile_id, yy, mm)
-                yy, mm = _sim_api_competencia(sim_poll_cfg)
-                latest_delivery = _sim_latest_confirmed_delivery_raw(result.get("data"), yy, mm) if result.get("ok") else None
-                st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest_delivery
-                st.session_state[f"_sim_latest_delivery_v370_{active_profile_id}"] = latest_delivery
-                counts = {
-                    "complete": sum(1 for x in grouped.get("states", []) if x.get("state") == "complete"),
-                    "partial": sum(1 for x in grouped.get("states", []) if x.get("state") == "partial"),
-                    "pending": sum(1 for x in grouped.get("states", []) if x.get("state") == "pending"),
-                }
-                runtime_status = {
-                    "ok": bool(result.get("ok")),
-                    "error": str(result.get("error") or ""),
-                    "fetched_at": str(result.get("fetched_at") or datetime.now().isoformat()),
-                    "ano": grouped.get("ano"),
-                    "mes": grouped.get("mes"),
-                    "counts": counts,
-                    "rows": sum(int(x.get("total") or 0) for x in grouped.get("states", [])),
-                    "delivered_rows": sum(int(x.get("delivered") or 0) for x in grouped.get("states", [])),
-                    "alerts_pending": len(alerts),
-                    "url": str(result.get("url") or ""),
-                    "baseline_persistente": True,
-                }
-                st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = runtime_status
-                st.session_state[last_poll_key] = now_ts
-                st.session_state[last_payload_key] = {"result": result, "grouped": grouped, "counts": counts}
-                st.session_state[last_alerts_key] = alerts
-            else:
-                payload_cache = st.session_state.get(last_payload_key) or {}
-                result = payload_cache.get("result") or {"ok": False, "error": "Aguardando próxima leitura"}
-                grouped = payload_cache.get("grouped") or {"states": [], "ano": None, "mes": None}
-                counts = payload_cache.get("counts") or {"complete": 0, "partial": 0, "pending": 0}
-                alerts = st.session_state.get(last_alerts_key) or []
-                latest_delivery = st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}")
-
-            ui_seen_key = f"_sim_direct_seen_v341_{active_profile_id}"
-            ui_queue_key = f"_sim_direct_queue_v341_{active_profile_id}"
-            ui_current_key = f"_sim_direct_current_v341_{active_profile_id}"
-            seen = set(st.session_state.get(ui_seen_key, []))
-            queue = st.session_state.get(ui_queue_key, [])
-            if not isinstance(queue, list):
-                queue = []
-            current = st.session_state.get(ui_current_key)
-
-            direct_tests_key = f"_sim_direct_tests_v341_{active_profile_id}"
-            direct_tests = st.session_state.pop(direct_tests_key, []) if direct_tests_key in st.session_state else []
-            candidate_alerts = [dict(a, alert_type="complete") for a in (list(alerts) + (direct_tests if isinstance(direct_tests, list) else [])) if isinstance(a, dict)]
-            queued_keys = {str(x.get("alert_key")) for x in queue if isinstance(x, dict)}
-            current_alert_key = str(current.get("alert_key")) if isinstance(current, dict) else ""
-            for alert in candidate_alerts:
-                if not isinstance(alert, dict):
-                    continue
-                key = str(alert.get("alert_key") or "")
-                if not key or key in seen or key in queued_keys or key == current_alert_key:
-                    continue
-                queue.append(alert)
-                queued_keys.add(key)
-
-            if isinstance(current, dict) and float(current.get("expires_at", 0) or 0) <= now_ts:
-                seen.add(str(current.get("alert_key") or ""))
-                current = None
-            if current is None and queue:
-                alert = queue.pop(0)
-                current = dict(alert)
-                current["expires_at"] = now_ts + max(3, min(30, int(sim_poll_cfg.get("display_seconds", 8) or 8)))
-
-            st.session_state[ui_seen_key] = sorted(x for x in seen if x)[-1000:]
-            st.session_state[ui_queue_key] = queue
-            st.session_state[ui_current_key] = current
-
-            if isinstance(current, dict):
-                st.markdown(_sim_direct_overlay_html(current, sim_poll_cfg), unsafe_allow_html=True)
-
-            sim_status_broadcaster(
-                key=f"sim_status_broadcaster_{active_profile_id}",
-                data={
-                    "alerts": alerts, "counts": counts, "municipalities": grouped.get("states", []), "ano": grouped.get("ano"), "mes": grouped.get("mes"),
-                    "latestDelivery": latest_delivery,
-                    "sourceLabel": "API oficial · servidor Streamlit", "error": result.get("error", ""),
-                },
-            )
-            sim_native_alert_overlay(
-                key=f"sim_native_alert_overlay_{active_profile_id}",
-                data={
-                    "profileId": active_profile_id,
-                    "alerts": alerts,
-                    "settings": sim_poll_cfg,
-                    "mascots": _sim_native_mascots_data() if alerts else {},
-                },
-            )
-
-        _sim_server_poll_fragment()
-
-    # Garante que o botão "Testar última entrega confirmada" tenha um registro real
-    # já no primeiro carregamento da apresentação, sem depender do broadcaster do fragmento.
-    _latest_key = f"_sim_latest_delivery_v370_{active_profile_id}"
-    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)) and not st.session_state.get(_latest_key):
+    # v3.13: não existe polling periódico via Streamlit durante a apresentação.
+    # Isso evita reruns que podem remontar componentes/iframes. Fazemos somente
+    # uma leitura inicial no backend; as leituras seguintes são feitas pelo
+    # JavaScript da apresentação diretamente no endpoint visual do Monitor SIM.
+    _sim_initial_error = ""
+    _sim_initial_latest = None
+    _sim_initial_grouped = {"states": [], "ano": None, "mes": None}
+    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)):
         try:
             _initial_result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
             if _initial_result.get("ok"):
                 _yy, _mm = _sim_api_competencia(sim_poll_cfg)
-                _initial_grouped = agrupar_sim_submissions_servidor(_initial_result.get("data"))
-                _initial_latest = _sim_latest_confirmed_delivery_raw(_initial_result.get("data"), _yy, _mm)
-                st.session_state[_latest_key] = _initial_latest
-                st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = _initial_latest
-                if _initial_grouped.get("states"):
-                    st.session_state[f"_sim_initial_grouped_v380_{active_profile_id}"] = _initial_grouped
-        except Exception:
-            pass
+                _sim_initial_grouped = agrupar_sim_submissions_servidor(_initial_result.get("data"))
+                _sim_initial_latest = _sim_latest_confirmed_delivery_raw(_initial_result.get("data"), _yy, _mm)
+                st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = _sim_initial_latest
+                st.session_state[f"_sim_latest_delivery_v370_{active_profile_id}"] = _sim_initial_latest
+                st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
+                    "ok": True,
+                    "error": "",
+                    "fetched_at": str(_initial_result.get("fetched_at") or datetime.now().isoformat()),
+                    "ano": _yy,
+                    "mes": _mm,
+                    "rows": len(_sim_rows_competencia(_initial_result.get("data"), _yy, _mm)),
+                    "delivered_rows": sum(1 for r in _sim_rows_competencia(_initial_result.get("data"), _yy, _mm) if _sim_server_delivered(r)),
+                    "url": str(_initial_result.get("url") or ""),
+                    "polling": "browser",
+                }
+            else:
+                _sim_initial_error = str(_initial_result.get("error") or "Falha na leitura inicial da API SIM")
+                st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
+                    "ok": False, "error": _sim_initial_error, "polling": "browser"
+                }
+        except Exception as _exc:
+            _sim_initial_error = str(_exc)[:180]
+            st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
+                "ok": False, "error": _sim_initial_error, "polling": "browser"
+            }
+
+
+    # A leitura inicial já foi realizada acima; não há polling Python periódico.
 
     iframe_checks = verificar_paineis_iframe(paineis_ativos)
     paineis_payload = []
@@ -4055,7 +3970,7 @@ else:
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
-        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", "")},
+        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1]},
         "settings": {
             "generalReloadMs": 0,
             "fullRestartEnabled": False,
@@ -4665,15 +4580,95 @@ else:
             function simApiUrl(p){
                 try{ const u=new URL(p.link); return `${u.origin}/sim_submissions`; }catch(e){ return ''; }
             }
+            function simCompetence(){
+                const yy=parseInt(simAlertSettings.api_year||0,10);
+                const mm=parseInt(simAlertSettings.api_month||0,10);
+                if(yy>2000 && mm>=1 && mm<=12)return {ano:yy,mes:mm};
+                const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1);
+                return {ano:d.getFullYear(),mes:d.getMonth()+1};
+            }
+            function simRowsFromPayload(data){
+                if(Array.isArray(data))return data;
+                if(data && typeof data==='object'){
+                    for(const k of ['results','data','items','submissions']) if(Array.isArray(data[k])) return data[k];
+                }
+                return [];
+            }
+            function simRowDelivered(row){
+                if(!row || typeof row!=='object')return false;
+                if(String(row.data_envio||'').trim())return true;
+                const st=String(row.status||'').trim().toLowerCase().replaceAll(' ','_');
+                return ['entregue','no_prazo','enviado','confirmado','ok','true','1'].includes(st);
+            }
+            function latestDeliveryFromVisual(data,ano,mes){
+                let latest=null, latestStamp='';
+                for(const row of simRowsFromPayload(data)){
+                    if(Number(row?.ano)!==Number(ano)||Number(row?.mes)!==Number(mes))continue;
+                    const ent=row?.monitored_entity||{};
+                    const rawMon=ent?.monitorado;
+                    if(rawMon===false || String(rawMon||'').toLowerCase()==='false')continue;
+                    if(!simRowDelivered(row))continue;
+                    const stamp=String(row.updated_at||row.ultima_verificacao_em||row.data_envio||'').trim();
+                    if(!stamp || stamp<=latestStamp)continue;
+                    latestStamp=stamp;
+                    const desc=String(ent.descricao||ent.name||'').replace(/\s+/g,' ').trim();
+                    latest={
+                        alert_type:'complete', title:'Nova entrega SIM confirmada', municipio:'',
+                        entity_key:String(ent.id||row.monitored_entity_id||row.id||''),
+                        entity_description:desc, entidade:`${desc||'Entrega confirmada'} · Competência ${String(mes).padStart(2,'0')}/${ano}`,
+                        status:String(row.status||''), updated_at:String(row.updated_at||''),
+                        ultima_verificacao_em:String(row.ultima_verificacao_em||''), data_envio:String(row.data_envio||''),
+                        event_stamp:stamp, ano:Number(ano), mes:Number(mes)
+                    };
+                }
+                return latest;
+            }
+            function simLatestRef(latest){
+                if(!latest)return '';
+                return `${String(latest.entity_key||'')}|${String(latest.event_stamp||latest.updated_at||latest.ultima_verificacao_em||latest.data_envio||'')}`;
+            }
+            async function fetchLatestVisualDelivery(){
+                const p=simPanel();
+                if(!p)throw new Error('Monitor SIM não encontrado');
+                const {ano,mes}=simCompetence();
+                const base=simApiUrl(p);
+                if(!base)throw new Error('URL do Monitor SIM inválida');
+                const url=`${base}?ano=${encodeURIComponent(ano)}&mes=${encodeURIComponent(mes)}&monitorado=true&_=${Date.now()}`;
+                const resp=await fetch(url,{method:'GET',credentials:'include',cache:'no-store',headers:{'Accept':'application/json'}});
+                if(!resp.ok)throw new Error(`endpoint visual HTTP ${resp.status}`);
+                const data=await resp.json();
+                const latest=latestDeliveryFromVisual(data,ano,mes);
+                if(!latest)throw new Error(`nenhuma entrega confirmada em ${String(mes).padStart(2,'0')}/${ano}`);
+                return latest;
+            }
             async function pollSimDeliveries(){
                 if(!simAlertSettings.enabled)return;
-                const p=simPanel(); if(!p){setSimPollStatus('sem painel','Monitor SIM não encontrado');return;}
-                if(simPollStatus==='aguardando')setSimPollStatus('aguardando','API oficial · aguardando leitura do servidor');
+                try{
+                    const latest=await fetchLatestVisualDelivery();
+                    simAlertSettings.latest_delivery=latest;
+                    const {ano,mes}=simCompetence();
+                    const storageKey=`monitor_sim_latest_visual_v313_${profile.id}_${ano}_${String(mes).padStart(2,'0')}`;
+                    const ref=simLatestRef(latest);
+                    let prev=''; try{prev=localStorage.getItem(storageKey)||'';}catch(e){}
+                    if(prev && ref && prev!==ref){
+                        enqueueSimAlert({...latest,alert_key:`visual-${ano}-${mes}-${ref}`,alert_type:'complete'});
+                        log(`Nova entrega detectada pelo endpoint visual: ${latest.entity_description||latest.entity_key}`);
+                    }
+                    if(ref){try{localStorage.setItem(storageKey,ref);}catch(e){}}
+                    setSimPollStatus('ativo',`endpoint visual · ${String(mes).padStart(2,'0')}/${ano}`);
+                }catch(e){
+                    const msg=String(e?.message||e||'falha desconhecida');
+                    setSimPollStatus('erro',msg.slice(0,150));
+                    log(`Polling SIM direto falhou: ${msg}`);
+                }
             }
             function startSimDeliveryPolling(){
                 clearInterval(simPollTimer); simPollTimer=null;
                 if(!simAlertSettings.enabled){setSimPollStatus('desativado');return;}
-                setSimPollStatus('aguardando','API oficial · servidor Streamlit');
+                const every=Math.max(5,Math.min(120,parseInt(simAlertSettings.poll_seconds||15,10)));
+                setSimPollStatus('aguardando','endpoint visual · navegador');
+                pollSimDeliveries();
+                simPollTimer=setInterval(pollSimDeliveries,every*1000);
             }
             function testarAlertaSIM(type='complete'){
                 const p=simPanel();
@@ -4682,22 +4677,31 @@ else:
                 else enqueueSimAlert({alert_key:`test-green-${Date.now()}`,alert_type:'complete',municipio:'Município de Teste',entidade:'2 entidades entregues · Competência de teste'},true);
                 log(`Teste manual de alerta SIM (${type})${p?' · '+p.nome:''}`);
             }
-            function testarUltimaEntregaSIM(){
-                const latest=simAlertSettings.latest_delivery||null;
-                if(latest && (latest.entity_description || latest.entidade || latest.municipio)){
-                    const testAlert={...latest, alert_key:`test-latest-${Date.now()}`, alert_type:'complete'};
-                    if(!testAlert.title) testAlert.title='Nova entrega SIM confirmada';
-                    if(!testAlert.entidade) testAlert.entidade=String(testAlert.entity_description||'Entrega confirmada');
-                    enqueueSimAlert(testAlert,true);
-                    restartNotice.style.display='none';
-                    log(`Teste da última entrega: ${testAlert.entidade||testAlert.municipio||'entrega confirmada'}`);
-                    return;
-                }
+            async function testarUltimaEntregaSIM(){
                 restartNotice.style.display='block';
-                restartNotice.textContent='Última entrega ainda não disponível no monitor. Verifique a conexão da API SIM nos ajustes.';
+                restartNotice.textContent='Consultando a última entrega confirmada...';
                 clearTimeout(window.__simTestNoticeTimer);
-                window.__simTestNoticeTimer=setTimeout(()=>{restartNotice.style.display='none';},5000);
-                log('Teste da última entrega: nenhuma entrega disponível no payload atual');
+                try{
+                    let latest=null;
+                    try{ latest=await fetchLatestVisualDelivery(); }catch(fetchErr){
+                        latest=simAlertSettings.latest_delivery||null;
+                        if(!latest) throw fetchErr;
+                    }
+                    if(!latest || !(latest.entity_description || latest.entidade || latest.municipio)) throw new Error('nenhuma entrega válida encontrada');
+                    simAlertSettings.latest_delivery=latest;
+                    const testAlert={...latest, alert_key:`test-latest-${Date.now()}`, alert_type:'complete'};
+                    if(!testAlert.title)testAlert.title='Nova entrega SIM confirmada';
+                    if(!testAlert.entidade)testAlert.entidade=String(testAlert.entity_description||'Entrega confirmada');
+                    restartNotice.style.display='none';
+                    enqueueSimAlert(testAlert,true);
+                    log(`Teste da última entrega: ${testAlert.entidade||testAlert.municipio||'entrega confirmada'}`);
+                }catch(e){
+                    const serverErr=String(simAlertSettings.server_error||'').trim();
+                    const detail=String(e?.message||e||'').trim();
+                    restartNotice.textContent=`Teste indisponível: ${detail}${serverErr?` · Backend: ${serverErr}`:''}`;
+                    window.__simTestNoticeTimer=setTimeout(()=>{restartNotice.style.display='none';},8000);
+                    log(`Teste da última entrega falhou: ${detail}${serverErr?' · '+serverErr:''}`);
+                }
             }
             function resetSimDeliveryBaseline(){
                 try{
