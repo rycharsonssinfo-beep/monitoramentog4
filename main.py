@@ -58,7 +58,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.16.0"
+APP_VERSION = "3.16.1"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -1088,11 +1088,22 @@ def _sim_api_token(base_url, credentials, force_refresh=False):
 
     login_url = f"{base_url.rstrip('/')}/api/login"
     payload = json.dumps({"user": {"email": email, "password": senha}}, ensure_ascii=False).encode("utf-8")
-    req = Request(login_url, data=payload, headers={
+    portal_origin = base_url.rstrip("/")
+    browser_headers = {
         "Content-Type": "application/json",
-        "Accept": "application/json",
-        "User-Agent": f"SS-Monitor/{APP_VERSION}",
-    }, method="POST")
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/141.0.0.0 Safari/537.36"
+        ),
+        "Origin": portal_origin,
+        "Referer": portal_origin + "/sim-submissions",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
+    req = Request(login_url, data=payload, headers=browser_headers, method="POST")
     try:
         with urlopen(req, timeout=10, context=ssl.create_default_context()) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
@@ -1109,9 +1120,32 @@ def _sim_api_token(base_url, credentials, force_refresh=False):
             st.session_state[cache_key] = {"token": token, "expires_at": now_ts + (9.5 * 3600)}
             return token, ""
     except HTTPError as exc:
-        if getattr(exc, "code", None) == 401:
-            return "", "Login SIM recusado (HTTP 401)"
-        return "", f"Login SIM HTTP {getattr(exc, 'code', '')}".strip()
+        code = getattr(exc, "code", None)
+        try:
+            raw_error = exc.read().decode("utf-8", errors="replace").strip()
+        except Exception:
+            raw_error = ""
+        detail = ""
+        if raw_error:
+            try:
+                error_json = json.loads(raw_error)
+                detail = str(
+                    error_json.get("error")
+                    or error_json.get("message")
+                    or error_json.get("detail")
+                    or ""
+                ).strip()
+            except Exception:
+                detail = re.sub(r"\s+", " ", raw_error)[:180].strip()
+        server_name = str(getattr(exc, "headers", {}).get("Server", "") or "").strip()
+        if code == 401:
+            return "", "Login SIM recusado (HTTP 401)" + (f" · {detail}" if detail else "")
+        message = f"Login SIM HTTP {code or ''}".strip()
+        if detail:
+            message += f" · {detail}"
+        elif server_name:
+            message += f" · Servidor: {server_name}"
+        return "", message
     except Exception as exc:
         return "", f"Falha no login SIM: {str(exc)[:140]}"
 
@@ -1627,9 +1661,21 @@ def buscar_sim_submissions_servidor(panel_url, cfg):
             token, login_error = _sim_api_token(base_url, credentials, force_refresh=attempt > 0)
             if not token:
                 return {"ok": False, "error": login_error or "Não foi possível obter token SIM", "data": None}
+            portal_origin = base_url.rstrip("/")
             req = Request(api_url, headers={
-                "User-Agent": f"SS-Monitor/{APP_VERSION}", "Accept": "application/json", "Cache-Control": "no-cache",
-                "X-API-KEY": credentials.get("api_key", ""), "Authorization": f"Bearer {token}",
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/141.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Origin": portal_origin,
+                "Referer": portal_origin + "/sim-submissions",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+                "X-API-KEY": credentials.get("api_key", ""),
+                "Authorization": f"Bearer {token}",
             }, method="GET")
             try:
                 with urlopen(req, timeout=10, context=ssl.create_default_context()) as resp:
