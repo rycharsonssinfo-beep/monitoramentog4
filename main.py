@@ -49,6 +49,7 @@ import streamlit.components.v1 as components
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # 3.4.1: alerta SIM nativo no DOM principal + diagnóstico de eventos
 # 3.13.0: remove polling por st.fragment; polling SIM direto no navegador sem rerun do Streamlit
+# 3.16.3: estabilidade da apresentação - sem st.fragment periódico; pausa persistente; Modo Foco removido
 # 3.16.0: alerta SIM azul + polling isolado pelo backend liberado, sem F5/recriação do iframe
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
@@ -59,7 +60,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.16.2"
+APP_VERSION = "3.16.3"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -2554,57 +2555,7 @@ if not st.session_state.iniciado:
     preservados = sum(1 for p in paineis if p.get("preserve_session", False) or not p.get("reload_enabled", True))
     invalid_active = [p for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
 
-    # Estado do calibrador visual do Modo Foco.
-    if "focus_calibration_panel" not in st.session_state:
-        st.session_state["focus_calibration_panel"] = None
-    if "focus_calibration_last_event" not in st.session_state:
-        st.session_state["focus_calibration_last_event"] = None
-
-    # Ponte invisível que recebe o ponto escolhido no calibrador visual.
-    if hasattr(st.components, "v2"):
-        focus_calibration_bridge = st.components.v2.component(
-            "focus_calibration_bridge_v261",
-            html='<span aria-hidden="true"></span>',
-            css=":host { display: none !important; }",
-            js=r'''export default function(component) {
-                const { setTriggerValue } = component;
-                const onMessage = (event) => {
-                    const msg = event.data;
-                    if (!msg || msg.source !== "monitoramentog4-focus-calibration") return;
-                    if (msg.action !== "save" && msg.action !== "cancel") return;
-                    setTriggerValue("focus_event", JSON.stringify(msg));
-                };
-                window.addEventListener("message", onMessage);
-                return () => window.removeEventListener("message", onMessage);
-            }''',
-        )
-        focus_bridge_result = focus_calibration_bridge(
-            key=f"focus_calibration_bridge_{active_profile_id}",
-            on_focus_event_change=lambda: None,
-        )
-        raw_focus_event = getattr(focus_bridge_result, "focus_event", None)
-        if raw_focus_event:
-            try:
-                focus_event = json.loads(raw_focus_event)
-                event_id = f"{focus_event.get('panelId')}:{focus_event.get('action')}:{focus_event.get('sentAt')}"
-                if event_id != st.session_state.get("focus_calibration_last_event"):
-                    st.session_state["focus_calibration_last_event"] = event_id
-                    event_panel_id = str(focus_event.get("panelId") or "")
-                    target_panel = next((p for p in paineis if p.get("id") == event_panel_id), None)
-                    if focus_event.get("action") == "save" and target_panel is not None:
-                        target_panel["focus_x"] = _clamp_int(focus_event.get("x", 50), 50, 0, 100)
-                        target_panel["focus_y"] = _clamp_int(focus_event.get("y", 50), 50, 0, 100)
-                        target_panel["focus_preset"] = "custom"
-                        target_panel["focus_enabled"] = True
-                        st.session_state["focus_calibration_panel"] = None
-                        salvar_config(config, force=True)
-                        st.toast(f"Área de foco salva: X={target_panel['focus_x']}% · Y={target_panel['focus_y']}%.")
-                        st.rerun()
-                    elif focus_event.get("action") == "cancel":
-                        st.session_state["focus_calibration_panel"] = None
-                        st.rerun()
-            except Exception:
-                pass
+    # v3.16.3: Modo Foco removido. Campos legados são ignorados para compatibilidade.
 
     def iniciar_monitoramento_ux24():
         atuais = perfil_ativos(perfil)
@@ -2790,11 +2741,7 @@ if not st.session_state.iniciado:
                 ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
                 f5_badge = '<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>'
                 preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if (painel.get("preserve_session", False) or not painel.get("reload_enabled", True)) else ''
-                focus_badge = (
-                    f'<span class="badge badge-amber">FOCO {int(painel.get("focus_seconds", 20))}s · {int(painel.get("focus_zoom", 175))}%</span>'
-                    if painel.get("focus_enabled", False)
-                    else ''
-                )
+                focus_badge = ''
                 iframe_badge = (
                     '<span class="badge badge-gray">AVISO S&S</span>'
                     if painel.get("iframe_mode", "auto") == "fallback"
@@ -2888,7 +2835,7 @@ if not st.session_state.iniciado:
                     # Configurações avançadas: abertas somente na visualização detalhada.
                     if st.toggle(
                         "Configurações avançadas",
-                        value=(perfil.get("config_view") == "detailed" or st.session_state.get("focus_calibration_panel") == pid),
+                        value=(perfil.get("config_view") == "detailed"),
                         key=f"advanced_visible_{pid}",
                         help="Mostra ou oculta as opções avançadas deste painel.",
                     ):
@@ -2969,169 +2916,8 @@ if not st.session_state.iniciado:
                             else:
                                 st.info("Este painel exibirá diretamente o aviso personalizado S&S, sem tentar incorporar a página.")
 
-                        st.markdown("---")
-                        st.markdown("**Modo Foco**")
-                        st.caption(
-                            "Amplia automaticamente uma região do painel nos segundos finais, sem acessar o conteúdo interno do site e sem executar F5."
-                        )
-
-                        f1, f2, f3, f4, f5 = st.columns([1.05, 1.15, 1.0, 1.45, 1.3])
-                        with f1:
-                            painel["focus_enabled"] = st.toggle(
-                                "Ativar foco",
-                                value=bool(painel.get("focus_enabled", False)),
-                                key=f"focus_enabled_{pid}",
-                                help="Quando ativado, o painel aplica zoom e centraliza a região configurada perto do fim do tempo de exibição.",
-                            )
-
-                        max_focus_seconds = max(1, int(painel.get("tempo", 20)) - 1)
-                        painel["focus_seconds"] = max(1, min(int(painel.get("focus_seconds", 20)), max_focus_seconds))
-                        focus_seconds_key = f"focus_seconds_{pid}"
-                        if focus_seconds_key in st.session_state:
-                            st.session_state[focus_seconds_key] = max(1, min(int(st.session_state[focus_seconds_key]), max_focus_seconds))
-
-                        with f2:
-                            painel["focus_seconds"] = st.number_input(
-                                "Iniciar quando faltarem (s)",
-                                min_value=1,
-                                max_value=max_focus_seconds,
-                                value=int(painel.get("focus_seconds", min(20, max_focus_seconds))),
-                                step=1,
-                                key=focus_seconds_key,
-                                disabled=not painel["focus_enabled"],
-                                help="Ex.: em um painel de 50s, usar 20 faz o foco começar quando o contador chegar a 00:20.",
-                            )
-
-                        with f3:
-                            zoom_options = [125, 150, 175, 200, 225, 250]
-                            current_zoom = int(painel.get("focus_zoom", 175))
-                            if current_zoom not in zoom_options:
-                                current_zoom = 175
-                            painel["focus_zoom"] = st.selectbox(
-                                "Zoom",
-                                zoom_options,
-                                index=zoom_options.index(current_zoom),
-                                format_func=lambda x: f"{x}%",
-                                key=f"focus_zoom_{pid}",
-                                disabled=not painel["focus_enabled"],
-                            )
-
-                        preset_options = ["custom", "sim_right", "right", "center", "left", "top_right", "bottom_right"]
-                        preset_labels = {
-                            "custom": "Personalizada",
-                            "sim_right": "Direita · SIM",
-                            "right": "Direita",
-                            "center": "Centro",
-                            "left": "Esquerda",
-                            "top_right": "Superior direita",
-                            "bottom_right": "Inferior direita",
-                        }
-                        with f4:
-                            current_preset = painel.get("focus_preset", "custom")
-                            if current_preset not in preset_options:
-                                current_preset = "custom"
-                            painel["focus_preset"] = st.selectbox(
-                                "Área de foco",
-                                preset_options,
-                                index=preset_options.index(current_preset),
-                                format_func=lambda x: preset_labels[x],
-                                key=f"focus_preset_{pid}",
-                                disabled=not painel["focus_enabled"],
-                                help="Direita · SIM usa X=87% e Y=52%, ideal para a coluna de Últimas Entregas mostrada no Monitor SIM.",
-                            )
-
-                        with f5:
-                            transition_options = [0, 300, 600, 1000]
-                            current_transition = int(painel.get("focus_transition_ms", 600))
-                            if current_transition not in transition_options:
-                                current_transition = 600
-                            painel["focus_transition_ms"] = st.selectbox(
-                                "Transição",
-                                transition_options,
-                                index=transition_options.index(current_transition),
-                                format_func=lambda x: "Instantânea" if x == 0 else f"Suave · {x} ms",
-                                key=f"focus_transition_{pid}",
-                                disabled=not painel["focus_enabled"],
-                            )
-
-                        preset_coords = {
-                            "sim_right": (87, 52),
-                            "right": (82, 50),
-                            "center": (50, 50),
-                            "left": (18, 50),
-                            "top_right": (86, 30),
-                            "bottom_right": (86, 70),
-                        }
-
-                        if painel.get("focus_preset") in preset_coords:
-                            painel["focus_x"], painel["focus_y"] = preset_coords[painel["focus_preset"]]
-                            c1, c2, c3 = st.columns([1, 1, 3])
-                            with c1:
-                                st.number_input(
-                                    "Posição horizontal (X)", 0, 100, int(painel["focus_x"]), 1,
-                                    key=f"focus_x_preset_{pid}_{painel['focus_preset']}", disabled=True
-                                )
-                            with c2:
-                                st.number_input(
-                                    "Posição vertical (Y)", 0, 100, int(painel["focus_y"]), 1,
-                                    key=f"focus_y_preset_{pid}_{painel['focus_preset']}", disabled=True
-                                )
-                            with c3:
-                                st.info(
-                                    f"Área selecionada: **{preset_labels[painel['focus_preset']]}** · ponto central X={painel['focus_x']}% / Y={painel['focus_y']}%. "
-                                    "Você pode usar o seletor visual abaixo para substituir este preset por um ponto personalizado."
-                                )
-                        else:
-                            c1, c2, c3 = st.columns([1, 1, 3])
-                            with c1:
-                                painel["focus_x"] = st.number_input(
-                                    "Posição horizontal (X)", 0, 100, int(painel.get("focus_x", 50)), 1,
-                                    key=f"focus_x_{pid}", disabled=not painel["focus_enabled"],
-                                    help="0% = extremo esquerdo; 50% = centro; 100% = extremo direito.",
-                                )
-                            with c2:
-                                painel["focus_y"] = st.number_input(
-                                    "Posição vertical (Y)", 0, 100, int(painel.get("focus_y", 50)), 1,
-                                    key=f"focus_y_{pid}", disabled=not painel["focus_enabled"],
-                                    help="0% = topo; 50% = centro; 100% = parte inferior.",
-                                )
-                            with c3:
-                                st.info(
-                                    f"Ponto atual: **X={int(painel.get('focus_x', 50))}% · Y={int(painel.get('focus_y', 50))}%**. "
-                                    "Os campos continuam disponíveis para ajuste técnico, mas o seletor visual é a forma recomendada."
-                                )
-
-                        visual_left, visual_right = st.columns([1.35, 3.65])
-                        with visual_left:
-                            calibrator_supported = hasattr(st.components, "v2")
-                            if st.button(
-                                "🎯 Selecionar visualmente",
-                                key=f"open_focus_calibrator_{pid}",
-                                use_container_width=True,
-                                disabled=(not painel["focus_enabled"] or not url_valida(painel.get("link", "")) or not calibrator_supported),
-                                help="Abre uma prévia do painel. Clique diretamente na informação que deseja levar para o centro do zoom.",
-                            ):
-                                st.session_state["focus_calibration_panel"] = pid
-                                st.rerun()
-                        with visual_right:
-                            if not hasattr(st.components, "v2"):
-                                st.warning("A calibração visual requer Streamlit 1.54 ou superior.")
-                            elif not painel["focus_enabled"]:
-                                st.caption("Ative o Modo Foco para habilitar a seleção visual da área.")
-                            elif not url_valida(painel.get("link", "")):
-                                st.caption("Informe uma URL válida para abrir a calibração visual.")
-                            else:
-                                st.caption(
-                                    "Clique em **Selecionar visualmente**, marque o ponto diretamente sobre o painel e use **Testar zoom** antes de salvar. "
-                                    "Ao salvar, a área passa automaticamente para **Personalizada**."
-                                )
-
-                        if st.session_state.get("focus_calibration_panel") == pid:
-                            st.markdown("##### Calibração visual da área de foco")
-                            st.caption(
-                                "A camada de seleção fica sobre o painel apenas durante a calibração. Ela não acessa o HTML interno do sistema externo."
-                            )
-                            render_focus_calibrator(painel)
+                        # v3.16.3: Modo Foco removido da configuração.
+                        painel["focus_enabled"] = False
 
                     if pending_delete == pid:
                         st.warning(f"Excluir o painel **{painel['nome']}**? Esta ação remove apenas este cadastro do perfil.")
@@ -3715,6 +3501,8 @@ if not st.session_state.iniciado:
         if active_section == "news":
             st.markdown(
                 """
+                **3.16.3 – Estabilidade da apresentação:** remove o polling periódico por `st.fragment` durante o monitoramento para impedir remontagem da apresentação; preserva a pausa no navegador e remove o Modo Foco automático/manual da interface e da execução.
+
                 **3.16.2 – Diagnóstico de rede:** adiciona consulta do IP público de saída do backend, com atualização manual e bloco copiável para conferência em WAF/firewall.
 
                 **3.4.0 – Alertas SIM e organização:** alerta detectado pelo backend passa a ter uma camada nativa sobre o próprio Streamlit, independente do iframe; diagnóstico da API SIM; configurações principais recolhíveis; e reinício completo passa a exigir habilitação explícita, evitando recriação inesperada dos painéis com F5 OFF.
@@ -3737,8 +3525,6 @@ if not st.session_state.iniciado:
 
                 **2.5 – Modo Monitor Profissional:** apresentação ocupa toda a área útil do navegador, removendo folgas do Streamlit; barra superior mais compacta com somente controles principais; Atualizar agora, Modo TV e Diagnóstico foram agrupados no menu `⋮`; contador ganhou maior destaque; status usa “1 de 3”; barra auto-ocultável deixa apenas uma faixa de 4 px para recuperação rápida dos controles; e o iframe monitorado ocupa 100% da área restante sem criar rolagem externa do Streamlit.
 
-                **2.6 – Modo Foco:** cada painel pode aplicar zoom automático nos segundos finais; tempo de início, zoom, ponto X/Y e transição são configuráveis; inclui preset “Direita · SIM” (X=87%, Y=52%) para destacar a área de Últimas Entregas; o foco não executa F5 e reutiliza o mesmo iframe; também é possível testar o foco manualmente pelo menu `⋮` durante a apresentação.
-            
                 **3.15.0 – Central refinada:** cabeçalho compacto, perfil integrado, cards-resumo clicáveis, navegação agrupada, busca operacional, badges de estado, conteúdo aberto logo abaixo da linha selecionada, rodapé operacional, responsividade e microinterações.
 
                 **3.14.3 – Refinamento da central:** removido o contêiner vazio abaixo do cabeçalho e unificada a ação “Iniciar monitoramento” em um único CTA funcional, eliminando botões duplicados.
@@ -3750,8 +3536,6 @@ if not st.session_state.iniciado:
                 **3.12.0 – Alerta simplificado:** usa somente a última entrega confirmada; o teste é executado localmente com os dados já carregados e não fica preso em “Consultando...”.
 
                 **3.11.0 – Correção estrutural SIM:** o Monitor SIM passa a ser reconhecido por tipo, nome ou URL. O polling da API e o F5 OFF não dependem mais de perfis antigos salvos como painel normal.
-
-                **2.6.1 – Calibração Visual do Foco:** botão “Selecionar visualmente” abre o próprio painel com uma mira clicável; você escolhe a região diretamente na tela, testa o enquadramento com o zoom configurado e salva X/Y automaticamente, sem precisar calcular percentuais manualmente.
 
                 **2.4.2 – Correções operacionais:** F5 OFF agora mantém o iframe automaticamente em memória, evitando recarregar ao retornar ao painel; o botão Ajustes usa navegação robusta para sair do iframe e voltar à tela de configuração.
                 """
@@ -3848,7 +3632,7 @@ if not st.session_state.iniciado:
 
     nav_items = [
         {"key":"profiles","icon":"profiles","tone":"blue","group":"Monitoramento","title":"Perfis de monitoramento","desc":"Gerencie perfis e defina qual conjunto de painéis cada monitor utiliza.","status":f"{profiles_count} perfil(is)","state":"info","keywords":"perfil monitor tv"},
-        {"key":"panels","icon":"panels","tone":"green","group":"Monitoramento","title":"Painéis e ordem de exibição","desc":"Configure painéis, ordem, tempo, F5 e comportamento de cada tela.","status":f"{len(ativos)}/{len(paineis)} ativos","state":"ok","keywords":"painel ordem f5 tempo iframe sessão foco"},
+        {"key":"panels","icon":"panels","tone":"green","group":"Monitoramento","title":"Painéis e ordem de exibição","desc":"Configure painéis, ordem, tempo, F5 e comportamento de cada tela.","status":f"{len(ativos)}/{len(paineis)} ativos","state":"ok","keywords":"painel ordem f5 tempo iframe sessão"},
         {"key":"stability","icon":"stability","tone":"blue","group":"Monitoramento","title":"Estabilidade e operação","desc":"Parâmetros de desempenho, preservação de sessão e operação do painel.","status":"SIM · F5 OFF","state":"ok","keywords":"f5 estabilidade sessão desempenho watchdog"},
         {"key":"visual","icon":"visual","tone":"purple","group":"Monitoramento","title":"Experiência e visual","desc":"Personalize escala, controles, transições, relógio e indicadores.","status":f"Escala {perfil.get('ui_scale',100)}%","state":"info","keywords":"visual escala tv relógio barra transição"},
         {"key":"ticker","icon":"ticker","tone":"purple","group":"Comunicação","title":"Faixas corporativas · Atualizações + Agenda","desc":"Gerencie as faixas corporativas exibidas no rodapé do monitoramento.","status":f"{faixas_ativas} ativa(s)","state":"ok" if faixas_ativas else "muted","keywords":"ticker news faixa rodapé agenda atualizações"},
@@ -4254,98 +4038,26 @@ else:
                     "rows": len(_sim_rows_competencia(_initial_result.get("data"), _yy, _mm)),
                     "delivered_rows": sum(1 for r in _sim_rows_competencia(_initial_result.get("data"), _yy, _mm) if _sim_server_delivered(r)),
                     "url": str(_initial_result.get("url") or ""),
-                    "polling": "browser",
+                    "polling": "initial_backend",
                 }
             else:
                 _sim_initial_error = str(_initial_result.get("error") or "Falha na leitura inicial da API SIM")
                 st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
-                    "ok": False, "error": _sim_initial_error, "polling": "browser"
+                    "ok": False, "error": _sim_initial_error, "polling": "initial_backend"
                 }
         except Exception as _exc:
             _sim_initial_error = str(_exc)[:180]
             st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
-                "ok": False, "error": _sim_initial_error, "polling": "browser"
+                "ok": False, "error": _sim_initial_error, "polling": "initial_backend"
             }
 
 
-    # v3.16: polling isolado da API SIM pelo backend. O fragmento reroda somente
-    # esta integração invisível; o components.html que contém os painéis fica fora
-    # do fragmento e não é recriado, preservando o F5 OFF do Monitor SIM.
-    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)):
-        @st.fragment(run_every=sim_server_interval)
-        def _sim_backend_alert_fragment_v316():
-            alerts = []
-            latest = None
-            grouped = {"states": [], "ano": None, "mes": None}
-            error = ""
-            yy, mm = _sim_api_competencia(sim_poll_cfg)
-            try:
-                result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
-                if result.get("ok"):
-                    data = result.get("data")
-                    grouped = agrupar_sim_submissions_servidor(data)
-                    latest = _sim_latest_confirmed_delivery_raw(data, yy, mm)
-                    alerts = detectar_nova_entrega_simples(data, sim_poll_cfg, active_profile_id, yy, mm)
-                    st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest
-                    rows = _sim_rows_competencia(data, yy, mm)
-                    st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
-                        "ok": True,
-                        "error": "",
-                        "fetched_at": str(result.get("fetched_at") or datetime.now().isoformat()),
-                        "ano": yy,
-                        "mes": mm,
-                        "rows": len(rows),
-                        "delivered_rows": sum(1 for r in rows if _sim_server_delivered(r)),
-                        "url": str(result.get("url") or ""),
-                        "polling": "backend_fragment",
-                    }
-                else:
-                    error = str(result.get("error") or "Falha na API SIM")
-                    st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
-                        "ok": False, "error": error, "polling": "backend_fragment"
-                    }
-            except Exception as exc:
-                error = str(exc)[:180]
-                st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
-                    "ok": False, "error": error, "polling": "backend_fragment"
-                }
+    # v3.16.3: não executar polling periódico com st.fragment durante a apresentação.
+    # Qualquer rerun periódico do Streamlit pode desmontar o componente principal,
+    # fazendo o navegador sair da tela cheia e reiniciando pausa/temporizadores.
+    # O alerta SIM usa o polling no navegador quando disponível; a leitura backend
+    # permanece somente na carga inicial/ações manuais, sem rerun automático.
 
-            # Overlay automático no DOM principal: aparece por cima do painel/TV.
-            sim_native_alert_overlay(
-                data={
-                    "profileId": active_profile_id,
-                    "alerts": alerts,
-                    "settings": sim_poll_cfg,
-                    "mascots": _sim_alert_mascots_data(),
-                },
-                key=f"sim_native_alert_runtime_v316_{active_profile_id}",
-            )
-
-            # Atualiza a última entrega/status dentro da apresentação sem refazer iframe.
-            counts = None
-            if grouped.get("states"):
-                counts = {
-                    "complete": sum(1 for x in grouped["states"] if x.get("state") == "complete"),
-                    "partial": sum(1 for x in grouped["states"] if x.get("state") == "partial"),
-                    "pending": sum(1 for x in grouped["states"] if x.get("state") == "pending"),
-                }
-            sim_status_broadcaster(
-                data={
-                    "sourceLabel": "API oficial · backend Streamlit",
-                    "error": error,
-                    "counts": counts,
-                    "alerts": [],
-                    "latestDelivery": latest,
-                    "municipalities": [],
-                    "ano": yy,
-                    "mes": mm,
-                },
-                key=f"sim_status_runtime_v316_{active_profile_id}",
-            )
-
-        _sim_backend_alert_fragment_v316()
-
-    # A apresentação principal permanece fora do fragmento acima.
 
     iframe_checks = verificar_paineis_iframe(paineis_ativos)
     paineis_payload = []
@@ -4358,6 +4070,8 @@ else:
             item["reload_enabled"] = False
             item["reload_strategy"] = "on_show"
             item["preserve_session"] = True
+        # v3.16.3: Modo Foco descontinuado.
+        item["focus_enabled"] = False
         item["iframe_check"] = iframe_checks.get(item.get("id"), {"blocked": False, "status": "unknown", "reason": "Compatibilidade não verificada."})
         paineis_payload.append(item)
 
@@ -4366,7 +4080,7 @@ else:
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
-        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": True},
+        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": False},
         "settings": {
             "generalReloadMs": 0,
             "fullRestartEnabled": False,
@@ -4430,7 +4144,7 @@ else:
         <div id="control-shell">
             <div id="toolbar">
                 <div class="toolbar-left"><span id="state-dot" class="state-dot"></span><span id="panel-name">Carregando...</span><span id="panel-order"></span><span id="network-status" class="status-text">· Online</span></div>
-                <div class="toolbar-center"><div id="dots"></div><span id="countdown">--:--</span><span id="focus-status" class="focus-chip hidden-item">FOCO</span><span id="runtime-status" class="status-text"></span></div>
+                <div class="toolbar-center"><div id="dots"></div><span id="countdown">--:--</span><span id="focus-status" class="hidden-item"></span><span id="runtime-status" class="status-text"></span></div>
                 <div class="toolbar-right">
                     <button class="btn" onclick="mudarTela(-1)" title="Painel anterior (←)">←</button>
                     <button class="btn" id="pause-btn" onclick="alternarPausa()" title="Pausar/retomar (Espaço)">Ⅱ <span class="label">Pausar</span></button>
@@ -4441,7 +4155,6 @@ else:
                         <button class="btn" id="more-btn" onclick="toggleMoreMenu(event)" title="Mais controles">⋮</button>
                         <div class="more-menu" id="more-menu">
                             <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
-                            <button class="menu-item" id="focus-btn" onclick="alternarFocoManual(); closeMoreMenu();" title="Testar ou sair do Modo Foco neste painel">◎ Foco agora</button>
                             <button class="menu-item" id="ticker-btn" onclick="alternarTickerTemporario(); closeMoreMenu();" title="Mostrar ou ocultar temporariamente a faixa de atualizações">▤ Ocultar faixa</button>
                             <button class="menu-item" onclick="testarUltimaEntregaSIM(); closeMoreMenu();" title="Exibir um alerta verde usando a última entrega confirmada pela API oficial">✓ Testar última entrega confirmada</button>
                             <button class="menu-item" id="sim-alert-reset-btn" onclick="resetSimDeliveryBaseline(); closeMoreMenu();" title="Limpar a referência local dos status municipais">↺ Reiniciar leitura SIM</button>
@@ -4586,6 +4299,9 @@ else:
             const simAlertDiag = document.getElementById('d-sim-alert');
 
             const indexKey = `monitor_v23_panel_${profile.id}`;
+            const pauseStateKey = `monitor_pause_state_v3163_${profile.id}`;
+            let restorePaused = false;
+            try { restorePaused = localStorage.getItem(pauseStateKey) === '1'; } catch(e) {}
             const savedPanelId = localStorage.getItem(indexKey);
             if (savedPanelId) {
                 const found = panels.findIndex(p => p.id === savedPanelId);
@@ -5417,6 +5133,7 @@ else:
 
             function alternarPausa(){
                 paused=!paused;
+                try{ localStorage.setItem(pauseStateKey, paused ? '1' : '0'); }catch(e){}
                 if(paused){ pauseRemainingMs=Math.max(1000,targetEndMs-Date.now()); stopTimers(); pauseBtn.classList.add('pause'); pauseBtn.innerHTML='▶ <span class="label">Retomar</span>'; countdown.textContent='PAUSA'; progress.style.transition='none'; runtimeStatus.textContent='Pausado'; log('Rotação pausada'); }
                 else { pauseBtn.classList.remove('pause'); pauseBtn.innerHTML='Ⅱ <span class="label">Pausar</span>'; runtimeStatus.textContent=''; startTimerWith(pauseRemainingMs||Math.max(5,panels[index].tempo)*1000); log('Rotação retomada'); }
             }
@@ -5521,7 +5238,9 @@ else:
             renderTicker();
             startSimDeliveryPolling();
             updateClock(); setInterval(updateClock,1000); setInterval(updateDiag,1000); updateNetwork(); startWatchdog();
-            log(`Aplicação iniciada - perfil ${profile.nome}`); log(`Painéis ativos: ${panels.length}`); afterIndexChange('Inicial'); showControls();
+            log(`Aplicação iniciada - perfil ${profile.nome}`); log(`Painéis ativos: ${panels.length}`); afterIndexChange('Inicial');
+            if(restorePaused && !paused){ alternarPausa(); log('Pausa restaurada do navegador'); }
+            showControls();
             if(settings.kioskDefault)setTimeout(()=>alternarModoTV(true),600);
         </script>
     </body>
