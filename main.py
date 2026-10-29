@@ -48,6 +48,7 @@ import streamlit.components.v1 as components
 # 3.3.2: Alertas sonoros SIM via Web Audio API - volume e sons individuais por status
 # 3.4.1: alerta SIM nativo no DOM principal + diagnóstico de eventos
 # 3.13.0: remove polling por st.fragment; polling SIM direto no navegador sem rerun do Streamlit
+# 3.16.0: alerta SIM azul + polling isolado pelo backend liberado, sem F5/recriação do iframe
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
 # 3.7.0: eventos oficiais por entidade+data_envio, teste da última entrega real e F5 OFF persistente no navegador
@@ -57,7 +58,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.15.2"
+APP_VERSION = "3.16.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -104,15 +105,15 @@ def _sim_direct_overlay_html(alert, cfg):
     details.append(f"Competência {comp}")
     resumo = html.escape(" · ".join(details))
     return f"""
-    <div style="position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(7,26,38,.58);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);">
-      <div style="width:min(1040px,92vw);min-height:430px;border-radius:26px;background:#effdf5;border:3px solid #22c55e;box-shadow:0 28px 80px rgba(0,0,0,.34);display:grid;grid-template-columns:minmax(250px,360px) minmax(0,1fr);align-items:center;gap:26px;padding:34px 42px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+    <div style="position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(7,20,52,.60);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);">
+      <div style="width:min(1040px,92vw);min-height:430px;border-radius:26px;background:#F4F7FF;border:3px solid #1E50C8;box-shadow:0 28px 80px rgba(0,0,0,.34);display:grid;grid-template-columns:minmax(250px,360px) minmax(0,1fr);align-items:center;gap:26px;padding:34px 42px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
         <div style="display:flex;align-items:center;justify-content:center"><img src="{mascot}" alt="Mascote S&S comemorando nova entrega SIM" style="width:100%;max-width:340px;max-height:340px;object-fit:contain;display:block"></div>
         <div>
-          <div style="display:inline-flex;align-items:center;border-radius:999px;padding:7px 13px;font-size:15px;font-weight:900;letter-spacing:.2px;background:white;color:#166534;border:1px solid #22c55e55">✓ NOVA ENTREGA REGISTRADA</div>
-          <div style="margin-top:15px;font-size:46px;line-height:1.08;font-weight:950;color:#075b42">{title}</div>
-          <div style="margin-top:13px;font-size:23px;font-weight:800;color:#166534">{resumo}</div>
-          <div style="margin-top:18px;font-size:15px;font-weight:700;color:#64748b">Monitor SIM · API oficial</div>
-          <div style="height:5px;border-radius:99px;background:#dcfce7;margin-top:24px;overflow:hidden"><div style="height:100%;width:100%;background:#22c55e"></div></div>
+          <div style="display:inline-flex;align-items:center;border-radius:999px;padding:7px 13px;font-size:15px;font-weight:900;letter-spacing:.2px;background:#EAF0FF;color:#173F9E;border:1px solid #9CB5F3">✓ NOVA ENTREGA REGISTRADA</div>
+          <div style="margin-top:15px;font-size:46px;line-height:1.08;font-weight:950;color:#173F9E">{title}</div>
+          <div style="margin-top:13px;font-size:23px;font-weight:800;color:#1E50C8">{resumo}</div>
+          <div style="margin-top:18px;font-size:15px;font-weight:700;color:#64748b">Monitor SIM · Nova entrega confirmada</div>
+          <div style="height:5px;border-radius:99px;background:#DCE6FF;margin-top:24px;overflow:hidden"><div style="height:100%;width:100%;background:#1E50C8"></div></div>
         </div>
       </div>
     </div>
@@ -3448,7 +3449,7 @@ if not st.session_state.iniciado:
             with snd2:
                 sim_alerts["audio_volume"] = st.slider("Volume", 0, 100, int(sim_alerts.get("audio_volume", 60)), 5, key="sim_alert_audio_volume_v390")
             with snd3:
-                sim_alerts["audio_green"] = st.toggle("Som verde", value=bool(sim_alerts.get("audio_green", True)), key="sim_alert_audio_green_v390")
+                sim_alerts["audio_green"] = st.toggle("Som do alerta", value=bool(sim_alerts.get("audio_green", True)), key="sim_alert_audio_green_v390")
 
             st.caption("Fonte: API oficial `/api/sim_submissions`. O alerta acompanha novas entregas por entidade. A API oficial aceita `data_envio` preenchida mesmo quando `status` usa código; o endpoint visual também aceita `entregue`/`no_prazo`.")
             st.info("No menu ⋮ fica apenas **Testar última entrega confirmada**.")
@@ -3676,7 +3677,7 @@ if not st.session_state.iniciado:
         {"section":"panels","icon":"panels","value":len(paineis),"label":"Painéis configurados","sub":f"{len(ativos)} ativo(s) na rotação","tone":"green"},
         {"section":"ticker","icon":"ticker","value":faixas_ativas,"label":"Faixas corporativas","sub":"Atualizações + Agenda S&S","tone":"purple"},
         {"section":"integration","icon":"integration","value":integracoes_ativas,"label":"Integrações ativas","sub":"Portal e Monitor SIM","tone":"orange"},
-        {"section":"sim_alert","icon":"sim_alert","value":alertas_ativos,"label":"Alertas ativos","sub":"Nova Entrega SIM","tone":"red"},
+        {"section":"sim_alert","icon":"sim_alert","value":alertas_ativos,"label":"Alertas ativos","sub":"Nova Entrega SIM","tone":"blue"},
     ]
 
     if hasattr(st.components, "v2"):
@@ -3726,7 +3727,7 @@ if not st.session_state.iniciado:
         {"key":"updates","icon":"updates","tone":"blue","group":"Comunicação","title":"Atualizações S&S · conteúdo e prévia","desc":"Defina o conteúdo das atualizações e visualize como será apresentado na faixa.","status":f"{updates_count} ativa(s)","state":"info","keywords":"notícia atualização preview portal"},
         {"key":"agenda","icon":"agenda","tone":"green","group":"Comunicação","title":"Agenda S&S","desc":"Ajuste compromissos, período de exibição e conteúdo da Agenda S&S.","status":f"{agenda_count} compromisso(s)","state":"info","keywords":"agenda compromisso visita reunião"},
         {"key":"integration","icon":"integration","tone":"orange","group":"Integrações e alertas","title":"Integração automática · S&S Conecta","desc":"Configure a sincronização automática de atualizações e compromissos do portal.","status":f"{integracoes_ativas} ativa(s)","state":"ok" if integracoes_ativas else "warn","keywords":"portal conecta integração sincronizar"},
-        {"key":"sim_alert","icon":"sim_alert","tone":"red","group":"Integrações e alertas","title":"Alerta de Nova Entrega SIM","desc":"Configure o alerta visual e sonoro para novas entregas do Monitor SIM.","status":"Ativo" if alertas_ativos else "Desativado","state":"ok" if alertas_ativos else "muted","keywords":"sim alerta som entrega tce api"},
+        {"key":"sim_alert","icon":"sim_alert","tone":"blue","group":"Integrações e alertas","title":"Alerta de Nova Entrega SIM","desc":"Configure o alerta visual e sonoro para novas entregas do Monitor SIM.","status":"Ativo" if alertas_ativos else "Desativado","state":"ok" if alertas_ativos else "muted","keywords":"sim alerta som entrega tce api"},
         {"key":"backup","icon":"backup","tone":"blue","group":"Administração","title":"Backup, restauração e diagnóstico","desc":"Exporte, restaure, importe configurações e consulte o diagnóstico do ambiente.","status":"Disponível","state":"info","keywords":"backup importar exportar restaurar diagnóstico json"},
         {"key":"news","icon":"news","tone":"green","group":"Administração","title":"Novidades desta versão","desc":"Confira melhorias e mudanças implementadas na versão atual do painel.","status":f"NOVO · v{APP_VERSION}","state":"new","keywords":"versão novidade changelog novo"},
     ]
@@ -3969,8 +3970,8 @@ else:
                 if (overlay) return overlay;
                 overlay = document.createElement('div');
                 overlay.id = `ss-sim-native-overlay-${profileId}`;
-                overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(7,26,38,.58);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;';
-                overlay.innerHTML = '<div class="ss-sim-card" style="width:min(1040px,92vw);min-height:430px;border-radius:26px;background:#fff;border:3px solid #22c55e;box-shadow:0 28px 80px rgba(0,0,0,.34);display:grid;grid-template-columns:minmax(250px,360px) minmax(0,1fr);align-items:center;gap:26px;padding:34px 42px;overflow:hidden;position:relative"><div style="display:flex;align-items:center;justify-content:center"><img class="ss-sim-img" alt="Mascote S&S" style="width:100%;max-width:340px;max-height:340px;object-fit:contain;display:block"></div><div><div class="ss-sim-kicker" style="display:inline-flex;align-items:center;border-radius:999px;padding:7px 13px;font-size:15px;font-weight:900;letter-spacing:.2px;background:#dcfce7;color:#166534">✓ Entrega concluída</div><div class="ss-sim-title" style="margin-top:15px;font-size:46px;line-height:1.08;font-weight:950;color:#075b42"></div><div class="ss-sim-sub" style="margin-top:13px;font-size:23px;font-weight:800;color:#0f766e"></div><div class="ss-sim-source" style="margin-top:18px;font-size:15px;font-weight:700;color:#64748b">Monitor SIM · API oficial</div><div style="height:5px;border-radius:99px;background:#e2e8f0;margin-top:24px;overflow:hidden"><div class="ss-sim-progress" style="height:100%;width:100%;transform-origin:left;background:#22c55e"></div></div></div></div>';
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(7,20,52,.60);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;';
+                overlay.innerHTML = '<div class="ss-sim-card" style="width:min(1040px,92vw);min-height:430px;border-radius:26px;background:linear-gradient(135deg,#FFFFFF,#F1F5FF);border:3px solid #1E50C8;box-shadow:0 28px 80px rgba(0,0,0,.34);display:grid;grid-template-columns:minmax(250px,360px) minmax(0,1fr);align-items:center;gap:26px;padding:34px 42px;overflow:hidden;position:relative"><div style="display:flex;align-items:center;justify-content:center"><img class="ss-sim-img" alt="Mascote S&S" style="width:100%;max-width:340px;max-height:340px;object-fit:contain;display:block"></div><div><div class="ss-sim-kicker" style="display:inline-flex;align-items:center;border-radius:999px;padding:7px 13px;font-size:15px;font-weight:900;letter-spacing:.2px;background:#EAF0FF;color:#173F9E;border:1px solid #AFC2F3">✓ NOVA ENTREGA REGISTRADA</div><div class="ss-sim-title" style="margin-top:15px;font-size:46px;line-height:1.08;font-weight:950;color:#173F9E"></div><div class="ss-sim-sub" style="margin-top:13px;font-size:23px;font-weight:800;color:#1E50C8"></div><div class="ss-sim-source" style="margin-top:18px;font-size:15px;font-weight:700;color:#64748b">Monitor SIM · API oficial</div><div style="height:5px;border-radius:99px;background:#e2e8f0;margin-top:24px;overflow:hidden"><div class="ss-sim-progress" style="height:100%;width:100%;transform-origin:left;background:#1E50C8"></div></div></div></div>';
                 document.body.appendChild(overlay);
                 return overlay;
             };
@@ -4018,11 +4019,13 @@ else:
                 const sub = overlay.querySelector('.ss-sim-sub');
                 const source = overlay.querySelector('.ss-sim-source');
                 const progress = overlay.querySelector('.ss-sim-progress');
-                let border='#22c55e', bg='#dcfce7', fg='#166534', titleColor='#075b42', subColor='#0f766e', kick='✓ ENTREGA CONCLUÍDA';
-                if (type==='partial') { border='#f59e0b'; bg='#fef3c7'; fg='#92400e'; titleColor='#9a5707'; subColor='#9a5707'; kick='◐ ENTREGA PARCIAL'; }
-                if (type==='deadline') { border='#ef4444'; bg='#fee2e2'; fg='#991b1b'; titleColor='#991b1b'; subColor='#b91c1c'; kick='⚠ PENDÊNCIA DE ENVIO'; }
+                let border='#1E50C8', bg='#EAF0FF', fg='#173F9E', titleColor='#173F9E', subColor='#1E50C8', kick='✓ NOVA ENTREGA REGISTRADA';
+                // v3.16: identidade visual unificada no novo azul do Monitor SIM.
+                // Tipos legados continuam aceitos, mas usam o mesmo tema visual azul.
+                if (type==='partial') kick='◐ ATUALIZAÇÃO DE ENTREGA';
+                if (type==='deadline') kick='⚠ STATUS DO SIM';
                 card.style.borderColor=border; kicker.style.background=bg; kicker.style.color=fg; title.style.color=titleColor; sub.style.color=subColor; progress.style.background=border;
-                kicker.textContent=kick; title.textContent=String(a.title || a.municipio || 'Município'); sub.textContent=String(a.entidade || ''); source.textContent='Monitor SIM · API oficial';
+                kicker.textContent=kick; title.textContent=String(a.title || a.municipio || 'Município'); sub.textContent=String(a.entidade || ''); source.textContent='Monitor SIM · Nova entrega confirmada';
                 const mascot = mascots[type] || mascots.complete || ''; if (mascot) img.src=mascot;
                 overlay.style.display='flex'; overlay.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'});
                 playTone(type);
@@ -4037,11 +4040,8 @@ else:
                 const key = String(alert?.alert_key || ''); if (!key || seen.has(key)) continue;
                 if (runtime.queue.some(x=>String(x.alert_key||'')===key)) continue;
                 const type=String(alert.alert_type||'complete');
-                const municipality=String(alert.municipio||'Município');
-                let template=String(settings.title_template||'SIM do município {municipio} entregue');
-                if(type==='partial') template=String(settings.partial_title_template||'SIM do município {municipio} parcialmente entregue');
-                if(type==='deadline') template=String(settings.deadline_title_template||'SIM do município {municipio} ainda não foi entregue');
-                runtime.queue.push({...alert,title:template.replaceAll('{municipio}',municipality)});
+                const displayTitle=String(alert.title||settings.title_template||'Nova entrega SIM confirmada').trim();
+                runtime.queue.push({...alert,title:displayTitle});
             }
             showNext();
         }
@@ -4140,7 +4140,84 @@ else:
             }
 
 
-    # A leitura inicial já foi realizada acima; não há polling Python periódico.
+    # v3.16: polling isolado da API SIM pelo backend. O fragmento reroda somente
+    # esta integração invisível; o components.html que contém os painéis fica fora
+    # do fragmento e não é recriado, preservando o F5 OFF do Monitor SIM.
+    if sim_panel_for_server and bool(sim_poll_cfg.get("enabled", True)):
+        @st.fragment(run_every=sim_server_interval)
+        def _sim_backend_alert_fragment_v316():
+            alerts = []
+            latest = None
+            grouped = {"states": [], "ano": None, "mes": None}
+            error = ""
+            yy, mm = _sim_api_competencia(sim_poll_cfg)
+            try:
+                result = buscar_sim_submissions_servidor(sim_panel_for_server.get("link", ""), sim_poll_cfg)
+                if result.get("ok"):
+                    data = result.get("data")
+                    grouped = agrupar_sim_submissions_servidor(data)
+                    latest = _sim_latest_confirmed_delivery_raw(data, yy, mm)
+                    alerts = detectar_nova_entrega_simples(data, sim_poll_cfg, active_profile_id, yy, mm)
+                    st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = latest
+                    rows = _sim_rows_competencia(data, yy, mm)
+                    st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
+                        "ok": True,
+                        "error": "",
+                        "fetched_at": str(result.get("fetched_at") or datetime.now().isoformat()),
+                        "ano": yy,
+                        "mes": mm,
+                        "rows": len(rows),
+                        "delivered_rows": sum(1 for r in rows if _sim_server_delivered(r)),
+                        "url": str(result.get("url") or ""),
+                        "polling": "backend_fragment",
+                    }
+                else:
+                    error = str(result.get("error") or "Falha na API SIM")
+                    st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
+                        "ok": False, "error": error, "polling": "backend_fragment"
+                    }
+            except Exception as exc:
+                error = str(exc)[:180]
+                st.session_state[f"_sim_api_runtime_status_{active_profile_id}"] = {
+                    "ok": False, "error": error, "polling": "backend_fragment"
+                }
+
+            # Overlay automático no DOM principal: aparece por cima do painel/TV.
+            sim_native_alert_overlay(
+                data={
+                    "profileId": active_profile_id,
+                    "alerts": alerts,
+                    "settings": sim_poll_cfg,
+                    "mascots": _sim_alert_mascots_data(),
+                },
+                key=f"sim_native_alert_runtime_v316_{active_profile_id}",
+            )
+
+            # Atualiza a última entrega/status dentro da apresentação sem refazer iframe.
+            counts = None
+            if grouped.get("states"):
+                counts = {
+                    "complete": sum(1 for x in grouped["states"] if x.get("state") == "complete"),
+                    "partial": sum(1 for x in grouped["states"] if x.get("state") == "partial"),
+                    "pending": sum(1 for x in grouped["states"] if x.get("state") == "pending"),
+                }
+            sim_status_broadcaster(
+                data={
+                    "sourceLabel": "API oficial · backend Streamlit",
+                    "error": error,
+                    "counts": counts,
+                    "alerts": [],
+                    "latestDelivery": latest,
+                    "municipalities": [],
+                    "ano": yy,
+                    "mes": mm,
+                },
+                key=f"sim_status_runtime_v316_{active_profile_id}",
+            )
+
+        _sim_backend_alert_fragment_v316()
+
+    # A apresentação principal permanece fora do fragmento acima.
 
     iframe_checks = verificar_paineis_iframe(paineis_ativos)
     paineis_payload = []
@@ -4161,7 +4238,7 @@ else:
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
-        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1]},
+        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": True},
         "settings": {
             "generalReloadMs": 0,
             "fullRestartEnabled": False,
@@ -4203,11 +4280,22 @@ else:
             .iframe-panel{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;background:#fff;transition:opacity var(--fade) ease}.iframe-panel.active{visibility:visible;opacity:1;pointer-events:auto;z-index:2}.iframe-panel.preload{visibility:hidden;opacity:0;z-index:1}.iframe-panel iframe{width:100%;height:100%;border:0;display:block;background:#fff;transform-origin:0 0;will-change:transform}.focus-chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#F59E0B;color:#fff;font-size:.79em;font-weight:850;letter-spacing:.2px}.focus-chip.hidden-item{display:none!important}
             .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#F5F9FC;color:#334155;z-index:3;font-size:13px;text-align:center;padding:20px}.loading-overlay small{color:#64748B;max-width:620px}.loading-overlay.hidden{display:none}.overlay-actions{display:flex;gap:8px;margin-top:5px;flex-wrap:wrap;justify-content:center}.overlay-btn{border:1px solid #C7D9E7;background:#fff;color:#0E5285;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:750}.overlay-btn.primary{background:#0E5285;color:#fff;border-color:#0E5285}.blocked-wrap{width:min(920px,94vw);display:grid;grid-template-columns:minmax(190px,290px) minmax(0,1fr);gap:28px;align-items:center;background:#fff;border:1px solid #D7E5F0;border-radius:18px;padding:28px 32px;box-shadow:0 16px 40px rgba(14,82,133,.12);text-align:left}.blocked-mascot{width:100%;max-height:330px;object-fit:contain;display:block}.blocked-copy h2{margin:0 0 8px;color:#0E5285;font-size:24px;line-height:1.15}.blocked-copy p{margin:0 0 14px;color:#52677A;font-size:14px;line-height:1.5}.blocked-details{display:grid;gap:7px;margin:15px 0;padding:13px 14px;background:#F3F7FB;border-radius:10px;color:#475569;font-size:12px}.blocked-details b{color:#16324A}.blocked-url{word-break:break-all}.blocked-reason{color:#8A5A00}.blocked-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;background:#FFF4D6;color:#8A5A00;font-weight:800;font-size:11px;margin-bottom:9px}.blocked-fallback-icon{font-size:76px;line-height:1}.blocked-actions{display:flex;gap:9px;flex-wrap:wrap}.blocked-actions a{text-decoration:none}.blocked-countdown{font-size:12px;color:#64748B;margin-top:10px}@media(max-width:720px){.blocked-wrap{grid-template-columns:1fr;text-align:center;padding:20px}.blocked-mascot{max-height:210px}.blocked-actions{justify-content:center}}
             #news-ticker{position:fixed;left:0;bottom:0;width:100%;height:var(--ticker-h);z-index:9998;background:var(--blue);color:#fff;display:none;align-items:center;overflow:hidden;border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -2px 8px rgba(0,0,0,.16);font-size:var(--ticker-font,19px);transition:background .28s ease}#news-ticker.agenda-mode{background:#0B7A75}body.ticker-on #news-ticker{display:flex}.ticker-label{height:100%;display:flex;align-items:center;gap:8px;padding:0 16px;background:var(--blue-dark);font-weight:900;white-space:nowrap;flex:none;z-index:2;box-shadow:4px 0 10px rgba(9,61,99,.28);transition:background .28s ease;font-size:.95em}#news-ticker.agenda-mode .ticker-label{background:#075A56}.ticker-led{width:9px;height:9px;border-radius:50%;background:#59D38C;box-shadow:0 0 0 2px rgba(89,211,140,.16);flex:none}#news-ticker.agenda-mode .ticker-led{background:#FFD166;box-shadow:0 0 0 2px rgba(255,209,102,.18)}.ticker-viewport{height:100%;flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;position:relative}.ticker-track{display:flex;align-items:center;width:max-content;height:100%;will-change:transform;animation:ticker-scroll var(--ticker-duration,30s) linear infinite}.ticker-group{display:flex;align-items:center;height:100%;white-space:nowrap;flex:none}.ticker-item{height:100%;display:inline-flex;align-items:center;gap:9px;padding:0 20px;color:#F8FBFE;text-decoration:none;font-weight:650;border-right:1px solid rgba(255,255,255,.17);transition:background .12s ease}.ticker-item[href]{cursor:pointer}.ticker-item[href]:hover{background:rgba(255,255,255,.13);color:#fff}.ticker-category,.ticker-agenda-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:.72em;font-weight:900;letter-spacing:.2px}.ticker-category.novo{background:#DDF4FF;color:#075985}.ticker-category.melhoria{background:#DCFCE7;color:#166534}.ticker-category.aviso{background:#FEF3C7;color:#92400E}.ticker-category.importante,.ticker-category.correcao{background:#FEE2E2;color:#991B1B}.ticker-agenda-badge{background:#E6FFFA;color:#075A56}.ticker-agenda-mode{background:#FEF3C7;color:#7C4A03}.ticker-system{font-weight:900;color:#fff}.ticker-link{opacity:.9;font-size:.9em}.ticker-viewport.pause-hover:hover .ticker-track{animation-play-state:paused}@keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--ticker-distance, 600px)))}}body.bar-bottom #diag{bottom:calc(50px + var(--ticker-h))!important}body.bar-top #restart-notice{bottom:calc(10px + var(--ticker-h))!important}body.bar-bottom #reveal-strip{bottom:var(--ticker-h)!important}@media(max-width:720px){#news-ticker{font-size:15px}.ticker-label{padding:0 9px}.ticker-label-text{display:none}.ticker-item{padding:0 12px}}
-            #sim-delivery-alert{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:34px;background:radial-gradient(circle at center,rgba(13,101,74,.38),rgba(3,18,31,.78));backdrop-filter:blur(3px);pointer-events:none;opacity:0}.sim-alert-show{display:flex!important;animation:simAlertBackdrop .34s ease forwards}.sim-alert-card{width:min(1180px,94vw);min-height:min(560px,78vh);display:grid;grid-template-columns:minmax(280px,430px) minmax(0,1fr);align-items:center;gap:28px;padding:34px 42px;border-radius:28px;border:3px solid rgba(74,222,128,.78);background:linear-gradient(135deg,rgba(250,255,252,.98),rgba(233,252,240,.98));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(74,222,128,.12);transform:scale(.92) translateY(18px);opacity:0;animation:simAlertCard .42s cubic-bezier(.2,.8,.2,1) .05s forwards}.sim-alert-mascot{width:100%;max-height:500px;object-fit:contain;filter:drop-shadow(0 18px 22px rgba(15,23,42,.16))}.sim-alert-kicker{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;border-radius:999px;background:#DCFCE7;color:#166534;border:1px solid #86EFAC;font-size:15px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}.sim-alert-copy h1{margin:15px 0 12px;font-size:clamp(38px,4.2vw,68px);line-height:1.03;letter-spacing:-1.6px;color:#064E3B;font-weight:950}.sim-alert-entity{margin:0;font-size:clamp(20px,2vw,30px);font-weight:780;color:#0F766E}.sim-alert-source{margin-top:20px;display:flex;align-items:center;gap:8px;color:#527065;font-size:15px;font-weight:650}.sim-alert-source::before{content:'●';color:#22C55E;font-size:12px}.sim-alert-progress{height:6px;background:#BBF7D0;border-radius:999px;overflow:hidden;margin-top:25px}.sim-alert-progress>span{display:block;height:100%;width:100%;background:#16A34A;transform-origin:left;animation:simAlertProgress var(--sim-alert-duration,8s) linear forwards}#sim-delivery-alert.sim-alert-orange{background:radial-gradient(circle at center,rgba(217,119,6,.34),rgba(37,24,5,.80))}#sim-delivery-alert.sim-alert-orange .sim-alert-card{border-color:rgba(245,158,11,.82);background:linear-gradient(135deg,rgba(255,253,247,.99),rgba(255,247,225,.99));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(245,158,11,.14)}#sim-delivery-alert.sim-alert-orange .sim-alert-kicker{background:#FEF3C7;color:#92400E;border-color:#FCD34D}#sim-delivery-alert.sim-alert-orange .sim-alert-copy h1{color:#92400E}#sim-delivery-alert.sim-alert-orange .sim-alert-entity{color:#B45309}#sim-delivery-alert.sim-alert-orange .sim-alert-source{color:#7C5A2B}#sim-delivery-alert.sim-alert-orange .sim-alert-source::before{color:#F59E0B}#sim-delivery-alert.sim-alert-orange .sim-alert-progress{background:#FDE68A}#sim-delivery-alert.sim-alert-orange .sim-alert-progress>span{background:#D97706}#sim-delivery-alert.sim-alert-red{background:radial-gradient(circle at center,rgba(185,28,28,.34),rgba(31,8,8,.82))}#sim-delivery-alert.sim-alert-red .sim-alert-card{border-color:rgba(239,68,68,.82);background:linear-gradient(135deg,rgba(255,251,251,.99),rgba(254,235,235,.99));box-shadow:0 30px 90px rgba(0,0,0,.38),0 0 0 8px rgba(239,68,68,.14)}#sim-delivery-alert.sim-alert-red .sim-alert-kicker{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5}#sim-delivery-alert.sim-alert-red .sim-alert-copy h1{color:#991B1B}#sim-delivery-alert.sim-alert-red .sim-alert-entity{color:#B91C1C}#sim-delivery-alert.sim-alert-red .sim-alert-source{color:#7F1D1D}#sim-delivery-alert.sim-alert-red .sim-alert-source::before{color:#EF4444}#sim-delivery-alert.sim-alert-red .sim-alert-progress{background:#FECACA}#sim-delivery-alert.sim-alert-red .sim-alert-progress>span{background:#DC2626}@keyframes simAlertBackdrop{to{opacity:1}}@keyframes simAlertCard{to{transform:scale(1) translateY(0);opacity:1}}@keyframes simAlertProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}@media(max-width:780px){#sim-delivery-alert{padding:14px}.sim-alert-card{grid-template-columns:1fr;gap:8px;padding:20px;text-align:center;min-height:auto}.sim-alert-mascot{max-height:240px}.sim-alert-copy h1{font-size:34px}.sim-alert-source{justify-content:center}}
+            #sim-delivery-alert{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:34px;background:radial-gradient(circle at center,rgba(30,80,200,.36),rgba(7,20,52,.82));backdrop-filter:blur(3px);pointer-events:none;opacity:0}.sim-alert-show{display:flex!important;animation:simAlertBackdrop .34s ease forwards}.sim-alert-card{width:min(1180px,94vw);min-height:min(560px,78vh);display:grid;grid-template-columns:minmax(280px,430px) minmax(0,1fr);align-items:center;gap:28px;padding:34px 42px;border-radius:28px;border:3px solid rgba(30,80,200,.88);background:linear-gradient(135deg,rgba(255,255,255,.99),rgba(238,243,255,.99));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(30,80,200,.12);transform:scale(.92) translateY(18px);opacity:0;animation:simAlertCard .42s cubic-bezier(.2,.8,.2,1) .05s forwards}.sim-alert-mascot{width:100%;max-height:500px;object-fit:contain;filter:drop-shadow(0 18px 22px rgba(15,23,42,.16))}.sim-alert-kicker{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;border-radius:999px;background:#EAF0FF;color:#173F9E;border:1px solid #AFC2F3;font-size:15px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}.sim-alert-copy h1{margin:15px 0 12px;font-size:clamp(38px,4.2vw,68px);line-height:1.03;letter-spacing:-1.6px;color:#173F9E;font-weight:950}.sim-alert-entity{margin:0;font-size:clamp(20px,2vw,30px);font-weight:780;color:#1E50C8}.sim-alert-source{margin-top:20px;display:flex;align-items:center;gap:8px;color:#526987;font-size:15px;font-weight:650}.sim-alert-source::before{content:'●';color:#1E50C8;font-size:12px}.sim-alert-progress{height:6px;background:#DCE6FF;border-radius:999px;overflow:hidden;margin-top:25px}.sim-alert-progress>span{display:block;height:100%;width:100%;background:#1E50C8;transform-origin:left;animation:simAlertProgress var(--sim-alert-duration,8s) linear forwards}#sim-delivery-alert.sim-alert-orange{background:radial-gradient(circle at center,rgba(217,119,6,.34),rgba(37,24,5,.80))}#sim-delivery-alert.sim-alert-orange .sim-alert-card{border-color:rgba(245,158,11,.82);background:linear-gradient(135deg,rgba(255,253,247,.99),rgba(255,247,225,.99));box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(245,158,11,.14)}#sim-delivery-alert.sim-alert-orange .sim-alert-kicker{background:#FEF3C7;color:#92400E;border-color:#FCD34D}#sim-delivery-alert.sim-alert-orange .sim-alert-copy h1{color:#92400E}#sim-delivery-alert.sim-alert-orange .sim-alert-entity{color:#B45309}#sim-delivery-alert.sim-alert-orange .sim-alert-source{color:#7C5A2B}#sim-delivery-alert.sim-alert-orange .sim-alert-source::before{color:#F59E0B}#sim-delivery-alert.sim-alert-orange .sim-alert-progress{background:#FDE68A}#sim-delivery-alert.sim-alert-orange .sim-alert-progress>span{background:#D97706}#sim-delivery-alert.sim-alert-red{background:radial-gradient(circle at center,rgba(185,28,28,.34),rgba(31,8,8,.82))}#sim-delivery-alert.sim-alert-red .sim-alert-card{border-color:rgba(239,68,68,.82);background:linear-gradient(135deg,rgba(255,251,251,.99),rgba(254,235,235,.99));box-shadow:0 30px 90px rgba(0,0,0,.38),0 0 0 8px rgba(239,68,68,.14)}#sim-delivery-alert.sim-alert-red .sim-alert-kicker{background:#FEE2E2;color:#991B1B;border-color:#FCA5A5}#sim-delivery-alert.sim-alert-red .sim-alert-copy h1{color:#991B1B}#sim-delivery-alert.sim-alert-red .sim-alert-entity{color:#B91C1C}#sim-delivery-alert.sim-alert-red .sim-alert-source{color:#7F1D1D}#sim-delivery-alert.sim-alert-red .sim-alert-source::before{color:#EF4444}#sim-delivery-alert.sim-alert-red .sim-alert-progress{background:#FECACA}#sim-delivery-alert.sim-alert-red .sim-alert-progress>span{background:#DC2626}@keyframes simAlertBackdrop{to{opacity:1}}@keyframes simAlertCard{to{transform:scale(1) translateY(0);opacity:1}}@keyframes simAlertProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}@media(max-width:780px){#sim-delivery-alert{padding:14px}.sim-alert-card{grid-template-columns:1fr;gap:8px;padding:20px;text-align:center;min-height:auto}.sim-alert-mascot{max-height:240px}.sim-alert-copy h1{font-size:34px}.sim-alert-source{justify-content:center}}
             #diag{position:fixed;right:10px;width:min(520px,calc(100vw - 20px));max-height:60vh;z-index:10020;background:rgba(15,23,42,.97);color:#E2E8F0;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:12px;display:none;overflow:auto;font-size:11px}body.bar-top #diag{top:50px}body.bar-bottom #diag{bottom:50px}#diag.open{display:block}#diag h4{margin:0 0 8px;color:#fff}.diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12)}.diag-k{color:#94A3B8}.diag-v{color:#F8FAFC;text-align:right}.hint{color:#94A3B8;line-height:1.35;margin-bottom:8px}#diag-log{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;line-height:1.45}
             #restart-notice{position:fixed;left:50%;transform:translateX(-50%);z-index:10030;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:7px 11px;font-size:11px;display:none}body.bar-top #restart-notice{bottom:10px}body.bar-bottom #restart-notice{top:10px}
             body.kiosk.controls-hidden{cursor:none}#reveal-strip{position:fixed;left:0;width:100%;height:4px;z-index:10015;opacity:0;pointer-events:none;background:linear-gradient(90deg,#0E5285,#54A3D8,#0E5285);transition:opacity .15s ease}body.bar-top #reveal-strip{top:0}body.bar-bottom #reveal-strip{bottom:0}body.controls-hidden #reveal-strip{opacity:.9;pointer-events:auto}
             @media(max-width:980px){#toolbar{grid-template-columns:1fr auto}.toolbar-center{display:none}.btn .label{display:none}.btn{padding:0 7px}.status-text{display:none}.more-menu{min-width:175px}}
+
+            /* v3.16 · identidade azul do novo Monitor SIM */
+            #sim-delivery-alert{background:radial-gradient(circle at center,rgba(30,80,200,.36),rgba(7,20,52,.82))!important}
+            #sim-delivery-alert .sim-alert-card{border-color:rgba(30,80,200,.88)!important;background:linear-gradient(135deg,rgba(255,255,255,.99),rgba(238,243,255,.99))!important;box-shadow:0 30px 90px rgba(0,0,0,.35),0 0 0 8px rgba(30,80,200,.12)!important}
+            #sim-delivery-alert .sim-alert-kicker{background:#EAF0FF!important;color:#173F9E!important;border-color:#AFC2F3!important}
+            #sim-delivery-alert .sim-alert-copy h1{color:#173F9E!important}
+            #sim-delivery-alert .sim-alert-entity{color:#1E50C8!important}
+            #sim-delivery-alert .sim-alert-source{color:#526987!important}
+            #sim-delivery-alert .sim-alert-source::before{color:#1E50C8!important}
+            #sim-delivery-alert .sim-alert-progress{background:#DCE6FF!important}
+            #sim-delivery-alert .sim-alert-progress>span{background:#1E50C8!important}
         </style>
     </head>
     <body class="bar-top">
@@ -4856,6 +4944,10 @@ else:
             function startSimDeliveryPolling(){
                 clearInterval(simPollTimer); simPollTimer=null;
                 if(!simAlertSettings.enabled){setSimPollStatus('desativado');return;}
+                if(simAlertSettings.backend_polling===true){
+                    setSimPollStatus('ativo','API oficial · backend Streamlit');
+                    return;
+                }
                 const every=Math.max(5,Math.min(120,parseInt(simAlertSettings.poll_seconds||15,10)));
                 setSimPollStatus('aguardando','endpoint visual · navegador');
                 pollSimDeliveries();
@@ -4873,10 +4965,12 @@ else:
                 restartNotice.textContent='Consultando a última entrega confirmada...';
                 clearTimeout(window.__simTestNoticeTimer);
                 try{
-                    let latest=null;
-                    try{ latest=await fetchLatestVisualDelivery(); }catch(fetchErr){
-                        latest=simAlertSettings.latest_delivery||null;
-                        if(!latest) throw fetchErr;
+                    let latest=simAlertSettings.latest_delivery||null;
+                    if(!latest && simAlertSettings.backend_polling!==true){
+                        latest=await fetchLatestVisualDelivery();
+                    }
+                    if(!latest && simAlertSettings.backend_polling===true){
+                        throw new Error('aguardando a primeira leitura da API pelo backend');
                     }
                     if(!latest || !(latest.entity_description || latest.entidade || latest.municipio)) throw new Error('nenhuma entrega válida encontrada');
                     simAlertSettings.latest_delivery=latest;
@@ -4941,7 +5035,7 @@ else:
                     const c=msg.serverCounts||{};
                     const comp=(msg.mes&&msg.ano)?` · ${String(msg.mes).padStart(2,'0')}/${msg.ano}`:'';
                     const aq=Array.isArray(msg.serverAlerts)?msg.serverAlerts.length:0;
-                    setSimPollStatus('ativo',`${c.complete||0} verde · ${c.partial||0} laranja · ${c.pending||0} vermelho · API oficial${comp}${aq?` · ${aq} alerta(s) pendente(s)`:''}`);
+                    setSimPollStatus('ativo',`${c.complete||0} concluídos · ${c.partial||0} parciais · ${c.pending||0} pendentes · API oficial${comp}${aq?` · ${aq} alerta(s) novo(s)`:''}`);
                 }else if(msg.serverError){
                     setSimPollStatus('erro',String(msg.serverError).slice(0,140));
                 }
