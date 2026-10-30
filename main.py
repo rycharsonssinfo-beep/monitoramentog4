@@ -50,6 +50,7 @@ import streamlit.components.v1 as components
 # 3.4.1: alerta SIM nativo no DOM principal + diagnóstico de eventos
 # 3.13.0: remove polling por st.fragment; polling SIM direto no navegador sem rerun do Streamlit
 # 3.16.3: estabilidade da apresentação - sem st.fragment periódico; pausa persistente; Modo Foco removido
+# 3.17.0: Alertas SIM por Últimas Entregas - leitura do card em tempo real quando acessível + fallback por endpoint, sem F5
 # 3.16.0: alerta SIM azul + polling isolado pelo backend liberado, sem F5/recriação do iframe
 # 3.5.0: baseline SIM persistente por competência + polling no intervalo configurado + diagnóstico da URL efetiva
 # 3.6.0: Detecção SIM no navegador por snapshot oficial + localStorage persistente; sem depender do baseline do servidor
@@ -60,7 +61,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.16.3"
+APP_VERSION = "3.17.0"
 CONFIG_VERSION = 15
 CONFIG_PATH = Path.cwd() / "monitoramento_config.json"
 BACKUP_PATH = Path.cwd() / "monitoramento_config.backup.json"
@@ -4764,36 +4765,106 @@ else:
                 if(!latest)throw new Error(`nenhuma entrega confirmada em ${String(mes).padStart(2,'0')}/${ano}`);
                 return latest;
             }
+            function simMunicipioFromEntityDescription(desc){
+                const value=String(desc||'').replace(/\s+/g,' ').trim();
+                if(!value)return '';
+                const patterns=[
+                    /PREFEITURA\s+MUNICIPAL\s+DE\s+(.+)$/i,
+                    /C[ÂA]MARA\s+MUNICIPAL\s+DE\s+(.+)$/i,
+                    /MUNIC[IÍ]PIO\s+DE\s+(.+)$/i,
+                    /LEGISLATIVO\s+MUNICIPAL\s+DE\s+(.+)$/i,
+                    /INSTITUTO\s+DE\s+PREVID[EÊ]NCIA\s+(?:DO\s+MUNIC[IÍ]PIO\s+DE\s+|DE\s+)?(.+)$/i,
+                ];
+                for(const re of patterns){
+                    const m=value.match(re);
+                    if(m && String(m[1]||'').trim())return String(m[1]).replace(/\s+-\s+.*$/,'').trim();
+                }
+                return '';
+            }
+            function latestDeliveryFromVisibleList(){
+                const items=currentSimFrameDeliveries();
+                if(!Array.isArray(items)||!items.length)return null;
+                const item=items[0]||{};
+                const municipio=String(item.municipio||'').trim();
+                const entidade=String(item.entidade||'').trim();
+                if(!municipio)return null;
+                return {
+                    alert_type:'complete',
+                    title:`SIM do município ${municipio} entregue`,
+                    municipio,
+                    entidade,
+                    entity_description:entidade,
+                    entity_key:simDeliveryKey(item),
+                    event_stamp:simDeliveryKey(item),
+                    source_kind:'ultimas_entregas_dom'
+                };
+            }
+            async function resolveLatestSimDelivery(){
+                // 1) Preferência: lista real "Últimas Entregas" já atualizada pelo Monitor SIM.
+                // Funciona quando o iframe permite acesso ao DOM (mesma origem).
+                const visible=latestDeliveryFromVisibleList();
+                if(visible)return visible;
+
+                // 2) Fallback: endpoint já usado pela aplicação. Não recarrega o iframe.
+                const latest=await fetchLatestVisualDelivery();
+                if(latest){
+                    const desc=String(latest.entity_description||latest.entidade||'').trim();
+                    if(!String(latest.municipio||'').trim()){
+                        latest.municipio=simMunicipioFromEntityDescription(desc);
+                    }
+                    if(!String(latest.entidade||'').trim())latest.entidade=desc;
+                    latest.source_kind='endpoint_visual';
+                }
+                return latest;
+            }
             async function pollSimDeliveries(){
                 if(!simAlertSettings.enabled)return;
                 try{
-                    const latest=await fetchLatestVisualDelivery();
+                    const latest=await resolveLatestSimDelivery();
+                    if(!latest)throw new Error('nenhuma entrega confirmada encontrada');
+                    if(!String(latest.municipio||'').trim())throw new Error('entrega encontrada, mas o município não pôde ser identificado');
+
                     simAlertSettings.latest_delivery=latest;
                     const {ano,mes}=simCompetence();
-                    const storageKey=`monitor_sim_latest_visual_v313_${profile.id}_${ano}_${String(mes).padStart(2,'0')}`;
-                    const ref=simLatestRef(latest);
-                    let prev=''; try{prev=localStorage.getItem(storageKey)||'';}catch(e){}
-                    if(prev && ref && prev!==ref){
-                        enqueueSimAlert({...latest,alert_key:`visual-${ano}-${mes}-${ref}`,alert_type:'complete'});
-                        log(`Nova entrega detectada pelo endpoint visual: ${latest.entity_description||latest.entity_key}`);
+                    const storageKey=`monitor_sim_ultima_entrega_v317_${profile.id}_${ano}_${String(mes).padStart(2,'0')}`;
+                    const ref=latest.source_kind==='ultimas_entregas_dom'
+                        ? simDeliveryKey(latest)
+                        : simLatestRef(latest);
+
+                    let prev='';
+                    try{prev=localStorage.getItem(storageKey)||'';}catch(e){}
+
+                    // Primeira leitura apenas cria a referência. Não gera falso alerta ao abrir o painel.
+                    if(!prev){
+                        if(ref){try{localStorage.setItem(storageKey,ref);}catch(e){}}
+                        setSimPollStatus('ativo',`referência criada · ${latest.source_kind==='ultimas_entregas_dom'?'Últimas Entregas':'endpoint'} · ${String(mes).padStart(2,'0')}/${ano}`);
+                        log(`Referência inicial SIM: ${latest.municipio}${latest.entidade?' · '+latest.entidade:''}`);
+                        return;
                     }
+
+                    if(ref && prev!==ref){
+                        enqueueSimAlert({
+                            ...latest,
+                            alert_key:`ultima-entrega-${ano}-${String(mes).padStart(2,'0')}-${ref}`,
+                            alert_type:'complete',
+                            title:`SIM do município ${latest.municipio} entregue`
+                        });
+                        log(`Nova entrega SIM detectada: ${latest.municipio}${latest.entidade?' · '+latest.entidade:''}`);
+                    }
+
                     if(ref){try{localStorage.setItem(storageKey,ref);}catch(e){}}
-                    setSimPollStatus('ativo',`endpoint visual · ${String(mes).padStart(2,'0')}/${ano}`);
+                    setSimPollStatus('ativo',`${latest.source_kind==='ultimas_entregas_dom'?'Últimas Entregas':'endpoint'} · ${String(mes).padStart(2,'0')}/${ano}`);
                 }catch(e){
                     const msg=String(e?.message||e||'falha desconhecida');
                     setSimPollStatus('erro',msg.slice(0,150));
-                    log(`Polling SIM direto falhou: ${msg}`);
+                    log(`Polling SIM falhou: ${msg}`);
                 }
             }
             function startSimDeliveryPolling(){
                 clearInterval(simPollTimer); simPollTimer=null;
                 if(!simAlertSettings.enabled){setSimPollStatus('desativado');return;}
-                if(simAlertSettings.backend_polling===true){
-                    setSimPollStatus('ativo','API oficial · backend Streamlit');
-                    return;
-                }
                 const every=Math.max(5,Math.min(120,parseInt(simAlertSettings.poll_seconds||15,10)));
-                setSimPollStatus('aguardando','endpoint visual · navegador');
+                setSimPollStatus('aguardando','Últimas Entregas · sem F5');
                 pollSimDeliveries();
                 simPollTimer=setInterval(pollSimDeliveries,every*1000);
             }
@@ -4834,11 +4905,11 @@ else:
             }
             function resetSimDeliveryBaseline(){
                 try{
-                    const prefixes=[`monitor_sim_official_entities_v360_${profile.id}_`,`monitor_sim_official_notified_v360_${profile.id}_`,`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v335_${profile.id}_`,`monitor_sim_municipality_notified_v335_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
+                    const prefixes=[`monitor_sim_ultima_entrega_v317_${profile.id}_`,`monitor_sim_official_entities_v360_${profile.id}_`,`monitor_sim_official_notified_v360_${profile.id}_`,`monitor_sim_municipality_status_v334_${profile.id}_`,`monitor_sim_municipality_notified_v334_${profile.id}_`,`monitor_sim_municipality_status_v333_${profile.id}_`,`monitor_sim_municipality_notified_v333_${profile.id}_`,`monitor_sim_municipality_status_v335_${profile.id}_`,`monitor_sim_municipality_notified_v335_${profile.id}_`,`monitor_sim_municipality_status_v33_${profile.id}_`,`monitor_sim_municipality_notified_v33_${profile.id}_`,`monitor_sim_municipality_status_v32_${profile.id}_`,`monitor_sim_municipality_notified_v32_${profile.id}_`];
                     const keys=[]; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&prefixes.some(p=>k.startsWith(p)))keys.push(k);} keys.forEach(k=>localStorage.removeItem(k));
                 }catch(e){}
-                setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência municipal');
-                log('Referência municipal dos alertas SIM reiniciada');
+                setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência da Última Entrega');
+                log('Referência da Última Entrega SIM reiniciada');
                 setTimeout(pollSimDeliveries,300);
             }
             function processOfficialSimSnapshot(states, ano, mes){
