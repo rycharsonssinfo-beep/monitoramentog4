@@ -61,7 +61,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.18.0"
+APP_VERSION = "3.18.1"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 CONFIG_VERSION = 15
@@ -5343,7 +5343,7 @@ else:
                 const base=String(simAlertSettings.supabase_url||'').replace(/\/+$/,'');
                 const apiKey=String(simAlertSettings.supabase_publishable_key||'').trim();
                 if(!base || !apiKey)throw new Error('Supabase do Monitor SIM não configurado');
-                const url=`${base}/rest/v1/sim_monitor_events?select=event_id,municipio,orgao,detectado_em,origem&order=detectado_em.desc&limit=1&_=${Date.now()}`;
+                const url=`${base}/rest/v1/sim_monitor_events?select=event_id,municipio,orgao,detectado_em,origem&order=detectado_em.desc&limit=1`;
                 const resp=await fetch(url,{
                     method:'GET',cache:'no-store',
                     headers:{'Accept':'application/json','apikey':apiKey}
