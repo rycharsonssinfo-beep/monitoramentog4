@@ -56,6 +56,7 @@ import streamlit.components.v1 as components
 # 3.21.1: Contornos incorporados ao main.py, diagnóstico de seleção e melhoria do teste
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
+# 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
 # 3.25.0: Login Painel de Monitoramento, repetição opcional de comunicados a cada X horas e URL configurável.
 # 3.24.0: Comunicados com escolha por mensagem entre mascote de atenção e megafone isolado.
 # 3.23.0: Fade real entre painéis sem recarregar os iframes; duração 0,3 a 2 s e modo instantâneo
@@ -70,7 +71,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.27.0"
+APP_VERSION = "3.28.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -7107,6 +7108,59 @@ else:
         @media(max-width:1060px){.g4f-board.g4f-fit .g4f-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.g4f-board.g4f-fit .g4f-kpi{height:60px}.g4f-board.g4f-fit .g4f-kpi small{display:none}.g4f-board.g4f-fit .g4f-top{padding:6px 10px}.g4f-board.g4f-fit .g4f-logo{width:112px}}
         @media(max-height:730px){.g4f-board.g4f-fit .g4f-top{min-height:49px;padding-top:5px;padding-bottom:5px}.g4f-board.g4f-fit .g4f-kpi{height:62px}.g4f-board.g4f-fit .g4f-kpi small{display:none}.g4f-board.g4f-fit .g4f-body{padding-top:7px;padding-bottom:4px}}
         @media(max-width:610px){.g4f-board.g4f-fit .g4f-top h1{font-size:17px}.g4f-board.g4f-fit .g4f-top p{display:none}.g4f-board.g4f-fit .g4f-logo{width:82px}.g4f-board.g4f-fit .g4f-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.g4f-board.g4f-fit .g4f-kpi{height:57px;padding:6px}.g4f-board.g4f-fit .g4f-kpi-title{font-size:9px}.g4f-board.g4f-fit .g4f-kpi-value{font-size:20px}.g4f-board.g4f-fit .g4f-controls{margin:5px 0}.g4f-board.g4f-fit .g4f-search{width:100%}}
+
+        /* v3.28 · Melhorias de leitura: espaços úteis, tipografia ampliada e pausa em azul. */
+        .g4f-agent{padding:11px 13px 10px}
+        .g4f-agent.paused{
+            background:linear-gradient(160deg,#f0f6ff 0%,#dfebff 54%,#d5e4ff 100%);
+            border:1px solid #97bcff;
+            border-left:4px solid #2463ef;
+            box-shadow:0 5px 15px rgba(37,99,235,.13);
+        }
+        .g4f-agent.paused .g4f-agent-head{border-bottom-color:#bcd0f6}
+        .g4f-agent.paused .g4f-state{color:#123fba;background:#c0d6ff;border:1px solid #a4c3ff}
+        .g4f-agent.paused .g4f-reason{color:#164cc1}
+        .g4f-agent.paused .g4f-stat{border-bottom-color:rgba(57,111,209,.15)}
+        .g4f-agent.paused .g4f-stat:first-child b{color:#114bc9}
+        .g4f-board.g4f-fit .g4f-agent{padding:9px 11px 8px}
+        .g4f-board.g4f-fit .g4f-agent-head{gap:8px;padding-bottom:5px}
+        .g4f-board.g4f-fit .g4f-avatar{width:34px;height:34px}
+        .g4f-board.g4f-fit .g4f-agent-person strong{font-size:clamp(12px,.81vw,14px);line-height:1.15}
+        .g4f-board.g4f-fit .g4f-agent-person small{font-size:clamp(9.4px,.68vw,11px);margin-top:2px;line-height:1.13}
+        .g4f-board.g4f-fit .g4f-state{font-size:clamp(9px,.64vw,10px);padding:4px 7px}
+        .g4f-board.g4f-fit .g4f-reason{margin-top:4px;font-size:clamp(11px,.74vw,12.5px);line-height:1.18}
+        .g4f-board.g4f-fit .g4f-agent-stats{
+            padding-top:5px;gap:0;min-height:0;flex:1 1 0;
+            display:grid;grid-template-rows:repeat(4,minmax(0,1fr));
+            align-content:stretch;justify-content:normal;
+        }
+        .g4f-board.g4f-fit .g4f-stat{
+            min-height:0;display:flex;align-items:center;line-height:1.13;
+            gap:6px;font-size:clamp(12px,.82vw,14px);
+            padding:0 1px;border-bottom:1px solid rgba(109,142,174,.16);
+        }
+        .g4f-board.g4f-fit .g4f-stat:last-child{border-bottom:0}
+        .g4f-board.g4f-fit .g4f-stat b{font-size:clamp(13px,.88vw,15px);font-weight:850}
+        .g4f-board.g4f-fit .g4f-stat:first-child{padding-bottom:0;border-bottom:1px solid rgba(109,142,174,.23)}
+        .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:clamp(14px,1.02vw,18px)}
+        .g4f-board.g4f-fit .g4f-stat:first-child span{font-weight:800}
+        @media(max-width:1100px){
+            .g4f-board.g4f-fit .g4f-agent{padding:6px 8px 5px}
+            .g4f-board.g4f-fit .g4f-avatar{width:29px;height:29px}
+            .g4f-board.g4f-fit .g4f-agent-head{padding-bottom:3px}
+            .g4f-board.g4f-fit .g4f-stat{font-size:11.5px}
+            .g4f-board.g4f-fit .g4f-stat b{font-size:12.5px}
+            .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:13.5px}
+        }
+        @media(max-height:720px){
+            .g4f-board.g4f-fit .g4f-agent{padding-top:5px;padding-bottom:4px}
+            .g4f-board.g4f-fit .g4f-agent-head{padding-bottom:3px}
+            .g4f-board.g4f-fit .g4f-reason{margin-top:2px;font-size:10.6px}
+            .g4f-board.g4f-fit .g4f-agent-stats{padding-top:2px}
+            .g4f-board.g4f-fit .g4f-stat{font-size:11.5px}
+            .g4f-board.g4f-fit .g4f-stat b{font-size:12.7px}
+            .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:14px}
+        }
         </style>
     </head>
     <body class="bar-top">
