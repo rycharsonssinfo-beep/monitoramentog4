@@ -57,6 +57,7 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.29.0: Indicador de ligação Zoiper junto ao nome do atendente, via robô G4Flex v1.4.
 # 3.25.0: Login Painel de Monitoramento, repetição opcional de comunicados a cada X horas e URL configurável.
 # 3.24.0: Comunicados com escolha por mensagem entre mascote de atenção e megafone isolado.
 # 3.23.0: Fade real entre painéis sem recarregar os iframes; duração 0,3 a 2 s e modo instantâneo
@@ -71,7 +72,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.28.0"
+APP_VERSION = "3.29.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -7161,6 +7162,16 @@ else:
             .g4f-board.g4f-fit .g4f-stat b{font-size:12.7px}
             .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:14px}
         }
+        /* v3.29 · Ícone de ligação de voz ao lado do nome, sem afetar pausa no chat. */
+        .g4f-call-indicator{display:inline-flex;align-items:center;justify-content:center;
+            margin-left:4px;vertical-align:middle;min-width:21px;height:19px;padding:0 4px;
+            background:#e0f8e9;border:1px solid #86d7a2;border-radius:7px;
+            color:#057b3e;font-size:13px;font-weight:900;white-space:nowrap;
+            box-shadow:0 1px 3px rgba(10,100,45,.09);}
+        .g4f-call-indicator svg{width:13px;height:13px;stroke:#047b3b;stroke-width:2.8;fill:none}
+        .g4f-agent.paused .g4f-call-indicator{border-color:#46b580;background:#f0fff5}
+        .g4f-call-legend{display:inline-flex;align-items:center;gap:4px;font-weight:750;color:#087346}
+        .g4f-call-legend svg{width:12px;height:12px;stroke:#087346;stroke-width:2.6;fill:none}
         </style>
     </head>
     <body class="bar-top">
@@ -8353,9 +8364,16 @@ else:
                 const fila=agent.fila_exibida||agent.fila||'Não informada';
                 const time=paused?(agent.tempo_pausa||agent.tempo_valor):(agent.tempo_fila||agent.tempo_valor);
                 const label=paused?'Tempo de pausa':'Tempo de fila';
+                // A voz é um estado independente da pausa/atividade do chat.
+                // Nunca exibir "em ligação" com dados telefônicos vencidos ou fonte offline.
+                const voiceOnline=g4fState(g4fLastData)==='online'
+                    && g4fLastData?.resumo?.voz_status==='online';
+                const calling=voiceOnline && agent.voz_status==='em_ligacao';
+                const voiceTooltip=calling?`Em ligação no Zoiper${agent.voz_ramal?' · Ramal '+String(agent.voz_ramal):''}${agent.voz_tempo?' · '+String(agent.voz_tempo):''}`:'';
+                const phoneIcon=calling?`<span class="g4f-call-indicator" title="${g4fText(voiceTooltip)}" aria-label="Em ligação pelo Zoiper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 3.1 5.2 2 2 0 0 1 5.1 3h3a2 2 0 0 1 2 1.7c.14.9.38 1.8.7 2.7a2 2 0 0 1-.45 2.1l-1.3 1.3a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.45c.9.32 1.8.56 2.7.7a2 2 0 0 1 1.85 2.15z"/></svg></span>`:'';
                 return `<article class="g4f-agent ${paused?'paused':status==='desconhecido'?'unknown':''}">
                     <div class="g4f-agent-head">
-                      ${g4fAvatar(agent)}<div class="g4f-agent-person"><strong title="${g4fText(agent.nome||'')}">${g4fText(agent.nome||'Sem nome')}</strong>
+                      ${g4fAvatar(agent)}<div class="g4f-agent-person"><strong title="${g4fText(agent.nome||'')}">${g4fText(agent.nome||'Sem nome')}${phoneIcon}</strong>
                       <small title="Fila exibida: ${g4fText(fila)}">Fila exibida · ${g4fText(fila)}</small></div>
                       <span class="g4f-state">${paused?'Em pausa':status==='ativo'?'Ativo':'Sem status'}</span>
                     </div>
