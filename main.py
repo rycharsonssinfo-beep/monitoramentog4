@@ -55,6 +55,7 @@ import streamlit.components.v1 as components
 # 3.21.0: Contornos oficiais IPECE 2026 (184 municípios), imagem Mascote/Mapa, título configurável e alerta ampliado
 # 3.21.1: Contornos incorporados ao main.py, diagnóstico de seleção e melhoria do teste
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
+# 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.25.0: Login Painel de Monitoramento, repetição opcional de comunicados a cada X horas e URL configurável.
 # 3.24.0: Comunicados com escolha por mensagem entre mascote de atenção e megafone isolado.
 # 3.23.0: Fade real entre painéis sem recarregar os iframes; duração 0,3 a 2 s e modo instantâneo
@@ -69,7 +70,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.26.0"
+APP_VERSION = "3.27.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -3347,6 +3348,7 @@ def perfil_padrao(nome="Suporte"):
         "full_restart_enabled": False,
         "auto_ocultar_controles": True,
         "modo_tv_padrao": False,
+        "g4flex_auto_fit": True,
         "preload_seconds": 8,
         "watchdog_seconds": 90,
         "ui_scale": 100,
@@ -4388,6 +4390,7 @@ def migrar_config_legada(data):
             "full_restart_enabled": bool(old_profile.get("full_restart_enabled", False)),
             "auto_ocultar_controles": bool(old_profile.get("auto_ocultar_controles", True)),
             "modo_tv_padrao": bool(old_profile.get("modo_tv_padrao", False)),
+            "g4flex_auto_fit": bool(old_profile.get("g4flex_auto_fit", True)),
             "preload_seconds": 8,
             "watchdog_seconds": 90,
             "ui_scale": 100,
@@ -4537,6 +4540,7 @@ def normalizar_config(data):
             "full_restart_enabled": bool(profile.get("full_restart_enabled", False)),
             "auto_ocultar_controles": bool(profile.get("auto_ocultar_controles", True)),
             "modo_tv_padrao": bool(profile.get("modo_tv_padrao", False)),
+            "g4flex_auto_fit": bool(profile.get("g4flex_auto_fit", True)),
             "preload_seconds": _clamp_int(profile.get("preload_seconds", 8), 8, 0, 30),
             "watchdog_seconds": _clamp_int(profile.get("watchdog_seconds", 90), 90, 30, 600),
             "ui_scale": int(profile.get("ui_scale", 100)) if int(profile.get("ui_scale", 100)) in {90, 100, 110, 125} else 100,
@@ -6240,6 +6244,16 @@ if not st.session_state.iniciado:
                 perfil["transition_ms"] = int(round(duracao_fade * 1000)) if fade_ativo else 0
                 st.caption("Padrão: 0,8 s. Respeita a opção de reduzir animações do navegador.")
 
+            st.divider()
+            st.markdown("**Painel de Atendimento · G4Flex**")
+            perfil["g4flex_auto_fit"] = st.toggle(
+                "Ajustar todos os atendentes à tela (Modo TV)",
+                value=bool(perfil.get("g4flex_auto_fit", True)),
+                key=f"g4flex_fit_v327_{active_profile_id}",
+                help="Ajusta colunas e altura dos cartões automaticamente. Quando não houver espaço legível, alterna páginas sem barra de rolagem.",
+            )
+            st.caption("Ativado por padrão: até 15 atendentes normalmente cabem em 5 colunas × 3 linhas em telas grandes. Em telas menores, o painel alterna páginas automaticamente.")
+
         salvar_config(config)
 
         # Backup/importação/diagnóstico
@@ -6905,7 +6919,7 @@ else:
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
         "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "municipality_maps": _sim_mapas_municipais_ipece_2026(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": False, "supabase_url": SUPABASE_URL, "supabase_publishable_key": SUPABASE_PUBLISHABLE_KEY, "event_source": "robot_supabase", "monitor_id": "monitor-sim-principal"},
-        "g4flex": {"monitor_id": "g4flex-principal", "logo": G4FLEX_LOGO_DATA_URI},
+        "g4flex": {"monitor_id": "g4flex-principal", "logo": G4FLEX_LOGO_DATA_URI, "auto_fit": bool(perfil.get("g4flex_auto_fit", True))},
         "comunicados": {
             "supabase_url": SUPABASE_URL,
             "publishable_key": SUPABASE_PUBLISHABLE_KEY,
@@ -7049,6 +7063,50 @@ else:
 .g4f-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.g4f-agent{background:#fff;border:1px solid #dde7f0;border-left:4px solid #0d9488;border-radius:12px;box-shadow:0 5px 14px rgba(16,42,72,.045);padding:14px 15px 13px;min-width:0}.g4f-agent.paused{border-left-color:#286ae8;background:#f8fbff}.g4f-agent.unknown{border-left-color:#94a3b8}.g4f-agent-head{display:flex;align-items:center;gap:10px;min-width:0;padding-bottom:10px;border-bottom:1px solid #e8edf4}.g4f-avatar{width:41px;height:41px;border-radius:50%;background:#dceff5;color:#095b75;display:flex;align-items:center;justify-content:center;font-weight:850;flex-shrink:0;overflow:hidden}.g4f-avatar img{width:100%;height:100%;object-fit:cover}.g4f-agent-person{flex:1;min-width:0}.g4f-agent-person strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.7px;color:#143550}.g4f-agent-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#72879b;font-size:11px;margin-top:3px}.g4f-state{font-size:10px;font-weight:820;letter-spacing:.1px;padding:5px 7px;border-radius:999px;background:#e4fbef;color:#088047;flex-shrink:0}.g4f-agent.paused .g4f-state{background:#e8efff;color:#2563eb}.g4f-agent.unknown .g4f-state{background:#f1f5f9;color:#64748b}.g4f-reason{display:flex;align-items:center;gap:5px;margin-top:11px;font-size:11px;color:#1d4ed8;font-weight:720;line-height:1.35}.g4f-reason em{font-style:normal;font-weight:650}.g4f-agent-stats{padding-top:7px;display:grid;gap:7px}.g4f-stat{display:flex;align-items:baseline;justify-content:space-between;gap:8px;color:#5f758b;font-size:11.7px}.g4f-stat b{color:#153b5a;font-weight:825;font-size:12.5px;font-variant-numeric:tabular-nums}.g4f-agent.paused .g4f-stat:first-child b{color:#2563eb}.g4f-stat:first-child{padding-bottom:6px;border-bottom:1px dashed #e7edf4;font-weight:740}.g4f-stat:first-child b{font-size:14px}.g4f-error{margin:13px 0;padding:14px 17px;border-radius:10px;background:#fff4e5;border:1px solid #f9cd8d;color:#92400e;font-size:12px}.g4f-empty{padding:70px 15px;text-align:center;background:#fff;border:1px dashed #cddbea;border-radius:14px;color:#71859b}.g4f-board-footer{margin-top:18px;color:#8ba0b1;font-size:11px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 @media(max-width:1300px){.g4f-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.g4f-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:860px){.g4f-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.g4f-top{padding:14px}.g4f-logo{width:120px}.g4f-body{padding:15px}.g4f-top h1{font-size:19px}}@media(max-width:590px){.g4f-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.g4f-grid{grid-template-columns:1fr}.g4f-top{flex-wrap:wrap}.g4f-logo{width:100px}.g4f-logo-divider{height:32px}.g4f-controls{align-items:stretch}.g4f-search{width:100%}}
 
+
+        /* v3.27 · Grade responsiva para TVs: sem rolagem vertical na tela de agentes */
+        .g4f-board.g4f-fit{height:100%;overflow:hidden;display:flex;flex-direction:column}
+        .g4f-board.g4f-fit .g4f-top{padding:10px 20px;min-height:66px;flex:0 0 auto}
+        .g4f-board.g4f-fit .g4f-logo{width:150px;max-height:43px}
+        .g4f-board.g4f-fit .g4f-logo-divider{height:35px}
+        .g4f-board.g4f-fit .g4f-top h1{font-size:clamp(20px,1.8vw,27px)}
+        .g4f-board.g4f-fit .g4f-top p{font-size:11px;margin-top:2px}
+        .g4f-board.g4f-fit .g4f-body{display:flex;flex:1 1 0;flex-direction:column;min-height:0;min-width:0;width:100%;max-width:none;overflow:hidden;margin:0;padding:12px 18px 8px}
+        .g4f-board.g4f-fit .g4f-kpis{flex:0 0 auto;gap:9px;grid-template-columns:repeat(7,minmax(0,1fr))}
+        .g4f-board.g4f-fit .g4f-kpi{height:82px;min-height:0;padding:9px 11px 8px;border-radius:10px}
+        .g4f-board.g4f-fit .g4f-kpi-title{font-size:10.7px}
+        .g4f-board.g4f-fit .g4f-kpi-value{font-size:clamp(23px,2vw,30px)}
+        .g4f-board.g4f-fit .g4f-kpi small{font-size:9px}
+        .g4f-board.g4f-fit .g4f-controls{flex:0 0 auto;min-height:32px;margin:9px 0 8px;gap:7px}
+        .g4f-board.g4f-fit .g4f-controls-left{gap:7px}
+        .g4f-board.g4f-fit .g4f-filter-btn{padding:7px 10px;font-size:11px;border-radius:7px}
+        .g4f-board.g4f-fit .g4f-search{padding:7px 10px;width:min(260px,27vw);font-size:11px;border-radius:7px}
+        .g4f-board.g4f-fit .g4f-meta{font-size:10px}
+        .g4f-board.g4f-fit .g4f-grid{flex:1 1 0;min-height:0;min-width:0;overflow:hidden;grid-template-columns:repeat(var(--g4f-fit-cols,5),minmax(0,1fr));grid-template-rows:repeat(var(--g4f-fit-rows,3),minmax(0,1fr));gap:9px;align-content:stretch}
+        .g4f-board.g4f-fit .g4f-agent{height:100%;min-height:0;overflow:hidden;padding:9px 10px 7px;border-radius:10px;display:flex;flex-direction:column}
+        .g4f-board.g4f-fit .g4f-agent-head{gap:7px;padding-bottom:5px;flex:0 0 auto}
+        .g4f-board.g4f-fit .g4f-avatar{width:31px;height:31px}
+        .g4f-board.g4f-fit .g4f-agent-person strong{font-size:12px}
+        .g4f-board.g4f-fit .g4f-agent-person small{font-size:9.4px;margin-top:1px}
+        .g4f-board.g4f-fit .g4f-state{font-size:9px;padding:4px 6px}
+        .g4f-board.g4f-fit .g4f-reason{margin-top:4px;font-size:10px;line-height:1.1;flex:0 0 auto}
+        .g4f-board.g4f-fit .g4f-agent-stats{padding-top:5px;gap:3px;min-height:0;flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-around}
+        .g4f-board.g4f-fit .g4f-stat{font-size:10.7px;line-height:1.13;gap:4px}
+        .g4f-board.g4f-fit .g4f-stat b{font-size:11.6px}
+        .g4f-board.g4f-fit .g4f-stat:first-child{padding-bottom:3px}
+        .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:12px}
+        .g4f-board.g4f-fit .g4f-board-footer{flex:0 0 auto;min-height:19px;margin-top:6px;font-size:9px;align-items:center;flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+        .g4f-board.g4f-fit .g4f-board-footer>span:last-child{overflow:hidden;text-overflow:ellipsis}
+        .g4f-fit-page{display:flex;flex:0 0 auto;align-items:center;gap:6px;color:#496880;font-weight:750;font-size:10px;white-space:nowrap}
+        .g4f-fit-page[hidden]{display:none!important}
+        .g4f-page-btn{border:1px solid #cbdce9;background:#fff;color:#15537a;border-radius:6px;min-width:24px;height:23px;cursor:pointer;font-size:13px;font-weight:800}
+        .g4f-page-btn:disabled{opacity:.35;cursor:default}
+        .g4f-board.g4f-fit .g4f-connection{font-size:10px;padding:6px 9px}
+        .g4f-board.g4f-fit .g4f-clock{font-size:12px}
+        @media(max-width:1100px){.g4f-board.g4f-fit .g4f-agent{padding:6px 8px 4px}.g4f-board.g4f-fit .g4f-agent-head{padding-bottom:2px}.g4f-board.g4f-fit .g4f-avatar{width:28px;height:28px}.g4f-board.g4f-fit .g4f-reason{margin-top:2px}.g4f-board.g4f-fit .g4f-agent-stats{padding-top:2px;gap:2px}.g4f-board.g4f-fit .g4f-stat:first-child{padding-bottom:1px}}
+        @media(max-width:1060px){.g4f-board.g4f-fit .g4f-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.g4f-board.g4f-fit .g4f-kpi{height:60px}.g4f-board.g4f-fit .g4f-kpi small{display:none}.g4f-board.g4f-fit .g4f-top{padding:6px 10px}.g4f-board.g4f-fit .g4f-logo{width:112px}}
+        @media(max-height:730px){.g4f-board.g4f-fit .g4f-top{min-height:49px;padding-top:5px;padding-bottom:5px}.g4f-board.g4f-fit .g4f-kpi{height:62px}.g4f-board.g4f-fit .g4f-kpi small{display:none}.g4f-board.g4f-fit .g4f-body{padding-top:7px;padding-bottom:4px}}
+        @media(max-width:610px){.g4f-board.g4f-fit .g4f-top h1{font-size:17px}.g4f-board.g4f-fit .g4f-top p{display:none}.g4f-board.g4f-fit .g4f-logo{width:82px}.g4f-board.g4f-fit .g4f-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.g4f-board.g4f-fit .g4f-kpi{height:57px;padding:6px}.g4f-board.g4f-fit .g4f-kpi-title{font-size:9px}.g4f-board.g4f-fit .g4f-kpi-value{font-size:20px}.g4f-board.g4f-fit .g4f-controls{margin:5px 0}.g4f-board.g4f-fit .g4f-search{width:100%}}
         </style>
     </head>
     <body class="bar-top">
@@ -8208,6 +8266,8 @@ else:
             let g4fSearchText = '';
             let g4fFilterStatus = 'todos';
             const g4fMonitorId = String(g4fConfig.monitor_id||'g4flex-principal');
+            const g4fAutoFit = g4fConfig.auto_fit !== false;
+            let g4fPagerTimer = null;
             const g4fText = value => escapeHtml(String(value == null ? '' : value));
             function g4fNumber(v){return v==null||v===''?'—':Number.isFinite(Number(v))?String(Number(v)):'—';}
             function g4fTime(d){
@@ -8254,6 +8314,61 @@ else:
                     </div>
                   </article>`;
             }
+            // Ajuste por altura/largura da apresentação, não pela altura da página original.
+            // Se faltarem pixels para leitura, pagina automaticamente em vez de cortar cartões.
+            function g4fLayout(host){
+                if(!host || !host.isConnected)return;
+                const grid=host.querySelector('[data-g4f="cards"]');
+                const pager=host.querySelector('[data-g4f="pager"]');
+                const pageText=host.querySelector('[data-g4f="page-text"]');
+                const agents=host._g4fAgents||[];
+                if(!grid)return;
+                if(!g4fAutoFit){
+                    if(pager)pager.hidden=true;
+                    grid.style.removeProperty('--g4f-fit-cols');
+                    grid.style.removeProperty('--g4f-fit-rows');
+                    grid.innerHTML=agents.length?agents.map(g4fCard).join(''):
+                        `<div class="g4f-empty" style="grid-column:1/-1">${g4fLastData?'Nenhum atendente corresponde aos filtros.':'Aguardando dados do robô G4Flex no Supabase...'}</div>`;
+                }else{
+                    const width=Math.max(1,grid.clientWidth);
+                    const height=Math.max(1,grid.clientHeight);
+                    const gap=9;
+                    // Largura mínima preserva nome, setor, status e estatísticas legíveis.
+                    const maxCols=Math.max(1,Math.min(7,Math.floor((width+gap)/(215+gap))));
+                    const maxRows=Math.max(1,Math.min(5,Math.floor((height+gap)/(122+gap))));
+                    const preferredRows=agents.length<=10?Math.min(2,maxRows):
+                        agents.length<=18?Math.min(3,maxRows):Math.min(4,maxRows);
+                    const cols=Math.max(1,Math.min(maxCols,Math.ceil(Math.max(1,agents.length)/preferredRows)));
+                    const rows=Math.max(1,Math.min(maxRows,Math.ceil(Math.max(1,agents.length)/cols)));
+                    const capacity=Math.max(1,cols*rows);
+                    const pages=Math.max(1,Math.ceil(agents.length/capacity));
+                    host._g4fPage=Math.min(Math.max(0,host._g4fPage||0),pages-1);
+                    const start=host._g4fPage*capacity;
+                    const visible=agents.slice(start,start+capacity);
+                    grid.style.setProperty('--g4f-fit-cols',String(cols));
+                    grid.style.setProperty('--g4f-fit-rows',String(rows));
+                    grid.innerHTML=visible.length?visible.map(g4fCard).join(''):
+                        `<div class="g4f-empty" style="grid-column:1/-1">${g4fLastData?'Nenhum atendente corresponde aos filtros.':'Aguardando dados do robô G4Flex no Supabase...'}</div>`;
+                    if(pager){
+                        pager.hidden=pages<=1;
+                        pager.dataset.g4fPages=String(pages);
+                        if(pageText)pageText.textContent=`${host._g4fPage+1}/${pages} · ${agents.length} atendentes`;
+                        const prev=pager.querySelector('[data-g4f-page="prev"]');
+                        const next=pager.querySelector('[data-g4f-page="next"]');
+                        if(prev)prev.disabled=pages<=1;
+                        if(next)next.disabled=pages<=1;
+                    }
+                }
+                grid.querySelectorAll('.g4f-avatar img').forEach(img=>img.addEventListener('error',()=>{
+                    img.parentElement.textContent=String(img.closest('.g4f-agent')?.querySelector('.g4f-agent-person strong')?.textContent||'?').trim().slice(0,1).toUpperCase();
+                },{once:true}));
+            }
+            function g4fMovePage(host,step){
+                if(!g4fAutoFit||!host?.isConnected)return;
+                const pages=Math.max(1,Number(host.querySelector('[data-g4f="pager"]')?.dataset.g4fPages||1));
+                host._g4fPage=((host._g4fPage||0)+step+pages)%pages;
+                g4fLayout(host);
+            }
             function g4fRender(){
                 const row=g4fLastData;
                 const r=row?.resumo||{};
@@ -8272,7 +8387,7 @@ else:
                 agents=agents.filter(a=>(g4fFilterStatus==='todos'||a.status===g4fFilterStatus)
                     && (!query||(String(a.nome||'')+' '+String(a.fila_exibida||a.fila||'')+' '+String(a.motivo_pausa||'')).toLocaleLowerCase('pt-BR').includes(query)));
                 for(const host of g4fWidgets){
-                    if(!host.isConnected){g4fWidgets.delete(host);continue;}
+                    if(!host.isConnected){host._g4fResizeObserver?.disconnect();g4fWidgets.delete(host);continue;}
                     const badge=host.querySelector('[data-g4f="state"]');
                     const age=g4fAgeSec(row);
                     badge.className='g4f-connection '+(state==='online'?'':state);
@@ -8281,12 +8396,8 @@ else:
                     stamp.textContent=row?`Última atualização: ${g4fTime(row.recebido_em)} · ${row.total_cartoes??'—'} atendentes`:'Aguardando primeira leitura';
                     const summary=host.querySelector('[data-g4f="kpis"]');
                     summary.innerHTML=kpis.map(([title,key,color,description],i)=>`<div class="g4f-kpi ${i===0?'primary':''}" style="--kpi-color:${color}"><span class="g4f-kpi-title">${g4fText(title)}</span><span class="g4f-kpi-value">${g4fNumber(r[key])}</span><small>${g4fText(description)}</small></div>`).join('');
-                    const cards=host.querySelector('[data-g4f="cards"]');
-                    cards.innerHTML=agents.length?agents.map(g4fCard).join(''):
-                        `<div class="g4f-empty" style="grid-column:1/-1">${row?'Nenhum atendente corresponde aos filtros.':'Aguardando dados do robô G4Flex no Supabase...'}</div>`;
-                    cards.querySelectorAll('.g4f-avatar img').forEach(img=>img.addEventListener('error',()=>{
-                        img.parentElement.textContent=String(img.closest('.g4f-agent')?.querySelector('.g4f-agent-person strong')?.textContent||'?').trim().slice(0,1).toUpperCase();
-                    },{once:true}));
+                    host._g4fAgents=agents;
+                    g4fLayout(host);
                     host.querySelector('[data-g4f="count"]').textContent=`Exibindo ${agents.length} de ${Array.isArray(row?.atendentes)?row.atendentes.length:0} atendentes`;
                     const error=host.querySelector('[data-g4f="error"]');
                     if(g4fLastError){error.hidden=false;error.textContent=g4fLastError+(row?' · última leitura válida preservada':'');}
@@ -8321,6 +8432,8 @@ else:
             }
             function g4fStart(host){
                 g4fWidgets.add(host);
+                if(g4fAutoFit)host.classList.add('g4f-fit');
+                host._g4fPage=0;
                 host.innerHTML=`<header class="g4f-top"><div class="g4f-title-area">
                   <img class="g4f-logo" src="${g4fText(g4fConfig.logo||'')}" alt="Logo Grupo S&S">
                   <span class="g4f-logo-divider"></span><div><h1>Painel de Atendimento</h1><p>Grupo S&S · Monitoramento em tempo real do suporte</p></div>
@@ -8332,12 +8445,27 @@ else:
                   <span class="g4f-meta" data-g4f="stamp">Aguardando dados</span></div>
                   <div class="g4f-error" data-g4f="error" hidden></div>
                   <div class="g4f-grid" data-g4f="cards"></div>
-                  <footer class="g4f-board-footer"><span data-g4f="count"></span><span>Fonte: robô G4Flex · Os nomes das filas são apenas os exibidos no cartão, não os atendimentos em andamento.</span></footer></section>`;
+                  <footer class="g4f-board-footer"><span data-g4f="count"></span>
+                   <div class="g4f-fit-page" data-g4f="pager" hidden><button class="g4f-page-btn" data-g4f-page="prev" aria-label="Página anterior">‹</button><span data-g4f="page-text">1/1</span><button class="g4f-page-btn" data-g4f-page="next" aria-label="Próxima página">›</button></div>
+                   <span>Fonte: robô G4Flex · Fila exibida não representa necessariamente o atendimento atual.</span></footer></section>`;
                 host.querySelector('[data-g4f="search"]').value=g4fSearchText;
-                host.querySelector('[data-g4f="search"]').addEventListener('input',e=>{g4fSearchText=e.target.value;g4fRender();});
-                host.querySelectorAll('[data-g4f-filter]').forEach(btn=>btn.addEventListener('click',()=>{g4fFilterStatus=btn.dataset.g4fFilter;g4fRender();}));
+                host.querySelector('[data-g4f="search"]').addEventListener('input',e=>{g4fSearchText=e.target.value;host._g4fPage=0;g4fRender();});
+                host.querySelectorAll('[data-g4f-filter]').forEach(btn=>btn.addEventListener('click',()=>{g4fFilterStatus=btn.dataset.g4fFilter;host._g4fPage=0;g4fRender();}));
+                 host.querySelectorAll('[data-g4f-page]').forEach(btn=>btn.addEventListener('click',()=>g4fMovePage(host,btn.dataset.g4fPage==='next'?1:-1)));
+                 if(g4fAutoFit && typeof ResizeObserver!=='undefined'){
+                     const ro=new ResizeObserver(()=>requestAnimationFrame(()=>g4fLayout(host)));
+                     ro.observe(host);host._g4fResizeObserver=ro;
+                 }
                 g4fRender();
                 if(!g4fPolling){g4fPoll();g4fPolling=setInterval(g4fPoll,3000);}
+                 if(g4fAutoFit && !g4fPagerTimer){
+                     g4fPagerTimer=setInterval(()=>{
+                         for(const panel of g4fWidgets){
+                             if(!panel.isConnected){panel._g4fResizeObserver?.disconnect();g4fWidgets.delete(panel);continue;}
+                             if(panel.closest('.iframe-panel.active') && Number(panel.querySelector('[data-g4f="pager"]')?.dataset.g4fPages||1)>1)g4fMovePage(panel,1);
+                         }
+                     },9000);
+                 }
             }
 
             function createPanelFrame(i,role='preload'){
