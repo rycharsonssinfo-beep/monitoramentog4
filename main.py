@@ -57,7 +57,7 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
-# 3.29.0: Indicador de ligação Zoiper junto ao nome do atendente, via robô G4Flex v1.4.
+# 3.30.0: Indicador de ligação Zoiper junto ao nome do atendente, via robô G4Flex v1.4.
 # 3.25.0: Login Painel de Monitoramento, repetição opcional de comunicados a cada X horas e URL configurável.
 # 3.24.0: Comunicados com escolha por mensagem entre mascote de atenção e megafone isolado.
 # 3.23.0: Fade real entre painéis sem recarregar os iframes; duração 0,3 a 2 s e modo instantâneo
@@ -72,7 +72,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.29.0"
+APP_VERSION = "3.30.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -7162,7 +7162,21 @@ else:
             .g4f-board.g4f-fit .g4f-stat b{font-size:12.7px}
             .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:14px}
         }
-        /* v3.29 · Ícone de ligação de voz ao lado do nome, sem afetar pausa no chat. */
+        /* v3.30 · Ativos em verde, pausados em azul e demais estados neutros.
+           A cor expressa somente o estado do CHAT; voz usa ícone separado. */
+        .g4f-agent:not(.paused):not(.unknown){
+            background:linear-gradient(155deg,#effbf3 0%,#d9f4e3 58%,#c8ecd6 100%);
+            border:1px solid #82cda2;
+            border-left:4px solid #099564;
+            box-shadow:0 5px 14px rgba(9,119,75,.10);
+        }
+        .g4f-agent:not(.paused):not(.unknown) .g4f-agent-head{border-bottom-color:#a8dcc0}
+        .g4f-agent:not(.paused):not(.unknown) .g4f-state{background:#a6e7c4;color:#08693b;border:1px solid #76cc9c}
+        .g4f-agent:not(.paused):not(.unknown) .g4f-stat{border-bottom-color:rgba(28,135,85,.15)}
+        .g4f-agent:not(.paused):not(.unknown) .g4f-stat:first-child b{color:#086f49}
+        .g4f-agent.paused{background:linear-gradient(155deg,#edf4ff 0%,#dceaff 55%,#c7dcff 100%)}
+        .g4f-agent.unknown{background:#f1f5f9;border-left-color:#94a3b8}
+        /* v3.30 · Ícone de ligação de voz ao lado do nome, sem afetar pausa no chat. */
         .g4f-call-indicator{display:inline-flex;align-items:center;justify-content:center;
             margin-left:4px;vertical-align:middle;min-width:21px;height:19px;padding:0 4px;
             background:#e0f8e9;border:1px solid #86d7a2;border-radius:7px;
