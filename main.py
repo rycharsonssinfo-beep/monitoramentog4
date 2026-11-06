@@ -57,6 +57,7 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.34.0: Cartões mais legíveis, alerta de atribuídas aperfeiçoado e atualização visual G4Flex desktop.
 # 3.33.0: Comunicados multimídia: até 3 imagens + áudio opcional, arquivos privados via Supabase Storage.
 # 3.32.0: Alertas opcionais de atribuições e interface G4Flex revisada.
 # 3.30.0: Indicador de ligação Zoiper junto ao nome do atendente, via robô G4Flex v1.4.
@@ -74,7 +75,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.33.0"
+APP_VERSION = "3.34.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -7566,6 +7567,34 @@ else:
             36%,73%{transform:translateX(3px) rotate(.3deg)} 86%{transform:translateX(-1px)}
         }
         .g4f-agent.has-assignment.g4f-shake-now{animation:g4f-brief-shake .55s ease-in-out 1}
+        /* v3.34: destaque mais legível e aproveitamento uniforme da área dos cartões */
+        .g4f-board.g4f-fit .g4f-agent{
+            --g4f-inner-pad:clamp(7px,.7vw,13px);
+            padding:var(--g4f-inner-pad) calc(var(--g4f-inner-pad) + 2px);
+        }
+        .g4f-board.g4f-fit .g4f-agent-head{gap:8px;padding-bottom:6px}
+        .g4f-board.g4f-fit .g4f-agent-stats{
+            display:grid;grid-template-rows:repeat(4,minmax(0,1fr));
+            gap:0;align-content:stretch;flex:1 1 auto;padding-top:3px;
+        }
+        .g4f-board.g4f-fit .g4f-stat{
+            font-weight:650;letter-spacing:.01em;line-height:1.18;
+            padding:2px 3px;border-bottom:1px solid rgba(80,121,151,.20);
+        }
+        .g4f-board.g4f-fit .g4f-stat b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+        .g4f-board.g4f-fit .g4f-stat:first-child span{font-weight:820}
+        .g4f-board.g4f-fit .g4f-stat:last-child{border-bottom:0}
+        .g4f-board.g4f-fit .g4f-reason{font-weight:760;min-height:15px}
+        .g4f-board.g4f-fit .g4f-grid.g4f-sparse .g4f-agent-stats{padding-top:9px}
+        .g4f-board.g4f-fit .g4f-grid.g4f-sparse .g4f-agent-head{padding-bottom:10px}
+        .g4f-agent.has-assignment .g4f-assignment-note{font-weight:860}
+        .g4f-agent.has-assignment.g4f-shake-now{will-change:transform}
+        @media(max-height:735px){
+            .g4f-board.g4f-fit .g4f-agent{padding:5px 8px}
+            .g4f-board.g4f-fit .g4f-agent-head{padding-bottom:3px}
+            .g4f-board.g4f-fit .g4f-agent-stats{padding-top:2px}
+            .g4f-board.g4f-fit .g4f-stat{padding:0 2px}
+        }
         @media(prefers-reduced-motion:reduce){
             .g4f-agent.has-assignment.g4f-shake-now{animation:none!important}
         }
@@ -8835,6 +8864,24 @@ else:
             const g4fAutoFit = g4fConfig.auto_fit !== false;
             const g4fAssignmentAlert = g4fConfig.attribution_alert !== false;
             let g4fAssignmentTimer = null;
+            let g4fAssignmentBaseline = null; // registro anterior; evita falso alarme na abertura
+            let g4fAssignmentRecentlyChanged = new Map();
+            const g4fAgentKey=a=>String(a.id||a.nome||'').trim().toLocaleLowerCase('pt-BR');
+            function g4fCheckNewAssignments(row){
+                if(!row || g4fState(row)!=='online')return;
+                const current=new Map();
+                for(const a of (Array.isArray(row.atendentes)?row.atendentes:[])){
+                    const key=g4fAgentKey(a);if(!key)continue;
+                    const count=Math.max(0,Number(a.atribuidas)||0);
+                    current.set(key,count);
+                    if(g4fAssignmentAlert && g4fAssignmentBaseline &&
+                       g4fAssignmentBaseline.has(key) && count>0 && count>g4fAssignmentBaseline.get(key)){
+                        g4fAssignmentRecentlyChanged.set(key,Date.now()+1600);
+                    }
+                }
+                g4fAssignmentBaseline=current;
+                for(const [key,limit] of g4fAssignmentRecentlyChanged){if(Date.now()>limit)g4fAssignmentRecentlyChanged.delete(key);}
+            }
             let g4fPagerTimer = null;
             const g4fText = value => escapeHtml(String(value == null ? '' : value));
             function g4fNumber(v){return v==null||v===''?'—':Number.isFinite(Number(v))?String(Number(v)):'—';}
@@ -8865,7 +8912,7 @@ else:
                 const status=agent.status==='pausado'?'pausado':agent.status==='ativo'?'ativo':'desconhecido';
                 const paused=status==='pausado';
                 const assignedCount = Number.isFinite(Number(agent.atribuidas))?Math.max(0,Math.floor(Number(agent.atribuidas))):0;
-                const hasAssignment = g4fAssignmentAlert && assignedCount>0;
+                const hasAssignment = g4fAssignmentAlert && g4fState(g4fLastData)==='online' && assignedCount>0;
                 const fila=agent.fila_exibida||agent.fila||'Não informada';
                 const time=paused?(agent.tempo_pausa||agent.tempo_valor):(agent.tempo_fila||agent.tempo_valor);
                 const label=paused?'Tempo de pausa':'Tempo de fila';
@@ -8880,7 +8927,7 @@ else:
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm0 7 1 6h-2l1-6zm-1 8h2v2h-2z"/></svg>
                     ${assignedCount===1?'1 conversa atribuída':`${assignedCount} conversas atribuídas`}
                     </div>`:'';
-                return `<article class="g4f-agent ${paused?'paused':status==='desconhecido'?'unknown':''} ${hasAssignment?'has-assignment':''}">
+                return `<article class="g4f-agent ${paused?'paused':status==='desconhecido'?'unknown':''} ${hasAssignment?'has-assignment':''} ${hasAssignment && (g4fAssignmentRecentlyChanged.get(g4fAgentKey(agent))||0)>Date.now()?'g4f-shake-now':''}">
                     <div class="g4f-agent-head">
                       ${g4fAvatar(agent)}<div class="g4f-agent-person"><strong title="${g4fText(agent.nome||'')}">${g4fText(agent.nome||'Sem nome')}${phoneIcon}</strong>
                       <small title="Fila exibida: ${g4fText(fila)}">Fila exibida · ${g4fText(fila)}</small></div>
@@ -8937,11 +8984,11 @@ else:
                     const widthGain=Math.min(1,Math.max(0,(cardWidth-185)/95));
                     const scale=Math.min(gain,widthGain+0.4);
                     const clamp=(v,min,max)=>Math.min(max,Math.max(min,v)).toFixed(1)+'px';
-                    grid.style.setProperty('--g4f-stat-font',clamp(12.5+scale*3,12.2,17.5));
-                    grid.style.setProperty('--g4f-number-font',clamp(14+scale*3.6,13.4,20));
-                    grid.style.setProperty('--g4f-time-font',clamp(15+scale*4.3,14,22.5));
-                    grid.style.setProperty('--g4f-name-font',clamp(12+scale*2.1,11.5,16));
-                    grid.style.setProperty('--g4f-queue-font',clamp(9.3+scale*1.1,9,11.5));
+                    grid.style.setProperty('--g4f-stat-font',clamp(13.5+scale*3.8,12.5,19));
+                    grid.style.setProperty('--g4f-number-font',clamp(14.5+scale*4.3,13.5,22));
+                    grid.style.setProperty('--g4f-time-font',clamp(16+scale*4.8,14,25));
+                    grid.style.setProperty('--g4f-name-font',clamp(12.5+scale*2.5,11.5,18));
+                    grid.style.setProperty('--g4f-queue-font',clamp(9.5+scale*1.4,9,12));
                     host._g4fPage=Math.min(Math.max(0,host._g4fPage||0),pages-1);
                     const start=host._g4fPage*capacity;
                     const visible=agents.slice(start,start+capacity);
@@ -9025,6 +9072,7 @@ else:
                 g4fRunning=true;
                 try{
                     g4fLastData=await g4fRequest();
+                    g4fCheckNewAssignments(g4fLastData);
                     g4fLastError=g4fLastData?'':'Nenhum dado encontrado no Supabase. Verifique se o robô está publicando.';
                 }catch(e){
                     g4fLastError=String(e?.message||'Erro de conexão').slice(0,200);
