@@ -57,6 +57,8 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.33.0: Comunicados multimídia: até 3 imagens + áudio opcional, arquivos privados via Supabase Storage.
+# 3.32.0: Alertas opcionais de atribuições e interface G4Flex revisada.
 # 3.30.0: Indicador de ligação Zoiper junto ao nome do atendente, via robô G4Flex v1.4.
 # 3.25.0: Login Painel de Monitoramento, repetição opcional de comunicados a cada X horas e URL configurável.
 # 3.24.0: Comunicados com escolha por mensagem entre mascote de atenção e megafone isolado.
@@ -72,7 +74,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.31.0"
+APP_VERSION = "3.33.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -3351,6 +3353,7 @@ def perfil_padrao(nome="Suporte"):
         "auto_ocultar_controles": True,
         "modo_tv_padrao": False,
         "g4flex_auto_fit": True,
+        "g4flex_attribution_alert": True,
         "preload_seconds": 8,
         "watchdog_seconds": 90,
         "ui_scale": 100,
@@ -4393,6 +4396,7 @@ def migrar_config_legada(data):
             "auto_ocultar_controles": bool(old_profile.get("auto_ocultar_controles", True)),
             "modo_tv_padrao": bool(old_profile.get("modo_tv_padrao", False)),
             "g4flex_auto_fit": bool(old_profile.get("g4flex_auto_fit", True)),
+            "g4flex_attribution_alert": bool(old_profile.get("g4flex_attribution_alert", True)),
             "preload_seconds": 8,
             "watchdog_seconds": 90,
             "ui_scale": 100,
@@ -4543,6 +4547,7 @@ def normalizar_config(data):
             "auto_ocultar_controles": bool(profile.get("auto_ocultar_controles", True)),
             "modo_tv_padrao": bool(profile.get("modo_tv_padrao", False)),
             "g4flex_auto_fit": bool(profile.get("g4flex_auto_fit", True)),
+            "g4flex_attribution_alert": bool(profile.get("g4flex_attribution_alert", True)),
             "preload_seconds": _clamp_int(profile.get("preload_seconds", 8), 8, 0, 30),
             "watchdog_seconds": _clamp_int(profile.get("watchdog_seconds", 90), 90, 30, 600),
             "ui_scale": int(profile.get("ui_scale", 100)) if int(profile.get("ui_scale", 100)) in {90, 100, 110, 125} else 100,
@@ -4950,12 +4955,98 @@ def _com_is_admin():
     return is_admin
 
 
+# v3.33 · mídia em bucket privado, usando o JWT do operador (não service_role).
+COM_MEDIA_BUCKET = "sim-comunicados-midia"
+COM_MAX_IMAGES = 3
+COM_MAX_IMAGE_BYTES = 5 * 1024 * 1024
+COM_MAX_AUDIO_BYTES = 6 * 1024 * 1024
+COM_IMAGE_TYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+COM_AUDIO_TYPES = {"mp3": "audio/mpeg", "m4a": "audio/mp4", "ogg": "audio/ogg", "wav": "audio/wav"}
+
+
+def _com_midia_validar(arquivo, categoria):
+    """Verifica tamanho e assinatura de arquivos fornecidos pelo administrador."""
+    conteudo = arquivo.getvalue()
+    ext = str(arquivo.name).rsplit(".", 1)[-1].lower()
+    tipos = COM_IMAGE_TYPES if categoria == "imagem" else COM_AUDIO_TYPES
+    limite = COM_MAX_IMAGE_BYTES if categoria == "imagem" else COM_MAX_AUDIO_BYTES
+    if ext not in tipos:
+        raise ValueError(f"Formato de {categoria} não aceito: {ext}.")
+    if not conteudo or len(conteudo) > limite:
+        raise ValueError(f"{categoria.capitalize()} deve ter entre 1 byte e {limite // (1024*1024)} MB.")
+    if categoria == "imagem":
+        try:
+            import io
+            from PIL import Image
+            with Image.open(io.BytesIO(conteudo)) as img:
+                img.verify()
+                if img.format not in ("PNG", "JPEG", "WEBP"):
+                    raise ValueError("Formato da imagem não corresponde à extensão.")
+                formato = {"png": "PNG", "jpg": "JPEG", "jpeg": "JPEG", "webp": "WEBP"}[ext]
+                if img.format != formato:
+                    raise ValueError("Extensão e conteúdo da imagem não correspondem.")
+        except (ValueError, OSError, SyntaxError) as exc:
+            raise ValueError(f"Imagem inválida: {exc}") from exc
+    else:
+        valido = (
+            (ext == "mp3" and (conteudo.startswith(b"ID3") or (len(conteudo) > 1 and conteudo[0] == 0xFF and (conteudo[1] & 0xE0) == 0xE0)))
+            or (ext == "wav" and conteudo.startswith(b"RIFF") and conteudo[8:12] == b"WAVE")
+            or (ext == "ogg" and conteudo.startswith(b"OggS"))
+            or (ext == "m4a" and conteudo[4:8] == b"ftyp")
+        )
+        if not valido:
+            raise ValueError("Áudio inválido ou extensão incompatível com o formato do arquivo.")
+    return conteudo, ext, tipos[ext]
+
+
+def _com_storage_upload(conteudo, nome, mime):
+    """Publica um anexo no Storage privado com a identidade do admin autenticado."""
+    from urllib.parse import quote
+    if not _com_is_admin():
+        raise PermissionError("Somente administradores podem enviar arquivos de comunicados.")
+    token = str(st.session_state.get(f"{AUTH_SESSION_PREFIX}access_token") or "")
+    if not token:
+        raise RuntimeError("Sessão expirada: faça login novamente.")
+    url = (f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/"
+           f"{COM_MEDIA_BUCKET}/{quote(nome, safe='/')}")
+    req = Request(url, data=conteudo, method="POST", headers={
+        "Authorization": f"Bearer {token}", "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Content-Type": mime, "x-upsert": "false",
+    })
+    try:
+        with urlopen(req, timeout=45) as resp:
+            return resp.status in (200, 201)
+    except HTTPError as exc:
+        detalhe = exc.read().decode("utf-8", errors="replace")[:450]
+        if exc.code in (400, 404):
+            raise RuntimeError("Storage de comunicados indisponível. Execute o SQL 01_COMUNICADOS_MIDIA.sql. " + detalhe) from exc
+        raise RuntimeError(f"Falha ao enviar mídia (HTTP {exc.code}): {detalhe}") from exc
+
+
+def _com_storage_apagar(nome):
+    """Remove anexo recém-enviado se a gravação do comunicado falhar."""
+    from urllib.parse import quote
+    token = str(st.session_state.get(f"{AUTH_SESSION_PREFIX}access_token") or "")
+    if not token:
+        return
+    url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/{COM_MEDIA_BUCKET}/{quote(nome, safe='/')}"
+    req = Request(url, method="DELETE", headers={
+        "Authorization": f"Bearer {token}", "apikey": SUPABASE_PUBLISHABLE_KEY,
+    })
+    try:
+        with urlopen(req, timeout=10):
+            pass
+    except Exception:
+        pass
+
+
 def _com_listar(limit=25):
-    return _com_request("GET", f"sim_comunicados?select=id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,cancelled_at&order=created_at.desc&limit={int(limit)}")
+    return _com_request("GET", f"sim_comunicados?select=id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,cancelled_at,imagens,audio_path&order=created_at.desc&limit={int(limit)}")
 
 
 def _com_enviar(titulo, mensagem, som, duracao_segundos, validade_minutos,
-                visual_tipo="megafone", repetir=False, intervalo_horas=4, validade_dias=7):
+                visual_tipo="megafone", repetir=False, intervalo_horas=4, validade_dias=7,
+                imagens=None, audio_path=None):
     from datetime import timezone
     now = datetime.now(timezone.utc)
     repetir = bool(repetir)
@@ -4974,6 +5065,8 @@ def _com_enviar(titulo, mensagem, som, duracao_segundos, validade_minutos,
         "visual_tipo": "mascote" if visual_tipo == "mascote" else "megafone",
         "repeat_enabled": repetir,
         "repeat_interval_hours": intervalo_horas if repetir else None,
+        "imagens": list(imagens or []),
+        "audio_path": audio_path or None,
         "expires_at": expires.isoformat(),
     })
 
@@ -4984,13 +5077,15 @@ def _com_cancelar(com_id):
     return _com_request("PATCH", f"sim_comunicados?id=eq.{com_id}", {"ativo": False, "cancelled_at": now})
 
 
-def _com_preview_html(titulo, mensagem, duracao, som, visual_tipo="megafone"):
+def _com_preview_html(titulo, mensagem, duracao, som, visual_tipo="megafone", imagem_data_uri=None):
     # Pré-visualização local; não publica no Supabase.
     titulo_safe = html.escape(str(titulo or "Título do comunicado"))
     body_safe = html.escape(str(mensagem or "Digite a mensagem do comunicado."))
     body_safe = re.sub(r'\*\*(.{1,300}?)\*\*', r'<strong>\1</strong>', body_safe)
     body_safe = body_safe.replace("\n", "<br>")
-    if visual_tipo == "mascote":
+    if imagem_data_uri:
+        art = f'<img src="{html.escape(imagem_data_uri, quote=True)}" alt="Imagem anexada ao comunicado">'
+    elif visual_tipo == "mascote":
         art = f'<img src="{COM_MASCOTE_AVISO_DATA_URI}" alt="Mascote Globo S&S chamando atenção com megafone">'
     else:
         art = COM_MEGAFONE_SVG
@@ -5029,6 +5124,20 @@ def render_central_comunicados():
             help="A escolha é salva em cada comunicado e aparece da mesma forma na prévia e nas TVs.",
         )
         visual_tipo = "mascote" if visual_label.startswith("Mascote") else "megafone"
+        st.markdown("**Anexos do comunicado (opcionais)**")
+        imagens_upload = st.file_uploader(
+            "Adicionar imagens (até 3, PNG/JPG/WEBP, máximo 5 MB por imagem)",
+            type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=True,
+            key="com_imgs_333",
+            help="As imagens serão mostradas junto do aviso, no lugar da arte padrão. Sem imagem, mantém megafone/mascote.",
+        )
+        audio_upload = st.file_uploader(
+            "Adicionar áudio (MP3, M4A, OGG ou WAV, máximo 6 MB)",
+            type=["mp3", "m4a", "ogg", "wav"], accept_multiple_files=False,
+            key="com_audio_333",
+            help="O arquivo será reproduzido na TV quando o navegador permitir. Também haverá controles para iniciar manualmente.",
+        )
+        st.caption("Imagens e áudio usam armazenamento privado. A opção 'Alerta sonoro' continua controlando o toque inicial.")
         col_dur, col_som, col_val = st.columns([1.0, 1.0, 1.2])
         with col_dur:
             duracao = st.selectbox("Exibir por", [20, 40, 60, 90, 120], index=1, format_func=lambda n: f"{n} segundos")
@@ -5056,7 +5165,27 @@ def render_central_comunicados():
             send = st.form_submit_button("Enviar agora para todos os monitores", type="primary", use_container_width=True)
     if preview:
         st.markdown("**Pré-visualização (não enviada)**")
-        components.html(_com_preview_html(titulo, mensagem, duracao, som, visual_tipo), height=350, scrolling=False)
+        imagem_preview_uri = None
+        if imagens_upload:
+            try:
+                import io
+                from PIL import Image
+                _com_midia_validar(imagens_upload[0], "imagem")
+                with Image.open(io.BytesIO(imagens_upload[0].getvalue())) as _img:
+                    _img.thumbnail((600, 600))
+                    _output = io.BytesIO()
+                    _img.convert("RGB").save(_output, format="JPEG", quality=80, optimize=True)
+                    imagem_preview_uri = "data:image/jpeg;base64," + base64.b64encode(_output.getvalue()).decode("ascii")
+            except Exception as exc:
+                st.warning(f"Não foi possível criar a prévia da imagem: {exc}")
+        components.html(_com_preview_html(titulo, mensagem, duracao, som, visual_tipo, imagem_preview_uri), height=350, scrolling=False)
+        if imagens_upload:
+            st.caption(f"Imagens anexadas: {len(imagens_upload)} (exibidas no lugar do mascote/megafone)")
+            for imagem in imagens_upload[:COM_MAX_IMAGES]:
+                st.image(imagem, width=300)
+        if audio_upload:
+            st.caption("Áudio anexado (controle de reprodução na TV):")
+            st.audio(audio_upload)
         if repetir:
             st.info(f"Agendamento: exibição imediata e repetição a cada {int(intervalo_horas)} hora(s), por {int(validade_dias)} dia(s) ou até o cancelamento.")
         else:
@@ -5064,10 +5193,30 @@ def render_central_comunicados():
     if send:
         if len(titulo.strip()) < 3 or len(mensagem.strip()) < 5:
             st.error("Preencha título e mensagem antes de enviar.")
+        elif len(imagens_upload or []) > COM_MAX_IMAGES:
+            st.error("Selecione no máximo três imagens por comunicado.")
         else:
+            enviados = []
             try:
+                # Validar todos antes de subir algum arquivo.
+                imagens_validadas = [_com_midia_validar(imagem, "imagem") for imagem in (imagens_upload or [])]
+                audio_validado = _com_midia_validar(audio_upload, "audio") if audio_upload else None
+                pasta = f"comunicados/{uuid.uuid4()}"
+                imagens_paths = []
+                for conteudo, ext, mime in imagens_validadas:
+                    caminho = f"{pasta}/imagem_{uuid.uuid4().hex}.{ext}"
+                    _com_storage_upload(conteudo, caminho, mime)
+                    enviados.append(caminho)
+                    imagens_paths.append(caminho)
+                audio_path = None
+                if audio_validado:
+                    conteudo, ext, mime = audio_validado
+                    audio_path = f"{pasta}/audio_{uuid.uuid4().hex}.{ext}"
+                    _com_storage_upload(conteudo, audio_path, mime)
+                    enviados.append(audio_path)
                 result = _com_enviar(titulo, mensagem, som, duracao, validade, visual_tipo,
-                                     repetir=repetir, intervalo_horas=intervalo_horas, validade_dias=validade_dias)
+                                     repetir=repetir, intervalo_horas=intervalo_horas, validade_dias=validade_dias,
+                                     imagens=imagens_paths, audio_path=audio_path)
                 if isinstance(result, list) and result:
                     if repetir:
                         st.success(f"Comunicado publicado. Será exibido agora e repetido a cada {intervalo_horas} hora(s) durante {validade_dias} dia(s), salvo cancelamento.")
@@ -5076,6 +5225,9 @@ def render_central_comunicados():
                 else:
                     st.warning("A solicitação foi enviada, mas não foi possível confirmar o registro no banco.")
             except Exception as exc:
+                # Evita deixar arquivos sem comunicado correspondente.
+                for caminho in enviados:
+                    _com_storage_apagar(caminho)
                 st.error(f"Falha ao publicar: {exc}")
 
     st.markdown("#### Histórico e cancelamento")
@@ -5106,7 +5258,9 @@ def render_central_comunicados():
             arte = "Mascote com megafone" if row.get("visual_tipo") == "mascote" else "Megafone sem mascote"
             recorrencia = (f"Repetição: a cada {row.get('repeat_interval_hours')}h" if row.get("repeat_enabled")
                            else "Repetição: desativada")
-            st.caption(f"Ilustração: {arte} · Duração: {row.get('duracao_segundos',40)}s · Som: {'ligado' if row.get('som') else 'desligado'} · {recorrencia} · Situação: {status}")
+            qtd_img = len(row.get("imagens") or []) if isinstance(row.get("imagens"), list) else 0
+            tem_audio = bool(row.get("audio_path"))
+            st.caption(f"Ilustração: {arte} · Imagens: {qtd_img} · Áudio anexado: {'sim' if tem_audio else 'não'} · Duração: {row.get('duracao_segundos',40)}s · Toque: {'ligado' if row.get('som') else 'desligado'} · {recorrencia} · Situação: {status}")
             if row.get('repeat_enabled') and row.get('ativo', True) and not expired:
                 st.caption(f"Repetições programadas até: {expiration[:19].replace('T', ' ')} (UTC) ou cancelamento.")
             if row.get("ativo", True) and not expired:
@@ -6434,6 +6588,13 @@ if not st.session_state.iniciado:
                 help="Ajusta colunas e altura dos cartões automaticamente. Quando não houver espaço legível, alterna páginas sem barra de rolagem.",
             )
             st.caption("Ativado por padrão: até 15 atendentes normalmente cabem em 5 colunas × 3 linhas em telas grandes. Em telas menores, o painel alterna páginas automaticamente.")
+            perfil["g4flex_attribution_alert"] = st.toggle(
+                "Alertar visualmente quando houver conversas atribuídas",
+                value=bool(perfil.get("g4flex_attribution_alert", True)),
+                key=f"g4flex_assignment_alert_v332_{active_profile_id}",
+                help="Com uma ou mais conversas atribuídas, destaca o cartão em laranja e aplica uma breve vibração a cada 9 segundos. Respeita a preferência de movimento reduzido e desativa a vibração se os dados do robô estiverem desatualizados.",
+            )
+            st.caption("Quando ativado, as atribuições maiores que zero recebem um aviso. Sem animação contínua ou som; pessoas em pausa continuam com fundo azul e pessoas ativas com fundo verde.")
 
         salvar_config(config)
 
@@ -7101,7 +7262,7 @@ else:
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
         "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "municipality_maps": _sim_mapas_municipais_ipece_2026(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": False, "supabase_url": SUPABASE_URL, "supabase_publishable_key": SUPABASE_PUBLISHABLE_KEY, "event_source": "robot_supabase", "monitor_id": "monitor-sim-principal"},
-        "g4flex": {"monitor_id": "g4flex-principal", "logo": G4FLEX_LOGO_DATA_URI, "auto_fit": bool(perfil.get("g4flex_auto_fit", True))},
+        "g4flex": {"monitor_id": "g4flex-principal", "logo": G4FLEX_LOGO_DATA_URI, "auto_fit": bool(perfil.get("g4flex_auto_fit", True)), "attribution_alert": bool(perfil.get("g4flex_attribution_alert", True))},
         "comunicados": {
             "supabase_url": SUPABASE_URL,
             "publishable_key": SUPABASE_PUBLISHABLE_KEY,
@@ -7226,6 +7387,18 @@ else:
             #com-titulo{font-family:Arial,Helvetica,sans-serif;font-size:clamp(28px,3.25vw,49px);font-weight:900;line-height:1.1;color:#0b3268;margin:26px 0 18px;overflow-wrap:anywhere}
             #com-corpo{font-size:clamp(16px,1.45vw,23px);line-height:1.56;font-weight:450;color:#14375f;overflow-y:auto;max-height:min(48vh,440px);overflow-wrap:anywhere;white-space:normal;padding-right:4px}
             #com-corpo strong{color:#004ea5;font-weight:850}
+            /* v3.33 · Mídia anexa com visual adaptado para TV */
+            #com-custom-media{display:none;width:100%;max-width:310px;min-width:0;align-items:center;justify-content:center}
+            #com-custom-media.active{display:flex;flex-direction:column;gap:9px}
+            #com-custom-media img{max-height:340px;max-width:100%;width:100%;border-radius:13px;border:1px solid #d4e7f8;object-fit:contain;background:#f0f7fd;box-shadow:0 8px 18px #17497717;filter:none}
+            #com-custom-media .com-media-thumbs{display:flex;width:100%;gap:8px;justify-content:center}
+            #com-custom-media .com-media-thumbs img{width:calc((100% - 16px)/3);max-height:70px;height:60px;object-fit:contain;box-shadow:none}
+            #com-audio-anexo{margin-top:16px;padding:10px 13px;border:1px solid #c8ddf4;border-radius:12px;background:#f2f8ff}
+            #com-audio-anexo[hidden]{display:none!important}
+            #com-audio-anexo label{display:block;font-size:13px;color:#0b529b;font-weight:800;margin:0 0 8px}
+            #com-audio-player{display:block;width:min(560px,100%);max-width:100%;height:40px}
+            #com-audio-hint{font-size:11px;color:#476b90;margin:6px 0 0}
+            @media(max-width:760px){#com-custom-media.active{max-height:175px}#com-custom-media img{max-height:130px}#com-custom-media .com-media-thumbs{display:none}#com-audio-player{height:37px}}
             .com-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;background:#e8f4ff;color:#175697;padding:18px clamp(20px,3vw,34px);font-size:14px;font-weight:600}
             .com-footer-left{display:flex;align-items:center;gap:10px}
             .com-footer-right{min-width:min(355px,100%);max-width:400px;flex:1;display:flex;flex-direction:column;gap:8px}
@@ -7366,6 +7539,36 @@ else:
         .g4f-agent.paused .g4f-call-indicator{border-color:#46b580;background:#f0fff5}
         .g4f-call-legend{display:inline-flex;align-items:center;gap:4px;font-weight:750;color:#087346}
         .g4f-call-legend svg{width:12px;height:12px;stroke:#087346;stroke-width:2.6;fill:none}
+        /* v3.32 · Densidade legível: fontes proporcionais à altura útil do cartão,
+           sem grandes áreas vazias quando há poucos atendentes. */
+        .g4f-board.g4f-fit .g4f-grid.g4f-sparse{align-content:start;
+            grid-template-rows:repeat(var(--g4f-fit-rows,2),var(--g4f-card-height,260px))}
+        .g4f-board.g4f-fit .g4f-stat{font-size:var(--g4f-stat-font,15px);line-height:1.2}
+        .g4f-board.g4f-fit .g4f-stat b{font-size:var(--g4f-number-font,17px);font-weight:850}
+        .g4f-board.g4f-fit .g4f-stat:first-child b{font-size:var(--g4f-time-font,19px)}
+        .g4f-board.g4f-fit .g4f-agent-person strong{font-size:var(--g4f-name-font,14px)}
+        .g4f-board.g4f-fit .g4f-agent-person small{font-size:var(--g4f-queue-font,10.5px)}
+        .g4f-board.g4f-fit .g4f-agent-stats{padding-top:4px;grid-template-rows:repeat(4,minmax(0,1fr))}
+        .g4f-board.g4f-fit .g4f-agent-head{padding-bottom:5px}
+        .g4f-board.g4f-fit .g4f-agent-stats .g4f-stat{padding:1px 3px}
+        .g4f-agent.has-assignment{position:relative;border-color:#fb923c!important;border-left-color:#f97316!important;
+            box-shadow:0 0 0 2px rgba(245,158,11,.26),0 7px 18px rgba(154,79,9,.15)!important}
+        .g4f-agent.has-assignment .g4f-assigned-stat{color:#9a3412;background:rgba(255,219,160,.62);
+            border-radius:7px;padding:0 6px!important}
+        .g4f-agent.has-assignment .g4f-assigned-stat b{color:#a33e09!important;font-weight:950}
+        .g4f-assignment-note{display:flex;align-items:center;gap:5px;flex:0 0 auto;
+            color:#9a3412;background:#fff0d5;border:1px solid #fbc17d;border-radius:7px;
+            margin-top:4px;padding:3px 8px;font-weight:820;font-size:clamp(10px,.7vw,12px);line-height:1.25}
+        .g4f-assignment-note svg{width:13px;height:13px;flex:0 0 13px;fill:#f97316}
+        .g4f-board.g4f-fit .g4f-grid.g4f-tight-alerts .g4f-assignment-note{padding:2px 6px;margin-top:2px;font-size:10px}
+        @keyframes g4f-brief-shake{
+            0%,100%{transform:translateX(0)} 18%,55%{transform:translateX(-3px) rotate(-.3deg)}
+            36%,73%{transform:translateX(3px) rotate(.3deg)} 86%{transform:translateX(-1px)}
+        }
+        .g4f-agent.has-assignment.g4f-shake-now{animation:g4f-brief-shake .55s ease-in-out 1}
+        @media(prefers-reduced-motion:reduce){
+            .g4f-agent.has-assignment.g4f-shake-now{animation:none!important}
+        }
         </style>
     </head>
     <body class="bar-top">
@@ -7405,6 +7608,7 @@ else:
                 <button id="com-close" type="button" title="Fechar o comunicado neste monitor" aria-label="Fechar comunicado">×</button>
                 <div class="com-card-inner">
                     <div class="com-art">
+                        <div id="com-custom-media" aria-label="Imagens anexadas ao comunicado" hidden></div>
                         <div id="com-megafone">__MEGAFONE_SVG__</div>
                         <img id="com-mascote" src="__MASCOTE_COMUNICADO_DATA_URI__" alt="Mascote do Grupo S&S fazendo um aviso com megafone" hidden>
                     </div>
@@ -7415,6 +7619,11 @@ else:
                         </div>
                         <h1 id="com-titulo">Comunicado</h1>
                         <div id="com-corpo"></div>
+                        <div id="com-audio-anexo" hidden>
+                            <label for="com-audio-player">♫ Áudio do comunicado</label>
+                            <audio id="com-audio-player" controls preload="none"></audio>
+                            <p id="com-audio-hint">Se o navegador bloquear a reprodução automática, clique em reproduzir.</p>
+                        </div>
                     </div>
                 </div>
                 <div class="com-footer">
@@ -7522,6 +7731,9 @@ else:
             let comActive = null;
             let comHideTimer = null;
             let comProgressTimer = null;
+            let comMediaToken = 0;
+            let comMediaUrls = [];
+            let comActiveTiming = null;
             let comPollTimer = null;
             let comAudioContext = null;
             let comAccessToken = String(comSettings.access_token || "");
@@ -7595,6 +7807,10 @@ else:
             const comBody = document.getElementById('com-corpo');
             const comMegafone = document.getElementById('com-megafone');
             const comMascote = document.getElementById('com-mascote');
+            const comCustomMedia = document.getElementById('com-custom-media');
+            const comAudioAnexo = document.getElementById('com-audio-anexo');
+            const comAudioPlayer = document.getElementById('com-audio-player');
+            const comAudioHint = document.getElementById('com-audio-hint');
             const comAudioBtn = document.getElementById('com-audio-btn');
             const comTime = document.getElementById('com-tempo');
             const comProgress = document.getElementById('com-progress-fill');
@@ -7962,7 +8178,7 @@ else:
                 const apiKey=String(comSettings.publishable_key||'');
                 if(!base||!apiKey||!comAccessToken)return [];
                 if(comExpiresMs && Date.now() > comExpiresMs-90000)await comRenovarToken();
-                const url=`${base}/rest/v1/sim_comunicados?select=id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,cancelled_at&order=created_at.desc&limit=100`;
+                const url=`${base}/rest/v1/sim_comunicados?select=id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,cancelled_at,imagens,audio_path&order=created_at.desc&limit=100`;
                 let resp=await fetch(url,{method:'GET',cache:'no-store',headers:{'Accept':'application/json','apikey':apiKey,'Authorization':`Bearer ${comAccessToken}`}});
                 if(resp.status===401){
                     await comRenovarToken();
@@ -7972,11 +8188,91 @@ else:
                 const rows=await resp.json();
                 return Array.isArray(rows)?rows:[];
             }
+            function comLimparMidias(){
+                ++comMediaToken;
+                try{comAudioPlayer.pause();}catch(e){}
+                comAudioPlayer.removeAttribute('src');
+                comAudioPlayer.load();
+                comAudioAnexo.hidden=true;
+                comCustomMedia.replaceChildren();
+                comCustomMedia.classList.remove('active');
+                comCustomMedia.hidden=true;
+                for(const url of comMediaUrls){try{URL.revokeObjectURL(url);}catch(e){}}
+                comMediaUrls=[];
+                comActiveTiming=null;
+            }
+            async function comBaixarMidia(caminho, tipo){
+                const base=String(comSettings.supabase_url||'').replace(/\/+$/,'');
+                const apiKey=String(comSettings.publishable_key||'');
+                if(!base||!apiKey||!comAccessToken)throw new Error('Sessão de mídia indisponível');
+                if(!/^comunicados\/[A-Za-z0-9_\/-]+\.(png|jpe?g|webp|mp3|m4a|ogg|wav)$/i.test(String(caminho)))
+                    throw new Error('Caminho da mídia inválido');
+                if(comExpiresMs && Date.now()>comExpiresMs-90000)await comRenovarToken();
+                const url=`${base}/storage/v1/object/authenticated/sim-comunicados-midia/${String(caminho).split('/').map(encodeURIComponent).join('/')}`;
+                const headers=()=>({'apikey':apiKey,'Authorization':`Bearer ${comAccessToken}`});
+                let resp=await fetch(url,{cache:'no-store',headers:headers()});
+                if(resp.status===401){await comRenovarToken();resp=await fetch(url,{cache:'no-store',headers:headers()});}
+                if(!resp.ok)throw new Error(`Arquivo de ${tipo} indisponível (HTTP ${resp.status})`);
+                const blob=await resp.blob();
+                if(tipo==='imagem' && !blob.type.startsWith('image/'))throw new Error('Tipo de imagem inválido');
+                if(tipo==='áudio' && !(blob.type.startsWith('audio/') || blob.type==='application/octet-stream'))throw new Error('Tipo de áudio inválido');
+                return URL.createObjectURL(blob);
+            }
+            function comAjustarTempoAudio(segundos){
+                if(!comActiveTiming || !Number.isFinite(segundos) || segundos<=0)return;
+                const duracao=Math.min(180000,Math.max(comActiveTiming.durationMs,Math.ceil(segundos+3)*1000));
+                if(duracao<=comActiveTiming.durationMs)return;
+                comActiveTiming.durationMs=duracao;
+                clearTimeout(comHideTimer);
+                const restante=Math.max(1000,comActiveTiming.start+duracao-Date.now());
+                comHideTimer=setTimeout(()=>comFechar('tempo concluído'),restante);
+            }
+            async function comCarregarMidias(item, chave){
+                const paths=Array.isArray(item.imagens)?item.imagens.slice(0,3):[];
+                const audioPath=String(item.audio_path||'');
+                if(paths.length){
+                    const imagens=[];
+                    for(const p of paths){
+                        try{
+                            const url=await comBaixarMidia(p,'imagem');
+                            if(chave!==comMediaToken){URL.revokeObjectURL(url);return;}
+                            comMediaUrls.push(url);
+                            const img=document.createElement('img');
+                            img.src=url;img.alt=`Imagem ${imagens.length+1} do comunicado`;img.loading='eager';
+                            imagens.push(img);
+                        }catch(e){log(`Comunicado: ${e?.message||e}`);}
+                    }
+                    if(chave!==comMediaToken)return;
+                    if(imagens.length){
+                        comMascote.hidden=true;comMegafone.hidden=true;
+                        comCustomMedia.hidden=false;comCustomMedia.classList.add('active');
+                        comCustomMedia.append(imagens[0]);
+                        if(imagens.length>1){
+                            const thumbs=document.createElement('div');thumbs.className='com-media-thumbs';
+                            thumbs.append(...imagens.slice(1));comCustomMedia.append(thumbs);
+                        }
+                    }
+                }
+                if(audioPath){
+                    try{
+                        const url=await comBaixarMidia(audioPath,'áudio');
+                        if(chave!==comMediaToken){URL.revokeObjectURL(url);return;}
+                        comMediaUrls.push(url);
+                        comAudioPlayer.src=url;comAudioPlayer.preload='metadata';
+                        comAudioAnexo.hidden=false;
+                        comAudioHint.textContent='Se o navegador bloquear, clique em reproduzir.';
+                        comAudioPlayer.onloadedmetadata=()=>{if(chave===comMediaToken)comAjustarTempoAudio(comAudioPlayer.duration);};
+                        try{await comAudioPlayer.play();comAudioHint.textContent='Áudio em reprodução.';}
+                        catch(e){comAudioHint.textContent='Reprodução automática bloqueada: clique em ▶ para ouvir.';}
+                    }catch(e){log(`Comunicado: ${e?.message||e}`);}
+                }
+            }
             function comFechar(razao='fim'){
                 if(!comActive)return;
                 const antigo=comActive;
                 comActive=null;
                 clearTimeout(comHideTimer);clearInterval(comProgressTimer);
+                comLimparMidias();
                 comOverlay.classList.remove('show');
                 log(`Comunicado encerrado: ${antigo.titulo||antigo.id} · ${razao}`);
                 setTimeout(()=>{comMostrarProximo();showNextSimAlert();},230);
@@ -7993,23 +8289,31 @@ else:
                 comBody.innerHTML=comRenderTexto(item.mensagem||'');
                 // Cada aviso mantém o visual escolhido pelo administrador no envio.
                 // Registros antigos, sem visual_tipo, continuam usando o megafone padrão.
+                comLimparMidias();
+                const mediaChave=comMediaToken;
                 const mostrarMascote=String(item.visual_tipo||'megafone').toLowerCase()==='mascote';
                 comMascote.hidden=!mostrarMascote;
                 comMegafone.hidden=mostrarMascote;
                 const dur=Math.max(15,Math.min(180,Number(item.duracao_segundos||40)));
-                const start=Date.now(), duration=dur*1000;
+                const start=Date.now();
+                comActiveTiming={start,durationMs:dur*1000};
                 comTime.textContent=`Exibindo por mais ${dur} segundos`;
                 comProgress.style.width='100%';
                 comOverlay.classList.add('show');
                 comAudioBtn.textContent=item.som?'♫ Áudio ativado (se permitido)':'♫ Sem áudio';
                 comAudioBtn.disabled=!item.som;
                 if(item.som)comSom();
+                // Mídias são carregadas somente quando o comunicado está visível.
+                // Falhas de arquivo não bloqueiam o aviso textual.
+                comCarregarMidias(item,mediaChave).catch(e=>log(`Mídia: ${e?.message||e}`));
                 comProgressTimer=setInterval(()=>{
+                    if(!comActiveTiming)return;
+                    const duration=comActiveTiming.durationMs;
                     const remain=Math.max(0,Math.ceil((start+duration-Date.now())/1000));
                     comTime.textContent=`Exibindo por mais ${remain} segundo${remain===1?'':'s'}`;
                     comProgress.style.width=`${Math.max(0,(start+duration-Date.now())/duration*100)}%`;
                 },100);
-                comHideTimer=setTimeout(()=>comFechar('tempo concluído'),duration);
+                comHideTimer=setTimeout(()=>comFechar('tempo concluído'),dur*1000);
                 log(`Comunicado exibido: ${item.titulo||item.id}`);
             }
             async function comObterAudioContext(){
@@ -8044,6 +8348,9 @@ else:
                     const menu=document.getElementById('com-audio-menu');
                     if(menu)menu.textContent=ctx?.state==='running'?'♫ Som dos comunicados habilitado':'♫ Ativar som';
                     if(comActive?.som)await comSom();
+                    if(comActive && comAudioPlayer.src && comAudioPlayer.paused){
+                        try{await comAudioPlayer.play();comAudioHint.textContent='Áudio em reprodução.';}catch(e){}
+                    }
                 }catch(e){log(`Não foi possível ativar áudio: ${e?.message||e}`);}
             }
             comAudioBtn.addEventListener('click',habilitarSomComunicados);
@@ -8526,6 +8833,8 @@ else:
             let g4fFilterStatus = 'todos';
             const g4fMonitorId = String(g4fConfig.monitor_id||'g4flex-principal');
             const g4fAutoFit = g4fConfig.auto_fit !== false;
+            const g4fAssignmentAlert = g4fConfig.attribution_alert !== false;
+            let g4fAssignmentTimer = null;
             let g4fPagerTimer = null;
             const g4fText = value => escapeHtml(String(value == null ? '' : value));
             function g4fNumber(v){return v==null||v===''?'—':Number.isFinite(Number(v))?String(Number(v)):'—';}
@@ -8555,6 +8864,8 @@ else:
             function g4fCard(agent){
                 const status=agent.status==='pausado'?'pausado':agent.status==='ativo'?'ativo':'desconhecido';
                 const paused=status==='pausado';
+                const assignedCount = Number.isFinite(Number(agent.atribuidas))?Math.max(0,Math.floor(Number(agent.atribuidas))):0;
+                const hasAssignment = g4fAssignmentAlert && assignedCount>0;
                 const fila=agent.fila_exibida||agent.fila||'Não informada';
                 const time=paused?(agent.tempo_pausa||agent.tempo_valor):(agent.tempo_fila||agent.tempo_valor);
                 const label=paused?'Tempo de pausa':'Tempo de fila';
@@ -8565,16 +8876,21 @@ else:
                 const calling=voiceOnline && agent.voz_status==='em_ligacao';
                 const voiceTooltip=calling?`Em ligação no Zoiper${agent.voz_ramal?' · Ramal '+String(agent.voz_ramal):''}${agent.voz_tempo?' · '+String(agent.voz_tempo):''}`:'';
                 const phoneIcon=calling?`<span class="g4f-call-indicator" title="${g4fText(voiceTooltip)}" aria-label="Em ligação pelo Zoiper"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 3.1 5.2 2 2 0 0 1 5.1 3h3a2 2 0 0 1 2 1.7c.14.9.38 1.8.7 2.7a2 2 0 0 1-.45 2.1l-1.3 1.3a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.45c.9.32 1.8.56 2.7.7a2 2 0 0 1 1.85 2.15z"/></svg></span>`:'';
-                return `<article class="g4f-agent ${paused?'paused':status==='desconhecido'?'unknown':''}">
+                const assignmentNote=hasAssignment?`<div class="g4f-assignment-note" role="status" aria-label="${assignedCount} conversa(s) atribuída(s)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm0 7 1 6h-2l1-6zm-1 8h2v2h-2z"/></svg>
+                    ${assignedCount===1?'1 conversa atribuída':`${assignedCount} conversas atribuídas`}
+                    </div>`:'';
+                return `<article class="g4f-agent ${paused?'paused':status==='desconhecido'?'unknown':''} ${hasAssignment?'has-assignment':''}">
                     <div class="g4f-agent-head">
                       ${g4fAvatar(agent)}<div class="g4f-agent-person"><strong title="${g4fText(agent.nome||'')}">${g4fText(agent.nome||'Sem nome')}${phoneIcon}</strong>
                       <small title="Fila exibida: ${g4fText(fila)}">Fila exibida · ${g4fText(fila)}</small></div>
                       <span class="g4f-state">${paused?'Em pausa':status==='ativo'?'Ativo':'Sem status'}</span>
                     </div>
                     ${paused?`<div class="g4f-reason">● Motivo: <em>${g4fText(agent.motivo_pausa||'Não informado')}</em></div>`:''}
+                    ${assignmentNote}
                     <div class="g4f-agent-stats">
                       <div class="g4f-stat"><span>${label}</span><b>${g4fText(time||'—')}</b></div>
-                      <div class="g4f-stat"><span>Atribuídas</span><b>${g4fNumber(agent.atribuidas)}</b></div>
+                      <div class="g4f-stat ${hasAssignment?'g4f-assigned-stat':''}"><span>Atribuídas</span><b>${g4fNumber(agent.atribuidas)}</b></div>
                       <div class="g4f-stat"><span>Em atendimento</span><b>${g4fNumber(agent.em_atendimento)}</b></div>
                       <div class="g4f-stat"><span>Encerradas</span><b>${g4fNumber(agent.encerradas)}</b></div>
                     </div>
@@ -8589,6 +8905,7 @@ else:
                 const pageText=host.querySelector('[data-g4f="page-text"]');
                 const agents=host._g4fAgents||[];
                 if(!grid)return;
+                grid.classList.remove('g4f-sparse','g4f-tight-alerts');
                 if(!g4fAutoFit){
                     if(pager)pager.hidden=true;
                     grid.style.removeProperty('--g4f-fit-cols');
@@ -8608,6 +8925,23 @@ else:
                     const rows=Math.max(1,Math.min(maxRows,Math.ceil(Math.max(1,agents.length)/cols)));
                     const capacity=Math.max(1,cols*rows);
                     const pages=Math.max(1,Math.ceil(agents.length/capacity));
+                    const cardWidth=Math.max(130,(width-gap*(cols-1))/cols);
+                    const rawCardHeight=Math.max(100,(height-gap*(rows-1))/rows);
+                    const sparse=agents.length>0 && agents.length<=10 && rawCardHeight>275;
+                    const cardHeight=sparse?Math.min(295,rawCardHeight):rawCardHeight;
+                    grid.classList.toggle('g4f-sparse',sparse);
+                    grid.classList.toggle('g4f-tight-alerts',cardHeight<175);
+                    grid.style.setProperty('--g4f-card-height',Math.floor(cardHeight)+'px');
+                    // Escala de texto conforme altura, limitada pela largura dos cartões.
+                    const gain=Math.min(1.5,Math.max(0,(cardHeight-145)/115));
+                    const widthGain=Math.min(1,Math.max(0,(cardWidth-185)/95));
+                    const scale=Math.min(gain,widthGain+0.4);
+                    const clamp=(v,min,max)=>Math.min(max,Math.max(min,v)).toFixed(1)+'px';
+                    grid.style.setProperty('--g4f-stat-font',clamp(12.5+scale*3,12.2,17.5));
+                    grid.style.setProperty('--g4f-number-font',clamp(14+scale*3.6,13.4,20));
+                    grid.style.setProperty('--g4f-time-font',clamp(15+scale*4.3,14,22.5));
+                    grid.style.setProperty('--g4f-name-font',clamp(12+scale*2.1,11.5,16));
+                    grid.style.setProperty('--g4f-queue-font',clamp(9.3+scale*1.1,9,11.5));
                     host._g4fPage=Math.min(Math.max(0,host._g4fPage||0),pages-1);
                     const start=host._g4fPage*capacity;
                     const visible=agents.slice(start,start+capacity);
@@ -8732,6 +9066,22 @@ else:
                          }
                      },9000);
                  }
+                if(g4fAssignmentAlert && !g4fAssignmentTimer){
+                    g4fAssignmentTimer=setInterval(()=>{
+                        if(typeof window.matchMedia==='function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+                        if(g4fState(g4fLastData)!=='online')return;
+                        for(const panel of g4fWidgets){
+                            if(!panel.isConnected)continue;
+                            if(!panel.closest('.iframe-panel.active'))continue;
+                            panel.querySelectorAll('.g4f-agent.has-assignment').forEach(card=>{
+                                card.classList.remove('g4f-shake-now');
+                                void card.offsetWidth; // força reinício da vibração curta a cada ciclo
+                                card.classList.add('g4f-shake-now');
+                                setTimeout(()=>{if(card.isConnected)card.classList.remove('g4f-shake-now');},700);
+                            });
+                        }
+                    },9000);
+                }
             }
 
             function createPanelFrame(i,role='preload'){
