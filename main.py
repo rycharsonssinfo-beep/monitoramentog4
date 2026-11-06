@@ -72,7 +72,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.30.0"
+APP_VERSION = "3.31.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -5123,6 +5123,183 @@ def render_central_comunicados():
 _render_login_gate()
 _render_account_sidebar()
 
+
+
+# ============================================
+# v3.31 CENTRAL DE ATUALIZAÇÕES GRUPO S&S
+# ============================================
+import hashlib
+import json
+import re
+import uuid
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+
+BUCKET='monitor-ss-releases'
+COMPONENTES={'g4flex':'Monitor G4Flex','sim':'Monitor SIM','completo':'Instalador completo'}
+VERSION_RE=re.compile(r'^\d+\.\d+\.\d+$')
+HASH_RE=re.compile(r'^[0-9a-f]{64}$')
+
+
+def _rel_req(url, token, publishable, method='GET', obj=None, raw=None, timeout=120, content_type=None):
+    headers={'apikey':publishable,'Authorization':'Bearer '+token,'Accept':'application/json'}
+    body=None
+    if obj is not None:
+        body=json.dumps(obj,ensure_ascii=False).encode('utf-8')
+        headers['Content-Type']='application/json'
+    if raw is not None:
+        body=raw
+        headers['Content-Type']=content_type or 'application/octet-stream'
+        headers['cache-control']='3600'
+    if method=='POST' and obj is not None:
+        headers['Prefer']='return=representation'
+    req=Request(url,headers=headers,data=body,method=method)
+    try:
+        with urlopen(req,timeout=timeout) as resp:
+            contents=resp.read()
+            return json.loads(contents) if contents else {}
+    except HTTPError as e:
+        reason=e.read().decode('utf-8','replace')[:400]
+        raise RuntimeError(f'Supabase HTTP {e.code}: {reason}') from e
+    except URLError as e:
+        raise RuntimeError(f'Falha de conexão: {e.reason}') from e
+
+
+def _rel_jwt():
+    from_main=st.session_state.get('_monitor_auth_access_token')
+    if not from_main: raise RuntimeError('Faça login novamente no Painel de Monitoramento.')
+    return str(from_main)
+
+
+def _rel_get_rows(base,public):
+    query=("monitor_ss_releases?select=id,componente,versao,descricao,arquivo_nome,origem,"
+           "objeto_path,url_externa,sha256,tamanho_bytes,publicado,criado_em"
+           "&order=criado_em.desc&limit=100")
+    return _rel_req(base+'/rest/v1/'+query,_rel_jwt(),public)
+
+
+def _rel_signed_link(base,public,object_path):
+    path=quote(object_path,safe='/')
+    out=_rel_req(base+'/storage/v1/object/sign/'+BUCKET+'/'+path,_rel_jwt(),public,method='POST',obj={'expiresIn':600})
+    signed=out.get('signedURL') or out.get('signedUrl') or ''
+    if not signed:raise RuntimeError('Não foi possível gerar link privado de download.')
+    if signed.startswith('http'):
+        if not signed.startswith(base+'/'):raise RuntimeError('URL de download inesperada')
+        return signed
+    if signed.startswith('/storage/v1/'):
+        return base+signed
+    if signed.startswith('/object/'):
+        return base+'/storage/v1'+signed
+    return base+'/storage/v1/'+signed.lstrip('/')
+
+
+def _rel_upload(base,public,component,version,bytes_file):
+    path=component+'/'+version+'/'+uuid.uuid4().hex+'.exe'
+    url=base+'/storage/v1/object/'+BUCKET+'/'+quote(path,safe='/')
+    _rel_req(url,_rel_jwt(),public,method='POST',raw=bytes_file,timeout=300)
+    return path
+
+
+def _rel_insert(base,public,row):
+    result=_rel_req(base+'/rest/v1/monitor_ss_releases',_rel_jwt(),public,method='POST',obj=row)
+    return result
+
+
+def _rel_patch(base,public,item_id,change):
+    return _rel_req(base+'/rest/v1/monitor_ss_releases?id=eq.'+quote(item_id),_rel_jwt(),public,method='PATCH',obj=change)
+
+
+def render_central_atualizacoes(base,public,admin):
+    st.subheader('Downloads e Atualizações · Grupo S&S')
+    st.caption('Instaladores para Windows · publicações versionadas · integridade SHA-256 · armazenamento privado quando disponível')
+    try:
+        rows=_rel_get_rows(base,public)
+    except Exception as exc:
+        st.error('Não foi possível consultar as versões. Execute o SQL 01_CENTRAL_ATUALIZACOES.sql e confira a RLS.')
+        st.caption(str(exc)[:450]);return
+
+    if admin:
+        with st.expander('Publicar nova versão (somente administrador)',expanded=False):
+            with st.form('release_publish_form_331',clear_on_submit=False):
+                component=st.selectbox('Aplicativo',list(COMPONENTES),format_func=lambda x:COMPONENTES[x])
+                version=st.text_input('Número da versão (ex.: 1.6.0)')
+                notes=st.text_area('Novidades da atualização',height=100)
+                delivery=st.radio('Origem do instalador',['Arquivo no Supabase','Link HTTPS externo'],horizontal=True)
+                upload=None;link='';digest_external='';size_external=0;name_external=''
+                if delivery=='Arquivo no Supabase':
+                    upload=st.file_uploader('Arquivo .exe',type=['exe'],key='release_uploaded_exe_331')
+                    st.caption('Supabase Free: arquivo de até 50 MB; instaladores maiores devem ser hospedados externamente.')
+                else:
+                    link=st.text_input('URL HTTPS direta para o .exe (por exemplo, GitHub Releases)')
+                    digest_external=st.text_input('SHA-256 do arquivo (64 caracteres hexadecimais)').strip().lower()
+                    size_external=st.number_input('Tamanho do arquivo em bytes',min_value=1,step=1,value=1)
+                    name_external=st.text_input('Nome do instalador (ex.: Instalador_Monitor_SS.exe)')
+                    st.caption('Links externos podem ser públicos. Não coloque credenciais nem dados internos dentro dos executáveis.')
+                publicar=st.form_submit_button('Publicar versão',type='primary')
+            if publicar:
+                try:
+                    if not VERSION_RE.fullmatch(version.strip()):raise ValueError('Versão inválida. Use X.Y.Z, por exemplo 1.6.0.')
+                    if any(r.get('versao')==version.strip() and r.get('componente')==component for r in rows):
+                        raise ValueError('Esta versão já está cadastrada para esse componente.')
+                    if delivery=='Arquivo no Supabase':
+                        if upload is None:raise ValueError('Selecione um instalador .exe.')
+                        contents=upload.getvalue()
+                        if not contents.startswith(b'MZ'):raise ValueError('O arquivo não possui cabeçalho de executável Windows.')
+                        if len(contents)>50*1024*1024:
+                            raise ValueError('Arquivo maior que 50 MB. No plano Free, utilize a opção Link HTTPS externo.')
+                        digest=hashlib.sha256(contents).hexdigest()
+                        obj_path=_rel_upload(base,public,component,version.strip(),contents)
+                        row={'componente':component,'versao':version.strip(),'descricao':notes[:4000],
+                             'arquivo_nome':re.sub(r'[^A-Za-z0-9_.-]','_',upload.name)[:130],
+                             'origem':'storage','objeto_path':obj_path,'sha256':digest,
+                             'tamanho_bytes':len(contents),'publicado':True}
+                    else:
+                        if not link.startswith('https://') or not HASH_RE.fullmatch(digest_external):
+                            raise ValueError('Informe uma URL HTTPS e o hash SHA-256 válido.')
+                        if not re.fullmatch(r'[A-Za-z0-9_.-]{4,130}\.exe',name_external.strip()):
+                            raise ValueError('Nome de arquivo inválido; informe um nome .exe.')
+                        row={'componente':component,'versao':version.strip(),'descricao':notes[:4000],
+                             'arquivo_nome':name_external.strip(),'origem':'externo','url_externa':link.strip(),
+                             'sha256':digest_external,'tamanho_bytes':int(size_external),'publicado':True}
+                    _rel_insert(base,public,row)
+                    st.success('Versão publicada. Os monitores autorizados poderão consultá-la.')
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f'Não foi possível publicar: {exc}')
+    active=[r for r in rows if r.get('publicado')]
+    if not active:st.info('Nenhum instalador publicado ainda.');return
+    latest={}
+    for r in active:
+        key=r['componente']
+        ver=tuple(int(x) for x in r['versao'].split('.'))
+        if key not in latest or ver>tuple(int(x) for x in latest[key]['versao'].split('.')):latest[key]=r
+    for component,label in COMPONENTES.items():
+        item=latest.get(component)
+        if not item:continue
+        with st.container(border=True):
+            c1,c2=st.columns([4,1.8])
+            with c1:
+                st.markdown(f'**{label} — v{item["versao"]}**')
+                st.caption((item.get('descricao') or 'Sem notas de versão.')[:700])
+                st.caption(f'{item["tamanho_bytes"]/1048576:.1f} MB · SHA-256: `{item["sha256"][:16]}…`')
+            with c2:
+                try:
+                    url=_rel_signed_link(base,public,item['objeto_path']) if item['origem']=='storage' else item['url_externa']
+                    st.link_button('Baixar instalador',url,use_container_width=True)
+                except Exception as exc:
+                    st.warning('Link indisponível.');st.caption(str(exc)[:220])
+                if admin:
+                    if st.button('Retirar publicação',key='retirar_'+item['id'],use_container_width=True):
+                        try:_rel_patch(base,public,item['id'],{'publicado':False});st.rerun()
+                        except Exception as exc:st.error(str(exc))
+    if admin:
+        with st.expander('Histórico das versões'):
+            for item in rows:
+                st.write(f"{COMPONENTES.get(item['componente'],item['componente'])} · {item['versao']} · "
+                         f"{'Publicado' if item.get('publicado') else 'Retirado'}")
+
+
 if "config_v23" not in st.session_state:
     st.session_state.config_v23 = carregar_config()
     st.session_state["ultimo_hash_salvo"] = config_hash(st.session_state.config_v23)
@@ -5354,7 +5531,7 @@ if not st.session_state.iniciado:
     # =========================================================
     valid_sections = {
         "profiles", "panels", "ticker", "integration", "updates", "agenda",
-        "sim_alert", "stability", "visual", "backup", "news"
+        "sim_alert", "stability", "visual", "backup", "news", "releases"
     }
     if com_is_admin:
         valid_sections.add("comunicados")
@@ -5402,6 +5579,8 @@ if not st.session_state.iniciado:
         active_section = section_key
         if active_section == "comunicados":
             render_central_comunicados()
+        if active_section == "releases":
+            render_central_atualizacoes(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, com_is_admin)
 
         # Perfis
         if active_section == "profiles":
@@ -6502,6 +6681,7 @@ if not st.session_state.iniciado:
         {"key":"backup","icon":"backup","tone":"blue","group":"Administração","title":"Backup, restauração e diagnóstico","desc":"Exporte, restaure, importe configurações e consulte o diagnóstico do ambiente.","status":"Disponível","state":"info","keywords":"backup importar exportar restaurar diagnóstico json"},
         {"key":"news","icon":"news","tone":"green","group":"Administração","title":"Novidades desta versão","desc":"Confira melhorias e mudanças implementadas na versão atual do painel.","status":f"NOVO · v{APP_VERSION}","state":"new","keywords":"versão novidade changelog novo"},
     ]
+    nav_items.insert(-2, {"key":"releases","icon":"updates","tone":"blue","group":"Administração","title":"Downloads e Atualizações","desc":"Instaladores oficiais para Windows, novas versões e histórico de publicações.","status":"CENTRAL · v3.31","state":"new","keywords":"download atualizar windows exe release aplicativo robô instalador"})
     if com_is_admin:
         nav_items.insert(-2, {"key":"comunicados","icon":"comunicados","tone":"blue","group":"Administração","title":"Central de Comunicados","desc":"Publique avisos instantâneos, confira histórico e cancele mensagens nas telas conectadas.","status":"ADMIN · v3.24","state":"new","keywords":"mensagem comunicado megafone tv aviso sonoro administrador"})
     q = (config_search or "").strip().lower()
