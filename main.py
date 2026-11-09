@@ -6,6 +6,7 @@ import ipaddress
 import json
 import os
 import re
+import secrets
 import shutil
 import tempfile
 import time
@@ -57,6 +58,8 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.36.0: Cadastro simplificado pelo administrador (Supabase Auth Admin API e Secrets Streamlit).
+# 3.35.0: Solicitação de acesso no login, aprovação administrativa e convite pelo Supabase Auth.
 # 3.34.0: Cartões mais legíveis, alerta de atribuídas aperfeiçoado e atualização visual G4Flex desktop.
 # 3.33.0: Comunicados multimídia: até 3 imagens + áudio opcional, arquivos privados via Supabase Storage.
 # 3.32.0: Alertas opcionais de atribuições e interface G4Flex revisada.
@@ -75,7 +78,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.34.0"
+APP_VERSION = "3.36.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -2078,6 +2081,10 @@ def _auth_clear_session():
     for key in list(st.session_state.keys()):
         if str(key).startswith(AUTH_SESSION_PREFIX):
             st.session_state.pop(key, None)
+    # Nunca manter senha provisória ou autorização em cache após logout.
+    st.session_state.pop("_monitor_created_credentials_v336", None)
+    st.session_state.pop("_monitor_verified_auth_user_v336", None)
+    st.session_state.pop("_com_admin_role_cache_v322", None)
 
 
 def _auth_login(email, password):
@@ -2305,24 +2312,27 @@ def _render_set_password(flow_type, token_hash):
     current_flow = st.session_state.get(flow_key)
 
     if not isinstance(current_flow, dict) or current_flow.get("token_hash") != token_hash:
-        try:
-            data = _auth_verify_token_hash(token_hash, flow_type)
-            access_token = str(data.get("access_token") or "").strip()
-            if not access_token:
-                raise RuntimeError("O link não retornou uma sessão válida.")
-            st.session_state[flow_key] = {
-                "token_hash": token_hash,
-                "type": flow_type,
-                "access_token": access_token,
-                "session": data,
-            }
-        except Exception as exc:
-            st.error(_auth_error_pt(exc))
+        with st.container(border=True):
+            st.subheader("Confirmar convite de acesso" if flow_type == "invite" else "Confirmar link de recuperação")
+            st.write("Clique abaixo para validar o convite e escolher sua senha. O link só será utilizado após sua confirmação.")
+            if st.button("Aceitar convite e definir senha" if flow_type == "invite" else "Validar link de recuperação", type="primary", use_container_width=True):
+                try:
+                    data = _auth_verify_token_hash(token_hash, flow_type)
+                    access_token = str(data.get("access_token") or "").strip()
+                    if not access_token:
+                        raise RuntimeError("O link não retornou uma sessão válida.")
+                    st.session_state[flow_key] = {
+                        "token_hash": token_hash, "type": flow_type,
+                        "access_token": access_token, "session": data,
+                    }
+                    st.rerun()
+                except Exception as exc:
+                    st.error(_auth_error_pt(exc))
             if st.button("Voltar ao login", use_container_width=True):
                 st.query_params.clear()
                 st.session_state.pop(flow_key, None)
                 st.rerun()
-            st.stop()
+        st.stop()
 
     flow_data = st.session_state.get(flow_key, {})
     access_token = str(flow_data.get("access_token") or "")
@@ -2375,25 +2385,49 @@ def _render_login_gate():
         st.success(str(notice))
 
     with st.container(border=True):
-        st.markdown(
-            '<div class="auth-reset-title">Entrar</div>',
-            unsafe_allow_html=True,
+        auth_view = st.radio(
+            "Acesso ao sistema", ["Entrar", "Solicitar acesso"],
+            horizontal=True, label_visibility="collapsed", key="monitor_login_mode_v336",
         )
+        if auth_view == "Solicitar acesso":
+            st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
+            st.caption("O cadastro é feito pelo administrador. Prepare uma solicitação para enviar por e-mail.")
+            with st.form("monitor_request_access_v336", clear_on_submit=False):
+                nome = st.text_input("Nome completo", max_chars=120, placeholder="Nome e sobrenome")
+                email = st.text_input("E-mail que deseja cadastrar", max_chars=254, placeholder="nome@empresa.com.br")
+                motivo = st.text_area("Motivo da solicitação (opcional)", max_chars=500, height=76,
+                                     placeholder="Ex.: acompanhar indicadores do suporte")
+                preparar = st.form_submit_button("Preparar solicitação", type="primary", use_container_width=True)
+            if preparar:
+                if len(nome.strip()) < 3 or not _monitor_valid_email(email):
+                    st.warning("Informe um nome completo e um endereço de e-mail válido.")
+                else:
+                    st.session_state["_monitor_access_request_preview_v336"] = {
+                        "name": nome.strip(), "email": email.strip().lower(), "reason": motivo.strip(),
+                    }
+            req = st.session_state.get("_monitor_access_request_preview_v336")
+            if isinstance(req, dict):
+                title = "Solicitação de acesso — Painel de Monitoramento Grupo S&S"
+                body = (f"Olá! Solicito acesso ao Painel de Monitoramento do Grupo S&S.\n\n"
+                        f"Nome: {req.get('name', '')}\nE-mail: {req.get('email', '')}\n"
+                        f"Motivo: {req.get('reason') or 'Não informado'}\n\nObrigado!")
+                contact = _monitor_access_contact_email()
+                if contact:
+                    mailto = "mailto:" + contact + "?" + urlencode({"subject": title, "body": body})
+                    st.link_button("Abrir e-mail para o administrador", mailto, use_container_width=True)
+                    st.caption("O aplicativo de e-mail será aberto com a mensagem preparada; confirme o envio nele.")
+                else:
+                    st.info("Envie a mensagem abaixo ao responsável pelo cadastro de usuários do Grupo S&S.")
+                st.code(body, language=None)
+                st.caption("Esta tela não envia solicitações automaticamente nem cria contas sem aprovação.")
+            st.stop()
+
+        st.markdown('<div class="auth-reset-title">Entrar</div>', unsafe_allow_html=True)
         st.caption("Use o e-mail e a senha cadastrados pelo administrador do painel.")
-
         with st.form("monitor_auth_login", clear_on_submit=False):
-            email = st.text_input(
-                "Usuário (e-mail)",
-                placeholder="nome@empresa.com.br",
-                autocomplete="username",
-            )
-            password = st.text_input(
-                "Senha",
-                type="password",
-                autocomplete="current-password",
-            )
+            email = st.text_input("Usuário (e-mail)", placeholder="nome@empresa.com.br", autocomplete="username")
+            password = st.text_input("Senha", type="password", autocomplete="current-password")
             submit = st.form_submit_button("Entrar no painel", use_container_width=True)
-
         if submit:
             if not email.strip() or not password:
                 st.error("Informe o e-mail e a senha.")
@@ -2404,17 +2438,11 @@ def _render_login_gate():
                     st.rerun()
                 except Exception as exc:
                     st.error(_auth_error_pt(exc))
-
         st.markdown(
-            """
-            <div class="auth-security-note">
-                Acesso restrito a usuários previamente cadastrados.<br>
-                <strong>Problemas com a senha?</strong> Solicite a redefinição ao administrador do painel.
-            </div>
-            """,
+            '<div class="auth-security-note">Acesso restrito a contas aprovadas pela administração. '
+            '<strong>Problemas com a senha?</strong> Solicite a redefinição ao administrador.</div>',
             unsafe_allow_html=True,
         )
-
     st.stop()
 
 
@@ -4642,7 +4670,11 @@ def carregar_config():
 
 
 def salvar_config(config, force=False):
-    """Grava apenas quando necessário, com backup e substituição atômica."""
+    """Grava apenas para administradores, com backup e substituição atômica."""
+    # As rotinas da aplicação chamam este método tanto por botões quanto
+    # por atualizações automáticas; validar o papel também no servidor.
+    if not _com_is_admin():
+        return False
     try:
         cfg = normalizar_config(config)
         current_hash = config_hash(cfg)
@@ -4946,7 +4978,7 @@ def _com_is_admin():
     if cache.get("id") == user_id and time.time() - cache.get("ts", 0) < 40:
         return bool(cache.get("is_admin"))
     try:
-        roles = _com_request("GET", "sim_comunicados_admins?select=user_id&limit=1")
+        roles = _com_request("GET", f"sim_comunicados_admins?select=user_id&user_id=eq.{user_id}&limit=1")
         is_admin = isinstance(roles, list) and len(roles) > 0
         st.session_state["_com_admin_role_error_v322"] = ""
     except Exception as exc:
@@ -4954,6 +4986,342 @@ def _com_is_admin():
         st.session_state["_com_admin_role_error_v322"] = str(exc)
     st.session_state["_com_admin_role_cache_v322"] = {"id": user_id, "ts": time.time(), "is_admin": is_admin}
     return is_admin
+
+
+# =============================================================
+# v3.36 · CADASTRO SIMPLIFICADO NO SUPABASE AUTH
+# Somente no processo servidor Streamlit (nunca em JS, HTML ou código cliente).
+# Sem SQL, SMTP ou Edge Function obrigatórios.
+# =============================================================
+
+
+def _monitor_valid_email(value):
+    email = str(value or "").strip()
+    return (len(email) <= 254 and bool(re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email)))
+
+
+def _monitor_access_contact_email():
+    try:
+        email = str(st.secrets.get("MONITOR_ACCESS_CONTACT_EMAIL", "") or "").strip()
+    except Exception:
+        email = ""
+    return email if _monitor_valid_email(email) else ""
+
+
+def _monitor_secret_key():
+    try:
+        key = str(st.secrets.get("SUPABASE_SECRET_KEY", "") or "").strip()
+        if not key:
+            key = str(st.secrets.get("SUPABASE_SERVICE_ROLE_KEY", "") or "").strip()
+    except Exception:
+        key = ""
+    if not key:
+        raise RuntimeError("Configure SUPABASE_SECRET_KEY nos Secrets do Streamlit para cadastrar usuários.")
+    if not (key.startswith("sb_secret_") or key.count(".") == 2):
+        raise RuntimeError("Credencial administrativa do Supabase com formato inválido.")
+    return key
+
+
+def _monitor_admin_http(path, method="GET", payload=None, *, require_admin=True, timeout=20):
+    """Auth Admin API. O segredo nunca sai da execução Python no servidor."""
+    if require_admin and not _com_is_admin():
+        raise PermissionError("Apenas administradores autorizados podem gerenciar usuários.")
+    secret = _monitor_secret_key()
+    if not path.startswith("/auth/v1/admin/"):
+        raise RuntimeError("Operação administrativa não permitida.")
+    body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    headers = {"apikey": secret, "Accept": "application/json", "Content-Type": "application/json"}
+    # A chave nova sb_secret_* não é JWT e deve seguir apenas no cabeçalho apikey.
+    if not secret.startswith("sb_secret_"):
+        headers["Authorization"] = "Bearer " + secret
+    req = Request(SUPABASE_URL.rstrip("/") + path, data=body, headers=headers, method=method)
+    try:
+        with urlopen(req, timeout=timeout) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+            return json.loads(raw) if raw.strip() else {}
+    except HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        try:
+            data = json.loads(raw)
+            detail = data.get("message") or data.get("msg") or data.get("error_description") or data.get("error") or "Falha no Supabase Auth"
+        except Exception:
+            detail = "Falha no Supabase Auth"
+        if exc.code in (401, 403):
+            raise RuntimeError("Sem autorização para gerenciar usuários. Verifique a chave Secret e a permissão administrativa.") from exc
+        raise RuntimeError(f"Supabase Auth (HTTP {exc.code}): {str(detail)[:220]}") from exc
+    except URLError as exc:
+        raise RuntimeError("Não foi possível acessar o Supabase Auth.") from exc
+
+
+def _monitor_auth_current_user(force=False):
+    """Verifica identidade/permissões no Auth, evitando usar metadados locais obsoletos."""
+    if not _auth_is_authenticated():
+        raise PermissionError("Faça login novamente.")
+    key = "_monitor_verified_auth_user_v336"
+    saved = st.session_state.get(key)
+    token = str(st.session_state.get(f"{AUTH_SESSION_PREFIX}access_token") or "")
+    # Cache máximo de 30 s: bloqueios não dependem da validade original do JWT.
+    if not force and isinstance(saved, dict) and saved.get("token") == token and time.time() - saved.get("ts", 0) < 30:
+        return saved["user"]
+    user = _auth_request("/auth/v1/user", method="GET", access_token=token, timeout=15)
+    if not isinstance(user, dict) or not user.get("id"):
+        raise RuntimeError("O Supabase não confirmou a identidade do usuário.")
+    st.session_state[key] = {"token": token, "ts": time.time(), "user": user}
+    st.session_state[f"{AUTH_SESSION_PREFIX}user"] = user
+    return user
+
+
+def _monitor_access_role():
+    try:
+        user = _monitor_auth_current_user()
+    except Exception as exc:
+        st.session_state["_monitor_role_error_v336"] = str(exc)[:200]
+        return "indisponivel", False
+    metadata = user.get("app_metadata") if isinstance(user.get("app_metadata"), dict) else {}
+    if metadata.get("monitor_ss_active") is False:
+        return "bloqueado", False
+    if user.get("banned_until"):
+        try:
+            if datetime.fromisoformat(str(user.get("banned_until")).replace("Z", "+00:00")).timestamp() > time.time():
+                return "bloqueado", False
+        except Exception:
+            return "bloqueado", False
+    if _com_is_admin():
+        return "administrador", True
+    if metadata.get("monitor_ss_managed") is True:
+        role = str(metadata.get("monitor_ss_profile") or "visualizador")
+        return (role if role in {"gestor", "visualizador"} else "visualizador"), True
+    # Sem tabela adicional, contas não aprovadas no próprio painel não recebem acesso.
+    # Contas antigas devem ser autorizadas na aba 'Contas existentes'.
+    return "nao_autorizado", False
+
+
+def _monitor_change_temporary_password():
+    """Obrigatório para contas criadas com senha provisória; usado antes do painel."""
+    if not _auth_is_authenticated():
+        return
+    try:
+        user = _monitor_auth_current_user(force=True)
+    except Exception:
+        st.error("Não foi possível verificar sua conta no Supabase. Faça login novamente.")
+        st.stop()
+    metadata = user.get("app_metadata") if isinstance(user.get("app_metadata"), dict) else {}
+    if metadata.get("monitor_ss_force_password_change") is not True:
+        return
+    _auth_login_css()
+    _render_auth_brand("Primeiro acesso · Definição de senha")
+    with st.container(border=True):
+        st.subheader("Crie sua senha pessoal")
+        st.info("Por segurança, substitua a senha provisória antes de utilizar o painel.")
+        with st.form("monitor_first_password_change_v336"):
+            password1 = st.text_input("Nova senha", type="password", autocomplete="new-password")
+            password2 = st.text_input("Confirme a nova senha", type="password", autocomplete="new-password")
+            submit = st.form_submit_button("Salvar senha e entrar", type="primary", use_container_width=True)
+        if submit:
+            if len(password1) < 12 or not any(x.isupper() for x in password1) or not any(x.isdigit() for x in password1):
+                st.warning("Informe pelo menos 12 caracteres, incluindo uma letra maiúscula e um número.")
+            elif password1 != password2:
+                st.warning("As senhas não coincidem.")
+            else:
+                try:
+                    jwt = str(st.session_state.get(f"{AUTH_SESSION_PREFIX}access_token") or "")
+                    # Atualização com a sessão do próprio usuário autenticado.
+                    _auth_update_password(jwt, password1)
+                    uid = str(uuid.UUID(str(user.get("id"))))
+                    updated_meta = dict(metadata)
+                    updated_meta["monitor_ss_force_password_change"] = False
+                    # Atualização administrativa limita-se à conta autenticada e só
+                    # acontece após sucesso na alteração da senha pelo próprio titular.
+                    updated = _monitor_admin_http(f"/auth/v1/admin/users/{uid}", method="PUT",
+                                                  payload={"app_metadata": updated_meta}, require_admin=False)
+                    if not isinstance(updated, dict) or str(updated.get("id")) != uid:
+                        raise RuntimeError("O Supabase não confirmou o registro da nova senha.")
+                    st.session_state.pop("_monitor_verified_auth_user_v336", None)
+                    st.session_state[f"{AUTH_SESSION_PREFIX}user"] = updated
+                    st.success("Senha atualizada. Acesso liberado.")
+                    st.rerun()
+                except Exception as exc:
+                    st.error("Não foi possível concluir a troca de senha. " + _auth_error_pt(exc))
+                    st.caption("Se a senha já foi alterada, entre em contato com o administrador para liberar o primeiro acesso.")
+        if st.button("Sair", key="monitor_first_password_logout_v336", use_container_width=True):
+            _auth_logout()
+            st.rerun()
+    st.stop()
+
+
+def _monitor_admin_list_users():
+    result = _monitor_admin_http("/auth/v1/admin/users?page=1&per_page=1000")
+    users = result.get("users") if isinstance(result, dict) else []
+    return users if isinstance(users, list) else []
+
+
+def _monitor_admin_create_user(name, email, profile):
+    if not _com_is_admin():
+        raise PermissionError("Somente o administrador pode cadastrar usuários.")
+    name, email = str(name).strip(), str(email).strip().lower()
+    if len(name) < 3 or len(name) > 120 or not _monitor_valid_email(email):
+        raise ValueError("Informe nome e e-mail válidos.")
+    if profile not in ("visualizador", "gestor"):
+        raise ValueError("Perfil inválido.")
+    temporary = secrets.token_urlsafe(24)
+    result = _monitor_admin_http("/auth/v1/admin/users", method="POST", payload={
+        "email": email, "password": temporary, "email_confirm": True,
+        "user_metadata": {"name": name},
+        "app_metadata": {"monitor_ss_managed": True, "monitor_ss_active": True,
+                         "monitor_ss_profile": profile, "monitor_ss_force_password_change": True},
+    })
+    if not isinstance(result, dict) or not result.get("id"):
+        raise RuntimeError("O Supabase não confirmou a criação do usuário.")
+    return {"email": email, "password": temporary, "name": name, "profile": profile}
+
+
+def _monitor_admin_update_user(user, changes):
+    if not _com_is_admin():
+        raise PermissionError("Somente o administrador pode alterar contas.")
+    uid = str(uuid.UUID(str(user.get("id"))))
+    own_id = str((st.session_state.get(f"{AUTH_SESSION_PREFIX}user") or {}).get("id") or "")
+    if uid == own_id:
+        raise PermissionError("Você não pode bloquear nem redefinir sua própria conta por esta tela.")
+    app_meta = dict(user.get("app_metadata") if isinstance(user.get("app_metadata"), dict) else {})
+    allowed = {"monitor_ss_managed", "monitor_ss_active", "monitor_ss_profile", "monitor_ss_force_password_change"}
+    if not set(changes).issubset(allowed):
+        raise ValueError("Alteração de permissão não suportada.")
+    if "monitor_ss_profile" in changes and changes["monitor_ss_profile"] not in ("gestor", "visualizador"):
+        raise ValueError("Perfil inválido.")
+    app_meta.update(changes)
+    payload = {"app_metadata": app_meta}
+    if "monitor_ss_active" in changes:
+        payload["ban_duration"] = "none" if changes["monitor_ss_active"] else "87600h"
+    result = _monitor_admin_http(f"/auth/v1/admin/users/{uid}", method="PUT", payload=payload)
+    if not isinstance(result, dict) or str(result.get("id")) != uid:
+        raise RuntimeError("A alteração não foi confirmada pelo Supabase.")
+    return result
+
+
+def _monitor_admin_reset_password(user):
+    if not _com_is_admin():
+        raise PermissionError("Somente o administrador pode redefinir senhas.")
+    uid = str(uuid.UUID(str(user.get("id"))))
+    own_id = str((st.session_state.get(f"{AUTH_SESSION_PREFIX}user") or {}).get("id") or "")
+    if uid == own_id:
+        raise PermissionError("Use o fluxo de recuperação para alterar a própria senha.")
+    app_meta = dict(user.get("app_metadata") if isinstance(user.get("app_metadata"), dict) else {})
+    if app_meta.get("monitor_ss_managed") is not True:
+        raise PermissionError("Regularize a conta antes de redefinir sua senha.")
+    temporary = secrets.token_urlsafe(24)
+    app_meta["monitor_ss_force_password_change"] = True
+    result = _monitor_admin_http(f"/auth/v1/admin/users/{uid}", method="PUT",
+                                 payload={"password": temporary, "app_metadata": app_meta})
+    if not isinstance(result, dict) or str(result.get("id")) != uid:
+        raise RuntimeError("O Supabase não confirmou a redefinição de senha.")
+    return {"email": user.get("email", ""), "password": temporary, "name": (user.get("user_metadata") or {}).get("name", "")}
+
+
+def render_monitor_user_management():
+    if not _com_is_admin():
+        st.error("Somente administradores autorizados podem utilizar esta seção.")
+        return
+    st.subheader("Usuários e Permissões · Grupo S&S")
+    st.caption("Cadastre contas no Supabase Auth sem sair do painel. O usuário recebe uma senha provisória que deverá trocar no primeiro acesso.")
+    try:
+        _monitor_secret_key()
+    except Exception as exc:
+        st.warning(str(exc))
+        st.info("Configure a chave no Streamlit Cloud → App settings → Secrets. Nenhuma chave deve ser colocada no main.py.")
+        return
+
+    creds = st.session_state.get("_monitor_created_credentials_v336")
+    if isinstance(creds, dict):
+        with st.container(border=True):
+            st.success("Senha provisória criada para " + str(creds.get("email", "")))
+            st.warning("Copie e envie a senha somente por canal privado. Ela não será mostrada novamente após ocultar.")
+            st.code(str(creds.get("password", "")), language=None)
+            if st.button("Ocultar senha provisória", key="monitor_hide_new_password_v336"):
+                st.session_state.pop("_monitor_created_credentials_v336", None)
+                st.rerun()
+
+    with st.container(border=True):
+        st.markdown("#### Cadastrar novo usuário")
+        with st.form("monitor_admin_create_user_form_v336", clear_on_submit=True):
+            name = st.text_input("Nome completo", max_chars=120, placeholder="Nome e sobrenome")
+            email = st.text_input("E-mail do colaborador", max_chars=254, placeholder="nome@empresa.com.br")
+            profile = st.selectbox("Perfil", ["visualizador", "gestor"],
+                                   format_func=lambda p: "Visualizador · leitura" if p == "visualizador" else "Gestor · leitura")
+            submitted = st.form_submit_button("Criar usuário", type="primary", use_container_width=True)
+        if submitted:
+            try:
+                st.session_state["_monitor_created_credentials_v336"] = _monitor_admin_create_user(name, email, profile)
+                st.rerun()
+            except Exception as exc:
+                st.error("Não foi possível criar o usuário: " + _auth_error_pt(exc))
+
+    if st.button("Atualizar lista de usuários", key="monitor_reload_users_v336"):
+        st.rerun()
+    try:
+        users = _monitor_admin_list_users()
+    except Exception as exc:
+        st.error("Não foi possível listar os usuários: " + _auth_error_pt(exc))
+        return
+    managed = [u for u in users if (u.get("app_metadata") or {}).get("monitor_ss_managed") is True]
+    legacy = [u for u in users if (u.get("app_metadata") or {}).get("monitor_ss_managed") is not True]
+    st.metric("Contas cadastradas no painel", len(managed))
+    if not managed:
+        st.info("Ainda não existem contas cadastradas por esta versão.")
+    for user in managed:
+        uid = str(user.get("id") or "")
+        meta = user.get("app_metadata") or {}
+        display_name = (user.get("user_metadata") or {}).get("name") or "Colaborador"
+        active = meta.get("monitor_ss_active") is not False
+        with st.expander(f"{display_name} · {user.get('email', '')} · {'Ativo' if active else 'Bloqueado'}"):
+            current_profile = meta.get("monitor_ss_profile") or "visualizador"
+            role = st.selectbox("Perfil de acesso", ["visualizador", "gestor"],
+                                index=1 if current_profile == "gestor" else 0,
+                                key=f"monitor_user_role_{uid}")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("Salvar perfil", key=f"monitor_save_role_{uid}", use_container_width=True):
+                    try:
+                        _monitor_admin_update_user(user, {"monitor_ss_profile": role})
+                        st.success("Perfil atualizado.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(_auth_error_pt(exc))
+            with c2:
+                if st.button("Bloquear" if active else "Reativar", key=f"monitor_toggle_active_{uid}", use_container_width=True):
+                    try:
+                        _monitor_admin_update_user(user, {"monitor_ss_active": not active})
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(_auth_error_pt(exc))
+            with c3:
+                if st.button("Senha provisória", key=f"monitor_reset_password_{uid}", use_container_width=True):
+                    try:
+                        st.session_state["_monitor_created_credentials_v336"] = _monitor_admin_reset_password(user)
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(_auth_error_pt(exc))
+
+    with st.expander(f"Contas existentes ainda não autorizadas ({len(legacy)})", expanded=False):
+        st.caption("Para preservar o controle de acesso, contas legadas não administrativas precisam ser autorizadas uma vez por aqui.")
+        owner_id = str((st.session_state.get(f"{AUTH_SESSION_PREFIX}user") or {}).get("id") or "")
+        for user in legacy:
+            uid = str(user.get("id") or "")
+            if uid == owner_id:
+                continue
+            c1, c2 = st.columns([3, 1])
+            with c1:
+                st.text(str(user.get("email") or "Conta sem e-mail"))
+            with c2:
+                if st.button("Autorizar", key=f"monitor_authorize_existing_{uid}", use_container_width=True):
+                    try:
+                        _monitor_admin_update_user(user, {"monitor_ss_managed": True,
+                                                          "monitor_ss_active": True,
+                                                          "monitor_ss_profile": "visualizador",
+                                                          "monitor_ss_force_password_change": False})
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(_auth_error_pt(exc))
+    st.caption("Os perfis Gestor e Visualizador têm acesso de leitura. Somente contas cadastradas na tabela administrativa já existente podem alterar as configurações.")
 
 
 # v3.33 · mídia em bucket privado, usando o JWT do operador (não service_role).
@@ -5274,8 +5642,23 @@ def render_central_comunicados():
                         st.error(f"Não foi possível cancelar: {exc}")
 
 
-# Segurança: nenhuma parte do painel é carregada antes da autenticação.
+# Segurança: o convite é confirmado apenas depois do clique do destinatário.
+_invite_flow_type = str(st.query_params.get("type", "") or "").strip().lower()
+_invite_token_hash = str(st.query_params.get("token_hash", "") or "").strip()
+if _invite_flow_type in ("invite", "recovery") and _invite_token_hash:
+    _render_set_password(_invite_flow_type, _invite_token_hash)
+
+# Nenhuma parte dos painéis é carregada antes da autenticação e autorização.
 _render_login_gate()
+_monitor_change_temporary_password()
+_monitor_profile, _monitor_account_active = _monitor_access_role()
+if not _monitor_account_active:
+    _auth_logout()
+    if _monitor_profile == "indisponivel":
+        st.error("Não foi possível confirmar suas permissões no Supabase. Verifique a conexão e tente novamente.")
+    else:
+        st.error("Conta ainda não autorizada ou desativada. Solicite a liberação ao administrador do Grupo S&S.")
+    st.stop()
 _render_account_sidebar()
 
 
@@ -5465,7 +5848,7 @@ st.session_state.config_v23 = config
 # Atualiza o cache autenticado do S&S Conecta quando o intervalo configurado vencer.
 # Não grava credenciais; apenas notícias/agenda já renderizadas pelo portal.
 _portal_sync_changed, _portal_sync_state = sincronizar_portal_ticker(config.setdefault("ticker", ticker_padrao()), force=False)
-if _portal_sync_changed:
+if _portal_sync_changed and _com_is_admin():
     salvar_config(config, force=True)
 
 query_iniciado = str(st.query_params.get("iniciado", "false")).lower() == "true"
@@ -5473,6 +5856,13 @@ if "iniciado" not in st.session_state:
     st.session_state.iniciado = query_iniciado
 elif query_iniciado != bool(st.session_state.iniciado):
     st.session_state.iniciado = query_iniciado
+
+# As contas Visualizador e Gestor não acessam os controles administrativos,
+# mesmo se manipularem parâmetros de URL ou botões dentro do monitor.
+if _monitor_profile != "administrador":
+    st.session_state.iniciado = True
+    if str(st.query_params.get("iniciado", "")).lower() != "true":
+        st.query_params["iniciado"] = "true"
 
 active_profile_id = perfil_id_da_url(config)
 
@@ -5690,6 +6080,7 @@ if not st.session_state.iniciado:
     }
     if com_is_admin:
         valid_sections.add("comunicados")
+        valid_sections.add("access")
 
     legacy_section = str(st.query_params.get("sec", "") or "").strip().lower()
     if legacy_section not in valid_sections:
@@ -5734,6 +6125,8 @@ if not st.session_state.iniciado:
         active_section = section_key
         if active_section == "comunicados":
             render_central_comunicados()
+        if active_section == "access":
+            render_monitor_user_management()
         if active_section == "releases":
             render_central_atualizacoes(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, com_is_admin)
 
@@ -6845,6 +7238,9 @@ if not st.session_state.iniciado:
     ]
     nav_items.insert(-2, {"key":"releases","icon":"updates","tone":"blue","group":"Administração","title":"Downloads e Atualizações","desc":"Instaladores oficiais para Windows, novas versões e histórico de publicações.","status":"CENTRAL · v3.31","state":"new","keywords":"download atualizar windows exe release aplicativo robô instalador"})
     if com_is_admin:
+        nav_items.insert(-2, {"key":"access", "icon":"profiles", "tone":"green", "group":"Administração",
+                              "title":"Usuários e Permissões", "desc":"Crie contas, gere senhas provisórias e gerencie perfis sem abrir o Supabase.",
+                              "status":"NOVO · v3.36", "state":"new", "keywords":"cadastrar usuário acesso senha provisória perfil bloquear"})
         nav_items.insert(-2, {"key":"comunicados","icon":"comunicados","tone":"blue","group":"Administração","title":"Central de Comunicados","desc":"Publique avisos instantâneos, confira histórico e cancele mensagens nas telas conectadas.","status":"ADMIN · v3.24","state":"new","keywords":"mensagem comunicado megafone tv aviso sonoro administrador"})
     q = (config_search or "").strip().lower()
     if q:
