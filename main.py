@@ -62,6 +62,7 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.36.3: Diagnóstico seguro de falhas HTTP do Formspree na solicitação de acesso.
 # 3.36.2: Solicitações via Formspree sem KingHost/SMTP; SMTP permanece como alternativa.
 # 3.36.1: Solicitação de acesso com envio de e-mail automático pelo SMTP KingHost.
 # 3.36.0: Cadastro simplificado pelo administrador (Supabase Auth Admin API e Secrets Streamlit).
@@ -84,7 +85,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.36.2"
+APP_VERSION = "3.36.3"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -5062,13 +5063,23 @@ def _monitor_send_access_via_formspree(endpoint, name, email, reason):
                 raise RuntimeError("Serviço de solicitações indisponível. Tente novamente mais tarde.")
             # Não equiparar aceitação do formulário à entrega efetiva do e-mail.
     except HTTPError as exc:
-        if exc.code == 429:
-            raise RuntimeError("Muitas solicitações enviadas. Aguarde e tente novamente.") from None
-        if exc.code in (400, 422):
-            raise RuntimeError("Solicitação rejeitada pelo serviço. Revise os dados e tente novamente.") from None
-        raise RuntimeError("Não foi possível registrar a solicitação. Contate o administrador.") from None
+        # Mostre o status HTTP, mas nunca o conteúdo bruto da resposta (pode conter dados pessoais).
+        status = int(exc.code)
+        if status in (400, 422):
+            message = "Dados rejeitados pelo Formspree. Confira as validações do formulário."
+        elif status in (401, 403):
+            message = "Envio não autorizado ou bloqueado pelo Formspree. Verifique as regras e restrições do formulário."
+        elif status == 404:
+            message = "Formulário não encontrado ou indisponível. Verifique o endpoint na aba Integration."
+        elif status == 429:
+            message = "Limite de solicitações atingido. Aguarde antes de tentar novamente."
+        elif 500 <= status < 600:
+            message = "Falha temporária no Formspree. Tente novamente mais tarde."
+        else:
+            message = "A solicitação foi recusada. Verifique o formulário no Formspree."
+        raise RuntimeError(f"Formspree (HTTP {status}): {message}") from None
     except (URLError, TimeoutError):
-        raise RuntimeError("Não foi possível conectar ao serviço de solicitações. Tente novamente.") from None
+        raise RuntimeError("Não foi possível conectar ao Formspree. Verifique a conexão do servidor Streamlit.") from None
 
 
 def _monitor_email_config():
