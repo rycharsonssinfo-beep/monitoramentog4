@@ -62,7 +62,7 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
-# 3.36.4: Envio da solicitação Formspree pelo navegador (AJAX) com fallback HTML.
+# 3.36.5: Pré-cadastro bloqueado pelo Streamlit + aviso Formspree (sem compartilhar senha).
 # 3.36.3: Diagnóstico seguro de falhas HTTP do Formspree na solicitação de acesso.
 # 3.36.2: Solicitações via Formspree sem KingHost/SMTP; SMTP permanece como alternativa.
 # 3.36.1: Solicitação de acesso com envio de e-mail automático pelo SMTP KingHost.
@@ -86,7 +86,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.36.4"
+APP_VERSION = "3.37.0"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -2293,6 +2293,7 @@ def _auth_login_css():
                 font-weight:900;
                 margin-bottom:4px;
             }
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -2403,10 +2404,10 @@ def _render_login_gate():
             # fazemos o envio no navegador do solicitante, sem expor Secrets.
             if _monitor_formspree_endpoint():
                 st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
-                st.caption("Preencha os dados. A solicitação será encaminhada ao administrador para análise; o acesso não é liberado automaticamente.")
+                st.caption("Cadastre seu e-mail e escolha uma senha. O acesso será liberado somente depois da aprovação do administrador.")
                 _monitor_render_formspree_browser_form()
-                st.caption("Os dados informados serão processados pelo Formspree para encaminhar o pedido ao administrador. Não envie senhas ou informações sensíveis.")
-                st.caption("O acesso ao painel depende de cadastro e autorização realizados pelo administrador.")
+                st.caption("A senha é processada pelo Supabase Auth e nunca é enviada ao Formspree ou por e-mail.")
+                st.caption("O pré-cadastro fica bloqueado até a aprovação. O administrador enviará o retorno por e-mail.")
                 st.stop()
             st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
             st.caption("Preencha os dados. O pedido será enviado automaticamente ao administrador, que fará o cadastro após analisar a solicitação.")
@@ -5049,140 +5050,111 @@ def _monitor_formspree_endpoint():
 
 
 def _monitor_render_formspree_browser_form():
-    """Formulário no navegador: o POST não sai do servidor Streamlit.
+    """Solicitação real, com senha recebida no servidor Streamlit, sem passar pelo Formspree.
 
-    Component iframe recebe apenas o endpoint público e HTML/JS escrito no projeto.
-    Não há token do Supabase nem quaisquer Secrets no HTML.
+    Uma conta Supabase Auth bloqueada e com e-mail NÃO confirmado é criada.
+    Depois, o administrador valida a titularidade e aprova a conta.
     """
-    endpoint = _monitor_formspree_endpoint()
-    if not endpoint:
-        st.error("O formulário de solicitações ainda não está configurado.")
+    st.caption("Informe seus dados e escolha uma senha. O sistema registra o pré-cadastro, "
+               "mas o acesso aos painéis depende de aprovação administrativa.")
+    finished = st.session_state.get("_monitor_registration_finished_v3365")
+    if isinstance(finished, dict):
+        st.success("Pré-cadastro registrado com sucesso! Sua conta está aguardando aprovação. "
+                   "Você receberá um retorno no e-mail informado após a análise administrativa.")
+        st.caption("A senha escolhida fica protegida no Supabase Auth; ela não é enviada por e-mail "
+                   "nem compartilhada com o Formspree.")
+        notification = st.session_state.pop("_monitor_registration_notification_v3365", None)
+        if notification:
+            _monitor_render_formspree_registration_notice(notification)
+        else:
+            st.info("Aguarde o e-mail do administrador antes de tentar acessar o painel.")
         return
 
-    form_html = r'''<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  *,*::before,*::after{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:transparent;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#173c59}
-  .formbox{border:1px solid #d2d8df;border-radius:8px;padding:15px 15px 13px;}
-  label{display:block;font-size:13px;color:#174a72;margin:0 0 7px; font-weight:500;}
-  input,textarea{display:block;width:100%;border:1px solid transparent;border-radius:8px;background:#eef1f6;padding:11px 13px;font:14px system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#243746;outline-offset:1px;}
-  input:focus,textarea:focus{border-color:#1976ba;outline:2px solid #c2dff5}
-  textarea{resize:vertical;min-height:70px;max-height:150px}
-  .field{margin-bottom:15px}
-  .field:last-of-type{margin-bottom:12px}
-  .submit{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:linear-gradient(105deg,#0e578b,#0a78cc);color:#fff;font-size:13px;font-weight:650;cursor:pointer}
-  .submit:disabled{opacity:.65;cursor:wait}
-  #feedback{display:none;margin-top:12px;padding:12px;border-radius:7px;line-height:1.5;font-size:13px;white-space:pre-wrap}
-  #feedback.ok{display:block;color:#165d36;background:#e6f5ec;border:1px solid #b6dfc4}
-  #feedback.err{display:block;color:#9d2931;background:#fbeaea;border:1px solid #edc3c6}
-  #feedback.note{display:block;color:#174e78;background:#e7f2fb;border:1px solid #bbd9f1}
-  #alternative{display:none;width:100%;border:1px solid #b4c9d9;border-radius:8px;background:#fff;color:#185a86;font-size:12px;padding:10px;margin-top:9px;cursor:pointer}
-  .hint{margin:9px 2px 0;color:#76828e;font-size:11px;line-height:1.55}
-  .trap{position:absolute!important;left:-9999px!important;opacity:0!important;pointer-events:none!important}
-</style>
-</head>
-<body>
-  <form class="formbox" id="request-form" method="POST" action="__FORM_ENDPOINT__" target="_blank" novalidate>
-    <div class="field"><label for="name">Nome completo</label>
-      <input id="name" name="name" placeholder="Nome e sobrenome" maxlength="120" autocomplete="name" required></div>
-    <div class="field"><label for="email">E-mail que deseja cadastrar</label>
-      <input id="email" name="email" type="email" placeholder="nome@empresa.com.br" maxlength="254" autocomplete="email" required></div>
-    <div class="field"><label for="reason">Motivo da solicitação (opcional)</label>
-      <textarea id="reason" name="reason" rows="3" maxlength="500" placeholder="Ex.: acompanhar indicadores do suporte"></textarea></div>
-    <input class="trap" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
-    <input type="hidden" name="_subject" value="Solicitação de acesso - Painel Grupo S&S">
-    <textarea id="message" name="message" hidden></textarea>
-    <button class="submit" type="submit" id="submit">Enviar solicitação</button>
-    <div id="feedback" role="status" aria-live="polite"></div>
-    <button id="alternative" type="button">Enviar pelo formulário alternativo</button>
-    <p class="hint">Somente a administração pode criar e autorizar contas. Não informe senhas neste formulário.</p>
-  </form>
-<script>
-(() => {
-  "use strict";
-  const form = document.getElementById("request-form");
-  const submit = document.getElementById("submit");
-  const feedback = document.getElementById("feedback");
-  const alternative = document.getElementById("alternative");
-  const name = document.getElementById("name");
-  const email = document.getElementById("email");
-  const reason = document.getElementById("reason");
-  const message = document.getElementById("message");
-  let lastSent = 0;
-  let sending = false;
+    with st.form("monitor_signup_pending_v3365", clear_on_submit=False):
+        nome = st.text_input("Nome completo", max_chars=120,
+                             placeholder="Nome e sobrenome", autocomplete="name")
+        email = st.text_input("E-mail que deseja cadastrar", max_chars=254,
+                              placeholder="nome@ssinformatica.net", autocomplete="email")
+        senha = st.text_input("Criar senha", type="password", max_chars=128,
+                              placeholder="Mínimo 12 caracteres, uma maiúscula e um número",
+                              autocomplete="new-password")
+        confirmar = st.text_input("Confirmar senha", type="password", max_chars=128,
+                                  autocomplete="new-password")
+        motivo = st.text_area("Setor / motivo da solicitação (opcional)", max_chars=500,
+                              height=75, placeholder="Ex.: setor ou necessidade de acesso")
+        concordo = st.checkbox("Estou ciente de que meu cadastro depende de aprovação.")
+        enviar = st.form_submit_button("Solicitar cadastro", type="primary", use_container_width=True)
+    if not enviar:
+        st.caption("A senha nunca é enviada ao Formspree. Ele recebe somente "
+                   "nome, e-mail e motivo da solicitação.")
+        return
+    name = " ".join(str(nome).split())
+    mail = str(email).strip().lower()
+    if not concordo:
+        st.warning("Confirme que o cadastro depende de aprovação.")
+    elif len(name) < 3 or not _monitor_valid_email(mail):
+        st.warning("Informe nome completo e e-mail válido.")
+    elif len(senha) < 12 or not re.search(r"[A-Z]", senha) or not re.search(r"[0-9]", senha):
+        st.warning("A senha deve possuir pelo menos 12 caracteres, uma letra maiúscula e um número.")
+    elif senha != confirmar:
+        st.warning("As senhas não coincidem.")
+    else:
+        try:
+            _monitor_register_pending_user(name, mail, senha, str(motivo).strip())
+        except Exception as exc:
+            # Nunca mostrar uma senha ou dados internos da API em mensagens de erro.
+            st.error(_monitor_registration_error_message(exc))
+        else:
+            st.session_state["_monitor_registration_finished_v3365"] = {"email": mail}
+            st.session_state["_monitor_registration_notification_v3365"] = {
+                "name": name, "email": mail, "reason": str(motivo).strip()[:500]
+            }
+            st.rerun()
 
-  function status(text, kind) {
-    feedback.textContent = text;
-    feedback.className = kind;
-  }
-  function prepare() {
-    name.value = name.value.trim().replace(/\s+/g," ");
-    email.value = email.value.trim().toLowerCase();
-    if (name.value.length < 3 || !email.validity.valid || !email.value.includes("@")) {
-      status("Informe um nome e um e-mail válido.","err");
-      return false;
-    }
-    message.value = "Solicitação de acesso ao Painel de Monitoramento Grupo S&S.\n"+
-      "Nome: " + name.value + "\n"+
-      "E-mail: " + email.value + "\n"+
-      "Motivo: " + (reason.value.trim() || "Não informado") + "\n\n"+
-      "A criação da conta depende de aprovação administrativa.\n"+
-      "Central de Configurações > Usuários e Permissões.";
-    return true;
-  }
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    alternative.style.display = "none";
-    if (sending) return;
-    if (!prepare()) return;
-    if (Date.now() - lastSent < 120000) {
-      status("Solicitação enviada recentemente. Aguarde dois minutos antes de tentar novamente.","note");
-      return;
-    }
-    sending = true;
-    submit.disabled = true;
-    submit.textContent = "Enviando solicitação...";
-    status("Conectando ao serviço de solicitações...", "note");
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
-    try {
-      const response = await fetch(form.action, {
-        method: "POST", headers: {"Accept": "application/json"},
-        body: new FormData(form), signal: controller.signal
-      });
-      if (!response.ok) throw new Error("HTTP " + response.status);
-      lastSent = Date.now();
-      status("Solicitação enviada com sucesso! Aguarde o contato do administrador. O cadastro não é automático.","ok");
-      form.reset();
-    } catch (error) {
-      const detail = error && /^HTTP \d+$/.test(error.message) ? " (" + error.message + ")" : "";
-      status("Não foi possível confirmar o envio pelo navegador" + detail + ". Você pode tentar a alternativa abaixo, que abre a confirmação do Formspree em outra aba.","err");
-      alternative.style.display = "block";
-    } finally {
-      clearTimeout(timer);
-      sending = false;
-      submit.disabled = false;
-      submit.textContent = "Enviar solicitação";
-    }
-  });
-  alternative.addEventListener("click", () => {
-    if (!prepare()) return;
-    // Mesmo mecanismo HTML que passou no teste anterior: sem fetch/AJAX.
-    // A página do Formspree confirma o recebimento na aba aberta.
-    window.open("about:blank", "monitorFormspreeConfirmation");
-    form.target = "monitorFormspreeConfirmation";
-    HTMLFormElement.prototype.submit.call(form);
-    status("A confirmação do envio será exibida na nova aba do Formspree. Verifique o resultado antes de fechar.","note");
-  });
-})();
-</script>
-</body></html>'''
-    form_html = form_html.replace("__FORM_ENDPOINT__", endpoint)
-    components.html(form_html, height=535, scrolling=False)
+
+def _monitor_render_formspree_registration_notice(request_data):
+    """Notificação enviada no navegador; NUNCA recebe a senha do usuário."""
+    endpoint = _monitor_formspree_endpoint()
+    if not endpoint:
+        st.info("A solicitação está registrada na Central de Configurações. "
+                "A notificação por e-mail não está configurada.")
+        return
+    name = str(request_data.get("name") or "")[:120]
+    email = str(request_data.get("email") or "")[:254]
+    reason = str(request_data.get("reason") or "")[:500]
+    request_json = json.dumps({
+        "endpoint": endpoint, "name": name, "email": email, "reason": reason,
+        "message": "Pré-cadastro pendente no Painel Grupo S&S.\n"
+                   f"Nome: {name}\nE-mail: {email}\nSetor / motivo: {reason or 'Não informado'}\n"
+                   "Conta criada no Supabase Auth, ainda bloqueada e sem confirmação de e-mail.\n"
+                   "Aprovar em Central de Configurações > Usuários e Permissões.\n"
+                   "Nenhuma senha foi transmitida por este formulário.",
+    }, ensure_ascii=False)
+    # Evita encerramento acidental de <script> por texto do solicitante.
+    request_json = request_json.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    markup = r'''<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<style>body{font:13px system-ui,sans-serif;margin:0;color:#53697b}
+#msg{padding:10px;border-radius:8px;background:#eef5fa;border:1px solid #d2e3ee}
+#alternative{display:none;padding:8px 12px;margin-top:9px;border:1px solid #b8cbd8;background:#fff;border-radius:6px;cursor:pointer}</style>
+</head><body><div id="msg" role="status">Notificando o administrador...</div>
+<form id="fallback" target="_blank" method="POST"><input type="hidden" name="name"><input type="hidden" name="email"><input type="hidden" name="reason"><textarea hidden name="message"></textarea></form>
+<button id="alternative" type="button">Reenviar aviso em outra aba</button>
+<script>
+const data=__FORM_DATA__;
+const msg=document.getElementById("msg");
+const alt=document.getElementById("alternative");
+const fallback=document.getElementById("fallback");
+fallback.action=data.endpoint;
+for(const key of ["name","email","reason","message"])fallback.elements[key].value=data[key];
+const values=new FormData(fallback);
+fetch(data.endpoint,{method:"POST",headers:{"Accept":"application/json"},body:values})
+.then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);
+  msg.textContent="Aviso enviado ao administrador. Aguarde a resposta no e-mail informado.";})
+.catch(()=>{msg.textContent="Sua conta foi pré-cadastrada, mas o aviso ao administrador não foi confirmado. Use a alternativa abaixo ou informe o suporte.";alt.style.display="block";});
+alt.onclick=()=>{fallback.target="monitorFormspreeNotice";window.open("about:blank","monitorFormspreeNotice");fallback.submit();};
+</script></body></html>'''
+    markup = markup.replace("__FORM_DATA__", request_json)
+    components.html(markup, height=105, scrolling=False)
 
 
 def _monitor_send_access_via_formspree(endpoint, name, email, reason):
@@ -5336,6 +5308,73 @@ def _monitor_admin_http(path, method="GET", payload=None, *, require_admin=True,
         raise RuntimeError("Não foi possível acessar o Supabase Auth.") from exc
 
 
+def _monitor_registration_error_message(error):
+    """Não propagar mensagens de API com informações internas para visitantes."""
+    txt = str(error or "").lower()
+    if "e-mail corporativo" in txt:
+        return "Utilize um e-mail corporativo permitido para solicitar o cadastro."
+    if "limite" in txt or "too many" in txt:
+        return "Limite de solicitações atingido. Tente novamente mais tarde."
+    if "already" in txt or "registered" in txt or "unique" in txt or "duplic" in txt:
+        return "Este e-mail já possui uma conta ou solicitação. Aguarde contato da administração."
+    if "chave" in txt or "secret" in txt:
+        return "O cadastro está temporariamente indisponível. Contate o administrador."
+    return "Não foi possível registrar o pré-cadastro. Tente novamente ou contate o administrador."
+
+
+@st.cache_resource(show_spinner=False)
+def _monitor_registration_rate_state():
+    return {"lock": threading.Lock(), "times": []}
+
+
+def _monitor_register_pending_user(name, email, password, reason):
+    """Criação pública restrita: conta bloqueada e não confirmada até verificação manual.
+
+    Usa Supabase Admin apenas NO SERVIDOR; não permite que o visitante escolha
+    app_metadata, perfil, confirmação ou desbloqueio. Não envia e-mail/senha
+    a serviços terceiros. Não habilita o signup público do Supabase.
+    """
+    name = " ".join(str(name or "").split())
+    email = str(email or "").strip().lower()
+    reason = str(reason or "").strip()[:500]
+    if len(name) < 3 or len(name) > 120 or not _monitor_valid_email(email):
+        raise ValueError("Nome ou e-mail inválido.")
+    if len(password) < 12 or len(password) > 128 or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
+        raise ValueError("Senha fora dos requisitos.")
+    try:
+        allow_domains = str(st.secrets.get("MONITOR_SIGNUP_ALLOWED_DOMAINS", "ssinformatica.net") or "ssinformatica.net")
+    except Exception:
+        allow_domains = "ssinformatica.net"
+    domains = {x.strip().lower().lstrip("@") for x in allow_domains.split(",") if x.strip()}
+    if email.rsplit("@", 1)[-1] not in domains:
+        raise ValueError("Informe um e-mail corporativo permitido.")
+    # Rate limit no servidor: 5 solicitações/hora por processo e 1 por sessão.
+    if st.session_state.get("_monitor_registration_finished_v3365"):
+        raise RuntimeError("Já existe solicitação nesta sessão.")
+    now = time.monotonic()
+    state = _monitor_registration_rate_state()
+    with state["lock"]:
+        state["times"] = [x for x in state["times"] if now-x < 3600]
+        if len(state["times"]) >= 5:
+            raise RuntimeError("Limite de solicitações atingido.")
+        # Reserva capacidade ANTES da chamada; falhas também contam para impedir flood.
+        state["times"].append(now)
+    result = _monitor_admin_http("/auth/v1/admin/users", method="POST", require_admin=False,
+        payload={
+            "email": email, "password": password,
+            "email_confirm": False, "ban_duration": "876000h",
+            "user_metadata": {"name": name, "monitor_ss_requested": True,
+                              "monitor_ss_reason": reason},
+            "app_metadata": {"monitor_ss_managed": False,
+                             "monitor_ss_active": False, "monitor_ss_profile": "visualizador"},
+        }, timeout=20)
+    if not isinstance(result, dict) or not result.get("id"):
+        raise RuntimeError("O Supabase não confirmou o pré-cadastro.")
+    # Confirmamos os campos de segurança retornados antes de declarar sucesso.
+    # A aprovação posterior pode ocorrer apenas no gerenciamento administrativo.
+    return str(result["id"])
+
+
 def _monitor_auth_current_user(force=False):
     """Verifica identidade/permissões no Auth, evitando usar metadados locais obsoletos."""
     if not _auth_is_authenticated():
@@ -5458,7 +5497,7 @@ def _monitor_admin_create_user(name, email, profile):
     return {"email": email, "password": temporary, "name": name, "profile": profile}
 
 
-def _monitor_admin_update_user(user, changes):
+def _monitor_admin_update_user(user, changes, *, confirm_email=False):
     if not _com_is_admin():
         raise PermissionError("Somente o administrador pode alterar contas.")
     uid = str(uuid.UUID(str(user.get("id"))))
@@ -5473,6 +5512,8 @@ def _monitor_admin_update_user(user, changes):
         raise ValueError("Perfil inválido.")
     app_meta.update(changes)
     payload = {"app_metadata": app_meta}
+    if confirm_email:
+        payload["email_confirm"] = True
     if "monitor_ss_active" in changes:
         payload["ban_duration"] = "none" if changes["monitor_ss_active"] else "87600h"
     result = _monitor_admin_http(f"/auth/v1/admin/users/{uid}", method="PUT", payload=payload)
@@ -5591,16 +5632,27 @@ def render_monitor_user_management():
             uid = str(user.get("id") or "")
             if uid == owner_id:
                 continue
-            c1, c2 = st.columns([3, 1])
-            with c1:
-                st.text(str(user.get("email") or "Conta sem e-mail"))
-            with c2:
-                if st.button("Autorizar", key=f"monitor_authorize_existing_{uid}", use_container_width=True):
+            requested = (user.get("user_metadata") or {}).get("monitor_ss_requested") is True
+            verified = bool(user.get("email_confirmed_at"))
+            with st.container(border=True):
+                st.markdown(f"**{html.escape(str(user.get('email') or 'Conta sem e-mail'))}**")
+                if requested:
+                    st.caption("Novo pré-cadastro · " + ("E-mail confirmado" if verified else "E-mail ainda não confirmado"))
+                    st.caption("Nome: " + str((user.get("user_metadata") or {}).get("name") or "Não informado"))
+                    checked = True if verified else st.checkbox(
+                        "Confirmei por outro meio que o e-mail pertence a este solicitante",
+                        key=f"monitor_verify_identity_{uid}", value=False)
+                else:
+                    st.caption("Conta antiga. Verifique a identidade antes da autorização.")
+                    checked = True
+                if st.button("Autorizar como Visualizador", key=f"monitor_authorize_existing_{uid}",
+                             use_container_width=True, disabled=not checked):
                     try:
                         _monitor_admin_update_user(user, {"monitor_ss_managed": True,
                                                           "monitor_ss_active": True,
                                                           "monitor_ss_profile": "visualizador",
-                                                          "monitor_ss_force_password_change": False})
+                                                          "monitor_ss_force_password_change": False},
+                                                   confirm_email=(requested and not verified))
                         st.rerun()
                     except Exception as exc:
                         st.error(_auth_error_pt(exc))
@@ -8277,6 +8329,50 @@ else:
         @media(prefers-reduced-motion:reduce){
             .g4f-agent.has-assignment.g4f-shake-now{animation:none!important}
         }
+        /* v3.37.0 Layout S&S: isolado da interface G4Flex existente. */
+        .g4f-layout-switch{display:inline-flex;gap:2px;padding:3px;background:#e8f1fc;border:1px solid #c5d9ed;border-radius:10px;align-self:center}
+        .g4f-layout-switch button{border:0;border-radius:7px;background:transparent;padding:7px 11px;color:#124876;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+        .g4f-layout-switch button.selected{background:#0a4f9a;color:#fff;box-shadow:0 2px 8px #07376b38}
+        .g4f-board.g4f-ss-mode{background:#eff5ff;overflow:hidden}
+        .g4f-board.g4f-ss-mode>.g4f-body{display:none!important}
+        .g4f-board.g4f-ss-mode>.g4f-top{position:absolute;top:12px;right:15px;z-index:4;min-height:0;width:auto;padding:0;background:transparent;border:0;box-shadow:none}
+        .g4f-board.g4f-ss-mode>.g4f-top .g4f-title-area,.g4f-board.g4f-ss-mode>.g4f-top .g4f-clock,.g4f-board.g4f-ss-mode>.g4f-top .g4f-connection{display:none}
+        .g4f-board.g4f-ss-mode .ss-view{display:flex;height:100%;width:100%;overflow:hidden;color:#0d2855;font-family:Inter,'Segoe UI',Arial,sans-serif}
+        .ss-view[hidden]{display:none!important}
+        .ss-sidebar{width:172px;flex:0 0 172px;background:linear-gradient(165deg,#002451,#07417c 70%,#00254e);color:#fff;display:flex;flex-direction:column;padding:23px 12px}
+        .ss-brand{text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:35px}.ss-brand strong{font-size:53px;font-weight:1000;letter-spacing:-9px;font-style:italic;line-height:.95}.ss-brand span{font-size:18px;font-weight:850}
+        .ss-menu-current{border-radius:9px;padding:14px 11px;background:#1469c4;font-size:13px;font-weight:820;white-space:nowrap}
+        .ss-menu-muted{color:#aac9ed;font-size:11px;padding:22px 9px}
+        .ss-side-bottom{margin-top:auto;border-top:1px solid #5d91c044;padding:20px 0 8px;display:flex;align-items:center;gap:9px;font-size:12px;font-weight:730}
+        .ss-live-dot{display:inline-block;width:11px;height:11px;background:#18c95e;border-radius:100%;flex:none;box-shadow:0 0 0 3px #1bbf571a}
+        .ss-side-stamp{font-size:10px;line-height:1.4;color:#bdcfe8;padding-top:8px;border-top:1px solid #5d91c044}
+        .ss-main{min-width:0;flex:1;display:flex;flex-direction:column;overflow:hidden;padding:18px 20px 10px;background:linear-gradient(135deg,#eff5ff,#f8faff)}
+        .ss-heading{min-height:60px;padding-right:245px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+        .ss-heading h2{margin:0;color:#082657;font-size:clamp(20px,1.9vw,28px);font-weight:860;line-height:1.1}.ss-heading p{margin:4px 0 0;color:#294b79;font-size:12px;font-weight:600}
+        .ss-heading-tools{margin-left:auto;display:flex;align-items:center;gap:12px}.ss-heading-tools input{border:1px solid #aac6ed;border-radius:10px;padding:11px 13px;width:min(25vw,265px);background:#f6f9ff;color:#0a3364;outline-color:#2e7ad5;font:inherit;font-size:12px}.ss-heading-tools>span{display:none}
+        .ss-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:12px 0 16px;flex:none}
+        .ss-kpi{border-radius:14px;background:#fff;box-shadow:0 4px 12px #123d7115;border:1px solid #d8e6fa;min-width:0;display:flex;align-items:center;gap:8px;padding:13px 9px;min-height:79px}
+        .ss-kpi-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:50%;background:var(--ss-color);color:white;font-weight:950;font-size:22px;box-shadow:0 3px 9px color-mix(in srgb,var(--ss-color) 23%,transparent)}
+        .ss-kpi small{display:block;color:#122f61;font-weight:780;font-size:10px}.ss-kpi strong{display:block;color:#07295e;font-size:27px;line-height:1.15;font-weight:900;font-variant-numeric:tabular-nums}
+        .ss-green{--ss-color:#14aa63;background:linear-gradient(170deg,#fff,#e3faed)}.ss-amber{--ss-color:#f7ae25;background:linear-gradient(170deg,#fff,#fff1d4)}.ss-slate{--ss-color:#76859e}.ss-blue{--ss-color:#3177f2}.ss-purple{--ss-color:#9542e4;background:linear-gradient(170deg,#fff,#f1e5ff)}.ss-red{--ss-color:#eb4560;background:linear-gradient(170deg,#fff,#ffebf0)}.ss-navy{--ss-color:#1457bb}
+        .ss-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 10px;flex:none}.ss-heading-count{font-size:18px;font-weight:880;color:#08285d;display:flex;gap:10px;align-items:center}
+        .ss-filters{display:flex;gap:6px}.ss-filters button{background:#fff;border:1px solid #ccddf4;border-radius:9px;color:#23518b;padding:7px 12px;font-weight:750;font-size:11px;cursor:pointer}.ss-filters button.selected{background:#0c56a0;color:white;border-color:#0c56a0}
+        .ss-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:11px;flex:1;min-height:0;overflow:hidden;padding:2px 3px 4px}
+        .ss-agent{background:#fff;border:1px solid #cbdff7;border-radius:15px;box-shadow:0 3px 10px #16407418;padding:12px 12px 9px;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+        .ss-agent-head{display:flex;align-items:center;gap:8px;min-width:0}.ss-agent .g4f-avatar{width:35px;height:35px;border-radius:100%}.ss-agent-head strong{font-size:clamp(11px,.95vw,16px);color:#071c42;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-weight:860}
+        .ss-status{font-size:10px;background:#d9f8dc;color:#18793d;border-radius:30px;padding:5px 7px;white-space:nowrap;font-weight:810}.ss-paused .ss-status{background:#ffe5aa;color:#955d00}
+        .ss-agent-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid #e1e9f6;padding:5px 0 7px;margin-top:3px}.ss-agent-metrics>div{text-align:center;min-width:0;border-right:1px solid #e1e9f6}.ss-agent-metrics>div:last-child{border:0}.ss-agent-metrics small{display:block;font-size:clamp(8px,.7vw,10px);color:#203e65;font-weight:700}.ss-agent-metrics b{display:block;color:#071d43;font-size:clamp(16px,1.4vw,22px);font-weight:880;margin-top:2px}.ss-agent-metrics b.ss-alert-count{color:#ec5716}
+        .ss-agent-time{display:flex;align-items:center;justify-content:space-between;font-size:clamp(9px,.73vw,12px);font-weight:750;gap:8px;color:#32567c;margin-top:6px}.ss-agent-time strong{font-size:clamp(11px,1.04vw,16px);color:#006932;white-space:nowrap}
+        .ss-info{border-radius:8px;padding:4px 7px;font-size:clamp(9px,.75vw,12px);font-weight:850;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;margin-top:5px}
+        .ss-paused{background:linear-gradient(155deg,#fff,#eef4ff)}.ss-reason{background:#fff0ca;color:#7e5300}.ss-paused .ss-agent-time strong{color:#1955cc}
+        .ss-calling{border:2px solid #b98cff;background:linear-gradient(150deg,#fff,#f5eaff);box-shadow:0 3px 10px #7840d323}.ss-phone{background:#8429d9;color:#fff}.ss-calling .ss-agent-time strong{color:#8529d3}
+        .ss-assigned{border:2px solid #ffa31c;background:linear-gradient(150deg,#fff,#fff0e2);box-shadow:0 0 0 3px #ffab3930,0 5px 18px #f5a43e55}.ss-assignment{color:#bd3900;background:#ffe0b7}
+        @keyframes ssPulse{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-2px)}40%,80%{transform:translateX(2px)}}.ss-agent.ss-shake{animation:ssPulse .45s ease 2}
+        @media(prefers-reduced-motion:reduce){.ss-agent.ss-shake{animation:none}}
+        .ss-footer{display:flex;align-items:center;justify-content:space-between;flex:none;padding:6px 3px;color:#6985a3;font-size:10px}.ss-footer button{border:1px solid #abc7e6;border-radius:6px;background:#fff;margin:0 5px;cursor:pointer}
+        .ss-error{background:#fff3dd;border:1px solid #efc075;color:#814600;border-radius:8px;padding:8px 10px;font-size:11px}.ss-error[hidden]{display:none!important}.ss-no-agents{grid-column:1/-1;text-align:center;align-self:center;color:#768c9f}
+        @media(max-width:1220px){.ss-sidebar{width:132px;flex-basis:132px}.ss-brand strong{font-size:40px}.ss-brand span{font-size:13px}.ss-heading{padding-right:220px}.ss-kpi{padding:8px 5px;gap:4px}.ss-kpi-icon{width:28px;height:28px;font-size:17px}.ss-kpi strong{font-size:20px}.ss-agent{padding:8px}.ss-agent .g4f-avatar{width:29px;height:29px}}
+        @media(max-width:850px){.ss-sidebar{width:80px;flex-basis:80px}.ss-brand span,.ss-menu-muted,.ss-menu-current{font-size:9px}.ss-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.ss-cards{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))}.ss-main{padding:8px}.ss-heading{padding-right:0;padding-top:45px}.g4f-board.g4f-ss-mode>.g4f-top{top:4px;right:8px}.ss-kpi{min-height:47px}.ss-agent-head strong{font-size:12px}}
         </style>
     </head>
     <body class="bar-top">
@@ -9538,6 +9634,25 @@ else:
             let g4fPolling = null;
             let g4fRunning = false;
             let g4fSearchText = '';
+            // v3.37.0: dois layouts sobre o MESMO polling, sem segundo robô.
+            const g4fLayoutKey = 'monitor_ss_g4flex_layout_v337';
+            let g4fCurrentLayout = (()=>{try{return localStorage.getItem(g4fLayoutKey)==='g4flex'?'g4flex':'ss';}catch(e){return 'ss';}})();
+            function g4fChangeLayout(layout){
+                g4fCurrentLayout=layout==='g4flex'?'g4flex':'ss';
+                try{localStorage.setItem(g4fLayoutKey,g4fCurrentLayout);}catch(e){}
+                for(const host of g4fWidgets){
+                    if(!host.isConnected)continue;
+                    host.classList.toggle('g4f-ss-mode',g4fCurrentLayout==='ss');
+                    host.querySelectorAll('[data-g4f-layout]').forEach(btn=>{
+                        const selected=btn.dataset.g4fLayout===g4fCurrentLayout;
+                        btn.classList.toggle('selected',selected);
+                        btn.setAttribute('aria-pressed',String(selected));
+                    });
+                    host._g4fPage=0;
+                }
+                g4fRender();
+            }
+
             let g4fFilterStatus = 'todos';
             const g4fMonitorId = String(g4fConfig.monitor_id||'g4flex-principal');
             const g4fAutoFit = g4fConfig.auto_fit !== false;
@@ -9695,6 +9810,67 @@ else:
                 host._g4fPage=((host._g4fPage||0)+step+pages)%pages;
                 g4fLayout(host);
             }
+            // Layout S&S: lê exclusivamente o mesmo snapshot g4flex_monitor_atual.
+            function ssPhoneActive(agent,row){
+                return g4fState(row)==='online' && row?.resumo?.voz_status==='online' && agent.voz_status==='em_ligacao';
+            }
+            function ssAgentCard(agent,row){
+                const paused=agent.status==='pausado';
+                const calling=ssPhoneActive(agent,row);
+                const count=Math.max(0,Number(agent.atribuidas)||0);
+                const alert=g4fAssignmentAlert && g4fState(row)==='online' && count>0;
+                const changing=(g4fAssignmentRecentlyChanged.get(g4fAgentKey(agent))||0)>Date.now();
+                const time=paused?(agent.tempo_pausa||agent.tempo_valor):(agent.tempo_fila||agent.tempo_valor);
+                const timeLabel=paused?'Tempo de pausa':'Tempo de fila';
+                const voiceTime=calling && String(agent.voz_tempo||'').trim();
+                const status=paused?'Em pausa':agent.status==='ativo'?'Online':'Sem status';
+                return `<article class="ss-agent ${paused?'ss-paused':''} ${calling?'ss-calling':''} ${alert?'ss-assigned':''} ${changing?'ss-shake':''}">
+                    <div class="ss-agent-head">${g4fAvatar(agent)}<strong title="${g4fText(agent.nome)}">${g4fText(agent.nome||'Sem nome')}</strong><span class="ss-status">${g4fText(status)}</span></div>
+                    ${paused?`<div class="ss-info ss-reason">☕ Motivo: ${g4fText(agent.motivo_pausa||'Não informado')}</div>`:''}
+                    ${calling?`<div class="ss-info ss-phone">☎ Em atendimento telefônico${voiceTime?' · '+g4fText(voiceTime):''}</div>`:''}
+                    ${alert?`<div class="ss-info ss-assignment">♟ Atenção: ${count===1?'1 atendimento atribuído':count+' atendimentos atribuídos'}!</div>`:''}
+                    <div class="ss-agent-metrics"><div><small>Atribuídas</small><b ${alert?'class="ss-alert-count"':''}>${g4fNumber(agent.atribuidas)}</b></div><div><small>Em atendimento</small><b>${g4fNumber(agent.em_atendimento)}</b></div><div><small>Encerradas</small><b>${g4fNumber(agent.encerradas)}</b></div></div>
+                    <div class="ss-agent-time"><span>◷ ${timeLabel}</span><strong>${g4fText(time||'—')}</strong></div>
+                </article>`;
+            }
+            function ssRender(host,row,agents,state){
+                const root=host.querySelector('[data-ss="view"]');if(!root)return;
+                root.hidden=g4fCurrentLayout!=='ss';
+                if(g4fCurrentLayout!=='ss')return;
+                const r=row?.resumo||{};
+                const all=Array.isArray(row?.atendentes)?row.atendentes:[];
+                const voiceIsFresh=state==='online' && r.voz_status==='online';
+                const voiceCount=voiceIsFresh?all.filter(a=>a.voz_status==='em_ligacao').length:null;
+                const kpis=[
+                    ['◉','Disponíveis',r.agentes_disponiveis,'green'],
+                    ['Ⅱ','Em pausa',r.agentes_em_pausa,'amber'],
+                    ['Ⅱ','Pausa ativa',r.agentes_em_pausa_ativa,'slate'],
+                    ['▣','Em atendimento',r.conversas_em_atendimento,'blue'],
+                    ['☎','Atend. telefônico',voiceCount,'purple'],
+                    ['▤','Não atendidas',r.conversas_nao_atendidas,'red'],
+                    ['♧','Total logados',r.usuarios_logados,'navy'],
+                ];
+                root.querySelector('[data-ss="kpis"]').innerHTML=kpis.map(([icon,title,val,color])=>
+                    `<div class="ss-kpi ss-${color}"><div class="ss-kpi-icon">${icon}</div><div><small>${title}</small><strong>${val==null?'—':g4fNumber(val)}</strong></div></div>`).join('');
+                root.querySelector('[data-ss="connection"]').textContent=state==='online'?'● Robô conectado':state==='stale'?'● Dados desatualizados':'● Robô offline';
+                root.querySelector('[data-ss="stamp"]').textContent=row?'Última atualização: '+g4fTime(row.recebido_em):'Aguardando dados';
+                root.querySelector('[data-ss="count"]').textContent=`(${agents.length})`;
+                const err=root.querySelector('[data-ss="error"]');
+                err.hidden=!g4fLastError;err.textContent=g4fLastError||'';
+                root.querySelectorAll('[data-ss-filter]').forEach(btn=>btn.classList.toggle('selected',btn.dataset.ssFilter===g4fFilterStatus));
+                const input=root.querySelector('[data-ss="search"]');if(document.activeElement!==input)input.value=g4fSearchText;
+                const perPage=12,pages=Math.max(1,Math.ceil(agents.length/perPage));
+                host._ssPage=Math.min(host._ssPage||0,pages-1);
+                const shown=agents.slice(host._ssPage*perPage,(host._ssPage+1)*perPage);
+                root.querySelector('[data-ss="cards"]').innerHTML=shown.length?shown.map(a=>ssAgentCard(a,row)).join(''):
+                    '<div class="ss-no-agents">Nenhum atendente para os filtros escolhidos.</div>';
+                const pageEl=root.querySelector('[data-ss="pages"]');
+                pageEl.innerHTML=pages>1?`<button data-ss-page="prev">‹</button> ${host._ssPage+1} / ${pages} <button data-ss-page="next">›</button>`:'';
+                pageEl.querySelectorAll('[data-ss-page]').forEach(btn=>btn.addEventListener('click',()=>{
+                    host._ssPage=(host._ssPage+(btn.dataset.ssPage==='next'?1:-1)+pages)%pages;
+                    ssRender(host,g4fLastData,host._g4fAgents||[],g4fState(g4fLastData));
+                }));
+            }
             function g4fRender(){
                 const row=g4fLastData;
                 const r=row?.resumo||{};
@@ -9723,7 +9899,8 @@ else:
                     const summary=host.querySelector('[data-g4f="kpis"]');
                     summary.innerHTML=kpis.map(([title,key,color,description],i)=>`<div class="g4f-kpi ${i===0?'primary':''}" style="--kpi-color:${color}"><span class="g4f-kpi-title">${g4fText(title)}</span><span class="g4f-kpi-value">${g4fNumber(r[key])}</span><small>${g4fText(description)}</small></div>`).join('');
                     host._g4fAgents=agents;
-                    g4fLayout(host);
+                    ssRender(host,row,agents,state);
+                    if(g4fCurrentLayout==='g4flex')g4fLayout(host);
                     host.querySelector('[data-g4f="count"]').textContent=`Exibindo ${agents.length} de ${Array.isArray(row?.atendentes)?row.atendentes.length:0} atendentes`;
                     const error=host.querySelector('[data-g4f="error"]');
                     if(g4fLastError){error.hidden=false;error.textContent=g4fLastError+(row?' · última leitura válida preservada':'');}
@@ -9764,7 +9941,23 @@ else:
                 host.innerHTML=`<header class="g4f-top"><div class="g4f-title-area">
                   <img class="g4f-logo" src="${g4fText(g4fConfig.logo||'')}" alt="Logo Grupo S&S">
                   <span class="g4f-logo-divider"></span><div><h1>Painel de Atendimento</h1><p>Grupo S&S · Monitoramento em tempo real do suporte</p></div>
-                  </div><div class="g4f-top-actions"><span class="g4f-connection offline" data-g4f="state">Conectando...</span><span class="g4f-clock" data-g4f="clock">--:--:--</span></div></header>
+                  </div><div class="g4f-top-actions"><div class="g4f-layout-switch" role="group" aria-label="Escolher visual do atendimento"><button data-g4f-layout="g4flex" type="button">Layout G4Flex</button><button data-g4f-layout="ss" type="button">Layout S&S</button></div><span class="g4f-connection offline" data-g4f="state">Conectando...</span><span class="g4f-clock" data-g4f="clock">--:--:--</span></div></header>
+                  <div class="ss-view" data-ss="view" hidden>
+                    <aside class="ss-sidebar"><div class="ss-brand"><strong>SS</strong><span>Grupo S&S</span></div>
+                      <div class="ss-menu-current">◉ &nbsp; Atendimento</div>
+                      <div class="ss-menu-muted">Monitoramento em tempo real</div>
+                      <div class="ss-side-bottom"><span class="ss-live-dot"></span><span>Monitoramento<br> em tempo real</span></div>
+                      <div class="ss-side-stamp" data-ss="stamp"></div>
+                    </aside>
+                    <main class="ss-main"><div class="ss-heading"><div><h2>Painel de Atendimento</h2><p>Monitoramento de atendentes · G4Flex</p></div>
+                      <div class="ss-heading-tools"><input data-ss="search" type="search" placeholder="Buscar atendente..." aria-label="Buscar atendente"><span data-ss="connection">Conectando...</span></div></div>
+                      <div class="ss-kpis" data-ss="kpis"></div>
+                      <div class="ss-toolbar"><div class="ss-heading-count"><span class="ss-live-dot"></span> Atendentes <b data-ss="count"></b></div>
+                      <div class="ss-filters"><button class="selected" data-ss-filter="todos">Todos</button><button data-ss-filter="ativo">Ativos</button><button data-ss-filter="pausado">Em pausa</button></div></div>
+                      <div class="ss-error" data-ss="error" hidden></div><div class="ss-cards" data-ss="cards"></div>
+                      <div class="ss-footer"><span>Dados: robô G4Flex · A fila inicial do usuário não é apresentada.</span><span data-ss="pages"></span></div>
+                    </main>
+                  </div>
                   <section class="g4f-body"><div class="g4f-kpis" data-g4f="kpis"></div>
                   <div class="g4f-controls"><div class="g4f-controls-left"><button class="g4f-filter-btn selected" data-g4f-filter="todos">Todos</button>
                   <button class="g4f-filter-btn" data-g4f-filter="ativo">Ativos</button><button class="g4f-filter-btn" data-g4f-filter="pausado">Em pausa</button>
@@ -9775,6 +9968,15 @@ else:
                   <footer class="g4f-board-footer"><span data-g4f="count"></span>
                    <div class="g4f-fit-page" data-g4f="pager" hidden><button class="g4f-page-btn" data-g4f-page="prev" aria-label="Página anterior">‹</button><span data-g4f="page-text">1/1</span><button class="g4f-page-btn" data-g4f-page="next" aria-label="Próxima página">›</button></div>
                    <span>Fonte: robô G4Flex · Fila exibida não representa necessariamente o atendimento atual.</span></footer></section>`;
+                host.querySelectorAll('[data-g4f-layout]').forEach(btn=>btn.addEventListener('click',()=>g4fChangeLayout(btn.dataset.g4fLayout)));
+                host.classList.toggle('g4f-ss-mode',g4fCurrentLayout==='ss');
+                host.querySelector('[data-ss="search"]').value=g4fSearchText;
+                host.querySelector('[data-ss="search"]').addEventListener('input',e=>{g4fSearchText=e.target.value;host._ssPage=0;g4fRender();});
+                host.querySelectorAll('[data-ss-filter]').forEach(btn=>btn.addEventListener('click',()=>{g4fFilterStatus=btn.dataset.ssFilter;host._ssPage=0;g4fRender();}));
+                host.querySelectorAll('[data-g4f-layout]').forEach(btn=>{
+                    const selected=btn.dataset.g4fLayout===g4fCurrentLayout;
+                    btn.classList.toggle('selected',selected);btn.setAttribute('aria-pressed',String(selected));
+                });
                 host.querySelector('[data-g4f="search"]').value=g4fSearchText;
                 host.querySelector('[data-g4f="search"]').addEventListener('input',e=>{g4fSearchText=e.target.value;host._g4fPage=0;g4fRender();});
                 host.querySelectorAll('[data-g4f-filter]').forEach(btn=>btn.addEventListener('click',()=>{g4fFilterStatus=btn.dataset.g4fFilter;host._g4fPage=0;g4fRender();}));
@@ -9789,6 +9991,12 @@ else:
                      g4fPagerTimer=setInterval(()=>{
                          for(const panel of g4fWidgets){
                              if(!panel.isConnected){panel._g4fResizeObserver?.disconnect();g4fWidgets.delete(panel);continue;}
+                             if(panel.closest('.iframe-panel.active') && g4fCurrentLayout==='ss'){
+                                 const total=(panel._g4fAgents||[]).length;
+                                 const pages=Math.max(1,Math.ceil(total/12));
+                                 if(pages>1){panel._ssPage=((panel._ssPage||0)+1)%pages;ssRender(panel,g4fLastData,panel._g4fAgents,g4fState(g4fLastData));}
+                                 continue;
+                             }
                              if(panel.closest('.iframe-panel.active') && Number(panel.querySelector('[data-g4f="pager"]')?.dataset.g4fPages||1)>1)g4fMovePage(panel,1);
                          }
                      },9000);
@@ -9800,6 +10008,13 @@ else:
                         for(const panel of g4fWidgets){
                             if(!panel.isConnected)continue;
                             if(!panel.closest('.iframe-panel.active'))continue;
+                            if(g4fCurrentLayout==='ss'){
+                                panel.querySelectorAll('.ss-agent.ss-assigned').forEach(card=>{
+                                    card.classList.remove('ss-shake');void card.offsetWidth;card.classList.add('ss-shake');
+                                    setTimeout(()=>{if(card.isConnected)card.classList.remove('ss-shake');},900);
+                                });
+                                continue;
+                            }
                             panel.querySelectorAll('.g4f-agent.has-assignment').forEach(card=>{
                                 card.classList.remove('g4f-shake-now');
                                 void card.offsetWidth; // força reinício da vibração curta a cada ciclo
