@@ -12,6 +12,10 @@ import tempfile
 import time
 import uuid
 import ssl
+import smtplib
+import threading
+from email.message import EmailMessage
+from email.utils import formataddr
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -58,6 +62,8 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.36.2: Solicitações via Formspree sem KingHost/SMTP; SMTP permanece como alternativa.
+# 3.36.1: Solicitação de acesso com envio de e-mail automático pelo SMTP KingHost.
 # 3.36.0: Cadastro simplificado pelo administrador (Supabase Auth Admin API e Secrets Streamlit).
 # 3.35.0: Solicitação de acesso no login, aprovação administrativa e convite pelo Supabase Auth.
 # 3.34.0: Cartões mais legíveis, alerta de atribuídas aperfeiçoado e atualização visual G4Flex desktop.
@@ -78,7 +84,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.36.0"
+APP_VERSION = "3.36.2"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -2391,35 +2397,37 @@ def _render_login_gate():
         )
         if auth_view == "Solicitar acesso":
             st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
-            st.caption("O cadastro é feito pelo administrador. Prepare uma solicitação para enviar por e-mail.")
+            st.caption("Preencha os dados. O pedido será enviado automaticamente ao administrador, que fará o cadastro após analisar a solicitação.")
             with st.form("monitor_request_access_v336", clear_on_submit=False):
                 nome = st.text_input("Nome completo", max_chars=120, placeholder="Nome e sobrenome")
                 email = st.text_input("E-mail que deseja cadastrar", max_chars=254, placeholder="nome@empresa.com.br")
                 motivo = st.text_area("Motivo da solicitação (opcional)", max_chars=500, height=76,
                                      placeholder="Ex.: acompanhar indicadores do suporte")
-                preparar = st.form_submit_button("Preparar solicitação", type="primary", use_container_width=True)
-            if preparar:
-                if len(nome.strip()) < 3 or not _monitor_valid_email(email):
+                enviar = st.form_submit_button("Enviar solicitação", type="primary", use_container_width=True)
+            if enviar:
+                nome_limpo = " ".join(nome.strip().split())
+                email_limpo = email.strip().lower()
+                if len(nome_limpo) < 3 or not _monitor_valid_email(email_limpo):
                     st.warning("Informe um nome completo e um endereço de e-mail válido.")
                 else:
-                    st.session_state["_monitor_access_request_preview_v336"] = {
-                        "name": nome.strip(), "email": email.strip().lower(), "reason": motivo.strip(),
-                    }
-            req = st.session_state.get("_monitor_access_request_preview_v336")
-            if isinstance(req, dict):
-                title = "Solicitação de acesso — Painel de Monitoramento Grupo S&S"
-                body = (f"Olá! Solicito acesso ao Painel de Monitoramento do Grupo S&S.\n\n"
-                        f"Nome: {req.get('name', '')}\nE-mail: {req.get('email', '')}\n"
-                        f"Motivo: {req.get('reason') or 'Não informado'}\n\nObrigado!")
-                contact = _monitor_access_contact_email()
-                if contact:
-                    mailto = "mailto:" + contact + "?" + urlencode({"subject": title, "body": body})
-                    st.link_button("Abrir e-mail para o administrador", mailto, use_container_width=True)
-                    st.caption("O aplicativo de e-mail será aberto com a mensagem preparada; confirme o envio nele.")
-                else:
-                    st.info("Envie a mensagem abaixo ao responsável pelo cadastro de usuários do Grupo S&S.")
-                st.code(body, language=None)
-                st.caption("Esta tela não envia solicitações automaticamente nem cria contas sem aprovação.")
+                    ultima = float(st.session_state.get("_monitor_access_last_sent_at", 0) or 0)
+                    if ultima and time.monotonic() - ultima < 120:
+                        st.warning("Já recebemos uma solicitação nesta sessão. Aguarde pelo menos 2 minutos antes de enviar outra.")
+                    else:
+                        try:
+                            _monitor_send_access_request_email(nome_limpo, email_limpo, motivo.strip())
+                        except RuntimeError as exc:
+                            # Mensagem operacional já sanitizada: nenhuma credencial é exibida ao usuário.
+                            st.error(str(exc))
+                        except Exception:
+                            st.error("Não foi possível encaminhar o e-mail. Tente novamente mais tarde ou contate o administrador.")
+                        else:
+                            st.session_state["_monitor_access_last_sent_at"] = time.monotonic()
+                            st.success("Solicitação registrada para análise! Verifique o recebimento da notificação no e-mail administrativo.")
+                            st.info("O envio da solicitação não cria uma conta nem libera o acesso automaticamente.")
+            if _monitor_formspree_endpoint():
+                st.caption("Os dados informados serão processados pelo Formspree para encaminhar o pedido ao administrador. Não envie senhas ou informações sensíveis.")
+            st.caption("O acesso ao painel depende de cadastro e autorização realizados pelo administrador.")
             st.stop()
 
         st.markdown('<div class="auth-reset-title">Entrar</div>', unsafe_allow_html=True)
@@ -4991,7 +4999,7 @@ def _com_is_admin():
 # =============================================================
 # v3.36 · CADASTRO SIMPLIFICADO NO SUPABASE AUTH
 # Somente no processo servidor Streamlit (nunca em JS, HTML ou código cliente).
-# Sem SQL, SMTP ou Edge Function obrigatórios.
+# Sem SQL, SMTP ou Edge Function obrigatórios (usando o Formspree).
 # =============================================================
 
 
@@ -5006,6 +5014,122 @@ def _monitor_access_contact_email():
     except Exception:
         email = ""
     return email if _monitor_valid_email(email) else ""
+
+
+
+# Controle simples por processo para limitar solicitações abusivas. Não substitui CAPTCHA
+# ou proteção distribuída para implantação pública em múltiplas instâncias.
+@st.cache_resource(show_spinner=False)
+def _monitor_email_rate_state():
+    """Rate limit compartilhado por sessões deste processo Streamlit."""
+    return {"lock": threading.Lock(), "times": []}
+
+
+def _monitor_formspree_endpoint():
+    """Endpoint de formulário configurado no Streamlit Secrets (sem SMTP nem credenciais de e-mail)."""
+    try:
+        form_id = str(st.secrets.get("FORMSPREE_FORM_ID", "") or "").strip()
+    except Exception:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9]{6,32}", form_id):
+        return ""
+    return "https://formspree.io/f/" + form_id
+
+
+def _monitor_send_access_via_formspree(endpoint, name, email, reason):
+    """POST feito pelo servidor Streamlit; confirma aceitação da submissão (não entrega final do e-mail)."""
+    payload = {
+        "name": name,
+        "email": email,
+        "message": (
+            "Solicitação de acesso ao Painel de Monitoramento Grupo S&S.\n"
+            f"Nome: {name}\nE-mail: {email}\n"
+            f"Motivo: {reason or 'Não informado'}\n\n"
+            "A criação da conta depende de aprovação administrativa.\n"
+            "Acesse Central de Configurações > Usuários e Permissões."
+        ),
+        "_subject": "Solicitação de acesso - Painel Grupo S&S",
+    }
+    request = Request(
+        endpoint,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=15) as response:
+            if not (200 <= response.status < 300):
+                raise RuntimeError("Serviço de solicitações indisponível. Tente novamente mais tarde.")
+            # Não equiparar aceitação do formulário à entrega efetiva do e-mail.
+    except HTTPError as exc:
+        if exc.code == 429:
+            raise RuntimeError("Muitas solicitações enviadas. Aguarde e tente novamente.") from None
+        if exc.code in (400, 422):
+            raise RuntimeError("Solicitação rejeitada pelo serviço. Revise os dados e tente novamente.") from None
+        raise RuntimeError("Não foi possível registrar a solicitação. Contate o administrador.") from None
+    except (URLError, TimeoutError):
+        raise RuntimeError("Não foi possível conectar ao serviço de solicitações. Tente novamente.") from None
+
+
+def _monitor_email_config():
+    """Credenciais SMTP armazenadas exclusivamente no servidor Streamlit (fallback opcional)."""
+    try:
+        host = str(st.secrets.get("SMTP_HOST", "smtpi.kinghost.net") or "").strip()
+        port = int(st.secrets.get("SMTP_PORT", 465))
+        username = str(st.secrets.get("SMTP_USER", "") or "").strip()
+        password = str(st.secrets.get("SMTP_PASSWORD", "") or "")
+    except Exception:
+        raise RuntimeError("E-mail automático ainda não está configurado. Contate o administrador.") from None
+    recipient = _monitor_access_contact_email()
+    if not host or port != 465 or not _monitor_valid_email(username) or not password or not recipient:
+        raise RuntimeError("E-mail automático ainda não está configurado. Contate o administrador.")
+    return host, port, username, password, recipient
+
+
+def _monitor_send_access_request_email(name, sender_email, reason):
+    """Solicitação pública: somente email fixo ao administrador, sem ações no Supabase."""
+    if len(name) < 3 or len(name) > 120 or not _monitor_valid_email(sender_email) or len(reason) > 500:
+        raise RuntimeError("Confira os dados informados e tente novamente.")
+    # Formspree é preferido quando configurado. O SMTP anterior continua disponível se necessário.
+    formspree_endpoint = _monitor_formspree_endpoint()
+    smtp_settings = None if formspree_endpoint else _monitor_email_config()
+
+    now = time.monotonic()
+    rate_state = _monitor_email_rate_state()
+    with rate_state["lock"]:
+        rate_state["times"][:] = [sent for sent in rate_state["times"] if now - sent < 900]
+        if len(rate_state["times"]) >= 15:
+            raise RuntimeError("Muitas solicitações foram recebidas recentemente. Tente novamente mais tarde.")
+        # Reserva da tentativa, inclusive se o SMTP falhar: impede disparos em sequência.
+        rate_state["times"].append(now)
+
+    safe_name = " ".join(name.split())
+    if formspree_endpoint:
+        return _monitor_send_access_via_formspree(formspree_endpoint, safe_name, sender_email.strip().lower(), reason)
+
+    host, port, username, password, recipient = smtp_settings
+    message = EmailMessage()
+    message["Subject"] = "Solicitação de acesso - Painel de Monitoramento Grupo S&S"
+    message["From"] = formataddr(("Painel de Monitoramento Grupo S&S", username))
+    message["To"] = recipient
+    message["Reply-To"] = sender_email.strip().lower()
+    message.set_content(
+        "Uma nova solicitação de acesso foi enviada pelo Painel de Monitoramento.\n\n"
+        f"Nome: {safe_name}\n"
+        f"E-mail: {sender_email.strip().lower()}\n"
+        f"Motivo: {reason or 'Não informado'}\n\n"
+        "Para cadastrar o usuário, acesse o painel como administrador e abra:\n"
+        "Central de Configurações > Usuários e Permissões.\n\n"
+        "A solicitação NÃO cria uma conta nem concede acesso automaticamente.\n"
+        "Link: https://monitoramentoss.streamlit.app/\n"
+    )
+    # A porta 465 utiliza TLS desde o início da conexão (SMTP_SSL).
+    # Streamlit Cloud pode estar fora do Brasil: KingHost exige SMTPi ativado.
+    with smtplib.SMTP_SSL(host, port, timeout=15, context=ssl.create_default_context()) as smtp:
+        smtp.login(username, password)
+        failures = smtp.send_message(message)
+        if failures:
+            raise RuntimeError("O servidor de e-mail recusou o destinatário. Contate o administrador.")
 
 
 def _monitor_secret_key():
