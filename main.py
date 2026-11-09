@@ -62,6 +62,7 @@ import streamlit.components.v1 as components
 # 3.26.0: Painel de Atendimento G4Flex interno, polling autenticado no Supabase, status/pausas.
 # 3.27.0: Painel G4Flex com encaixe automático à tela, grade adaptativa e paginação sem rolagem.
 # 3.28.0: Cartões G4Flex mais legíveis, melhor ocupação do espaço e contraste de pausa reforçado.
+# 3.36.4: Envio da solicitação Formspree pelo navegador (AJAX) com fallback HTML.
 # 3.36.3: Diagnóstico seguro de falhas HTTP do Formspree na solicitação de acesso.
 # 3.36.2: Solicitações via Formspree sem KingHost/SMTP; SMTP permanece como alternativa.
 # 3.36.1: Solicitação de acesso com envio de e-mail automático pelo SMTP KingHost.
@@ -85,7 +86,7 @@ import streamlit.components.v1 as components
 # Cor principal: Azul petróleo #0E5285
 # =========================================================
 
-APP_VERSION = "3.36.3"
+APP_VERSION = "3.36.4"
 SUPABASE_URL = "https://gtkeacejcplkrhpbmkoj.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_6n-lINyCmtVonoUKgncCHQ_y0Dpz4FL"
 G4FLEX_INTERNAL_URL = "internal:g4flex"
@@ -2397,6 +2398,16 @@ def _render_login_gate():
             horizontal=True, label_visibility="collapsed", key="monitor_login_mode_v336",
         )
         if auth_view == "Solicitar acesso":
+            # O teste HTML no navegador foi aceito pelo Formspree; o POST feito
+            # pelo servidor Streamlit recebeu HTTP 403. Com Formspree ativo,
+            # fazemos o envio no navegador do solicitante, sem expor Secrets.
+            if _monitor_formspree_endpoint():
+                st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
+                st.caption("Preencha os dados. A solicitação será encaminhada ao administrador para análise; o acesso não é liberado automaticamente.")
+                _monitor_render_formspree_browser_form()
+                st.caption("Os dados informados serão processados pelo Formspree para encaminhar o pedido ao administrador. Não envie senhas ou informações sensíveis.")
+                st.caption("O acesso ao painel depende de cadastro e autorização realizados pelo administrador.")
+                st.stop()
             st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
             st.caption("Preencha os dados. O pedido será enviado automaticamente ao administrador, que fará o cadastro após analisar a solicitação.")
             with st.form("monitor_request_access_v336", clear_on_submit=False):
@@ -5035,6 +5046,143 @@ def _monitor_formspree_endpoint():
     if not re.fullmatch(r"[A-Za-z0-9]{6,32}", form_id):
         return ""
     return "https://formspree.io/f/" + form_id
+
+
+def _monitor_render_formspree_browser_form():
+    """Formulário no navegador: o POST não sai do servidor Streamlit.
+
+    Component iframe recebe apenas o endpoint público e HTML/JS escrito no projeto.
+    Não há token do Supabase nem quaisquer Secrets no HTML.
+    """
+    endpoint = _monitor_formspree_endpoint()
+    if not endpoint:
+        st.error("O formulário de solicitações ainda não está configurado.")
+        return
+
+    form_html = r'''<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:transparent;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#173c59}
+  .formbox{border:1px solid #d2d8df;border-radius:8px;padding:15px 15px 13px;}
+  label{display:block;font-size:13px;color:#174a72;margin:0 0 7px; font-weight:500;}
+  input,textarea{display:block;width:100%;border:1px solid transparent;border-radius:8px;background:#eef1f6;padding:11px 13px;font:14px system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#243746;outline-offset:1px;}
+  input:focus,textarea:focus{border-color:#1976ba;outline:2px solid #c2dff5}
+  textarea{resize:vertical;min-height:70px;max-height:150px}
+  .field{margin-bottom:15px}
+  .field:last-of-type{margin-bottom:12px}
+  .submit{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:linear-gradient(105deg,#0e578b,#0a78cc);color:#fff;font-size:13px;font-weight:650;cursor:pointer}
+  .submit:disabled{opacity:.65;cursor:wait}
+  #feedback{display:none;margin-top:12px;padding:12px;border-radius:7px;line-height:1.5;font-size:13px;white-space:pre-wrap}
+  #feedback.ok{display:block;color:#165d36;background:#e6f5ec;border:1px solid #b6dfc4}
+  #feedback.err{display:block;color:#9d2931;background:#fbeaea;border:1px solid #edc3c6}
+  #feedback.note{display:block;color:#174e78;background:#e7f2fb;border:1px solid #bbd9f1}
+  #alternative{display:none;width:100%;border:1px solid #b4c9d9;border-radius:8px;background:#fff;color:#185a86;font-size:12px;padding:10px;margin-top:9px;cursor:pointer}
+  .hint{margin:9px 2px 0;color:#76828e;font-size:11px;line-height:1.55}
+  .trap{position:absolute!important;left:-9999px!important;opacity:0!important;pointer-events:none!important}
+</style>
+</head>
+<body>
+  <form class="formbox" id="request-form" method="POST" action="__FORM_ENDPOINT__" target="_blank" novalidate>
+    <div class="field"><label for="name">Nome completo</label>
+      <input id="name" name="name" placeholder="Nome e sobrenome" maxlength="120" autocomplete="name" required></div>
+    <div class="field"><label for="email">E-mail que deseja cadastrar</label>
+      <input id="email" name="email" type="email" placeholder="nome@empresa.com.br" maxlength="254" autocomplete="email" required></div>
+    <div class="field"><label for="reason">Motivo da solicitação (opcional)</label>
+      <textarea id="reason" name="reason" rows="3" maxlength="500" placeholder="Ex.: acompanhar indicadores do suporte"></textarea></div>
+    <input class="trap" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <input type="hidden" name="_subject" value="Solicitação de acesso - Painel Grupo S&S">
+    <textarea id="message" name="message" hidden></textarea>
+    <button class="submit" type="submit" id="submit">Enviar solicitação</button>
+    <div id="feedback" role="status" aria-live="polite"></div>
+    <button id="alternative" type="button">Enviar pelo formulário alternativo</button>
+    <p class="hint">Somente a administração pode criar e autorizar contas. Não informe senhas neste formulário.</p>
+  </form>
+<script>
+(() => {
+  "use strict";
+  const form = document.getElementById("request-form");
+  const submit = document.getElementById("submit");
+  const feedback = document.getElementById("feedback");
+  const alternative = document.getElementById("alternative");
+  const name = document.getElementById("name");
+  const email = document.getElementById("email");
+  const reason = document.getElementById("reason");
+  const message = document.getElementById("message");
+  let lastSent = 0;
+  let sending = false;
+
+  function status(text, kind) {
+    feedback.textContent = text;
+    feedback.className = kind;
+  }
+  function prepare() {
+    name.value = name.value.trim().replace(/\s+/g," ");
+    email.value = email.value.trim().toLowerCase();
+    if (name.value.length < 3 || !email.validity.valid || !email.value.includes("@")) {
+      status("Informe um nome e um e-mail válido.","err");
+      return false;
+    }
+    message.value = "Solicitação de acesso ao Painel de Monitoramento Grupo S&S.\n"+
+      "Nome: " + name.value + "\n"+
+      "E-mail: " + email.value + "\n"+
+      "Motivo: " + (reason.value.trim() || "Não informado") + "\n\n"+
+      "A criação da conta depende de aprovação administrativa.\n"+
+      "Central de Configurações > Usuários e Permissões.";
+    return true;
+  }
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    alternative.style.display = "none";
+    if (sending) return;
+    if (!prepare()) return;
+    if (Date.now() - lastSent < 120000) {
+      status("Solicitação enviada recentemente. Aguarde dois minutos antes de tentar novamente.","note");
+      return;
+    }
+    sending = true;
+    submit.disabled = true;
+    submit.textContent = "Enviando solicitação...";
+    status("Conectando ao serviço de solicitações...", "note");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(form.action, {
+        method: "POST", headers: {"Accept": "application/json"},
+        body: new FormData(form), signal: controller.signal
+      });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      lastSent = Date.now();
+      status("Solicitação enviada com sucesso! Aguarde o contato do administrador. O cadastro não é automático.","ok");
+      form.reset();
+    } catch (error) {
+      const detail = error && /^HTTP \d+$/.test(error.message) ? " (" + error.message + ")" : "";
+      status("Não foi possível confirmar o envio pelo navegador" + detail + ". Você pode tentar a alternativa abaixo, que abre a confirmação do Formspree em outra aba.","err");
+      alternative.style.display = "block";
+    } finally {
+      clearTimeout(timer);
+      sending = false;
+      submit.disabled = false;
+      submit.textContent = "Enviar solicitação";
+    }
+  });
+  alternative.addEventListener("click", () => {
+    if (!prepare()) return;
+    // Mesmo mecanismo HTML que passou no teste anterior: sem fetch/AJAX.
+    // A página do Formspree confirma o recebimento na aba aberta.
+    window.open("about:blank", "monitorFormspreeConfirmation");
+    form.target = "monitorFormspreeConfirmation";
+    HTMLFormElement.prototype.submit.call(form);
+    status("A confirmação do envio será exibida na nova aba do Formspree. Verifique o resultado antes de fechar.","note");
+  });
+})();
+</script>
+</body></html>'''
+    form_html = form_html.replace("__FORM_ENDPOINT__", endpoint)
+    components.html(form_html, height=535, scrolling=False)
 
 
 def _monitor_send_access_via_formspree(endpoint, name, email, reason):
