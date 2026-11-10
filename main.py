@@ -6734,7 +6734,7 @@ if not st.session_state.iniciado:
                             painel["tipo"] = st.selectbox(
                                 "Tipo do painel",
                                 ["normal", "sim", "personalizado", "g4flex", "portais"],
-                                index=["normal", "sim", "personalizado", "g4flex"].index(painel.get("tipo", "normal")),
+                                index=["normal", "sim", "personalizado", "g4flex", "portais"].index(painel.get("tipo", "normal")),
                                 format_func=lambda x: {"normal":"Normal", "sim":"SIM", "personalizado":"Personalizado", "g4flex":"G4Flex interno", "portais":"Monitor de Portais S&S"}[x],
                                 key=f"tipo_{pid}",
                             )
