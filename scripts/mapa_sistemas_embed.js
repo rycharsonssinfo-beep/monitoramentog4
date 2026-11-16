@@ -31,6 +31,67 @@
   .ss-map-note{font-size:12px;color:#bbd0e2;line-height:1.5;margin:12px 0}.ss-map-city{font-size:24px;font-weight:800;margin-bottom:8px}
   @media(max-width:1150px){.ss-map-grid{grid-template-columns:180px minmax(280px,1fr)}.ss-map-detail{grid-column:1/-1}}
   @media(max-width:650px){.ss-map-grid{display:block}.ss-map-panel{margin-bottom:12px}.ss-map-stats{grid-template-columns:repeat(2,1fr)}.ss-map-svg{height:440px}}
+
+/* S&S MAPA PREMIUM v2 — acabamento visual sem alterar os dados ou regras */
+.ss-map-layer{inset:5px;padding:22px 24px 24px;background:radial-gradient(ellipse at 45% -22%,rgba(21,110,185,.23),transparent 60%),linear-gradient(140deg,#06172d 0%,#071d36 48%,#06162d 100%);border:1px solid #2a5278;border-radius:18px;box-shadow:0 28px 80px rgba(0,9,25,.48);color:#eef7ff}
+.ss-map-head{padding:2px 0 20px;border-bottom:1px solid rgba(134,185,229,.15)}
+.ss-map-head>div{padding-left:60px;position:relative;min-width:0}
+.ss-map-head>div:before{content:"";position:absolute;left:0;top:1px;width:45px;height:45px;border-radius:13px;background:linear-gradient(140deg,#103b64,#12568b);border:1px solid rgba(112,206,255,.36);box-shadow:inset 0 1px rgba(255,255,255,.12),0 8px 22px #04102466}
+.ss-map-head>div:after{content:"◇";position:absolute;left:12px;top:3px;font-size:33px;font-weight:800;color:#84d9ff;line-height:43px}
+.ss-map-head h2{font-weight:850;font-size:clamp(21px,2.05vw,29px);letter-spacing:-.65px;text-shadow:0 2px 16px #00172d80}
+.ss-map-head p{font-size:13px;color:#b9d0e6;margin:7px 0 0;letter-spacing:.05px}
+.ss-map-back{background:linear-gradient(140deg,#163e63,#0d304f);border:1px solid #44759f;border-radius:10px;padding:11px 15px;transition:.18s ease;box-shadow:inset 0 1px rgba(255,255,255,.12)}
+.ss-map-back:hover{transform:translateY(-1px);border-color:#7bc1ee;background:#184e7b}
+.ss-map-stats{gap:12px;margin:19px 0 20px;grid-template-columns:repeat(5,minmax(0,1fr))}
+.ss-map-stat{position:relative;overflow:hidden;border:1px solid rgba(132,181,225,.22);background:linear-gradient(128deg,rgba(25,57,91,.92),rgba(16,41,72,.93));border-radius:13px;min-height:77px;padding:15px 11px 13px 62px;box-shadow:0 9px 22px #000f2733,inset 0 1px rgba(255,255,255,.045);display:flex;flex-direction:column;justify-content:center}
+.ss-map-stat:before{content:"◈";position:absolute;top:15px;left:13px;display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#0c508f,#0d315d);color:#45b5ff;font-weight:900;font-size:22px}
+.ss-map-stat:nth-child(2):before{content:"✓";background:linear-gradient(135deg,#0e6555,#0c3e43);color:#51dfae}
+.ss-map-stat:nth-child(3):before{content:"▣";background:linear-gradient(135deg,#075b62,#113d50);color:#4de0bc}
+.ss-map-stat:nth-child(4):before{content:"⌘";background:linear-gradient(135deg,#453984,#222f62);color:#b9a3ff}
+.ss-map-stat:nth-child(5):before{content:"◆";background:linear-gradient(135deg,#86501e,#5f3c23);color:#ffba5b}
+.ss-map-stat b{font-size:clamp(21px,2vw,28px);line-height:1.06;letter-spacing:-.6px;font-variant-numeric:tabular-nums;color:#fff}
+.ss-map-stat span{margin-top:6px;font-size:11px;color:#c5d6e7;font-weight:600}
+.ss-map-grid{grid-template-columns:minmax(187px,225px) minmax(340px,1fr) minmax(285px,365px);gap:15px;align-items:stretch}
+.ss-map-panel{background:linear-gradient(145deg,rgba(20,48,79,.97),rgba(11,33,59,.98));border:1px solid rgba(111,162,209,.26);border-radius:14px;padding:18px;box-shadow:inset 0 1px rgba(255,255,255,.04),0 14px 28px #020e2226}
+.ss-map-panel h3{font-size:15px;letter-spacing:-.15px;font-weight:850;color:#f7fbff;margin-bottom:17px}
+.ss-map-panel label{padding:9px 9px;margin:2px -4px;min-height:36px;display:flex;align-items:center;gap:9px;border-radius:8px;font-size:12px;font-weight:650;color:#c9daeb;transition:background .15s ease}
+.ss-map-panel label:hover{background:#234765;color:white}
+.ss-map-panel input[type=radio]{accent-color:#2692ec;width:16px;height:16px;margin:0}
+.ss-map-panel label:has(input:checked){background:rgba(25,104,166,.24);color:#fff}
+.ss-map-panel input[type=search]{margin-top:13px;padding:12px 13px 12px 37px;border:1px solid rgba(110,163,207,.42);background:#0b2440;color:#fff;border-radius:10px;font-size:12px;outline:none;box-shadow:inset 0 1px 5px #000b1d33}
+.ss-map-panel input[type=search]:focus{border-color:#62b8ef;box-shadow:0 0 0 3px #228ed229}
+.ss-map-panel input[type=search]::placeholder{color:#8faec8}
+.ss-map-grid>.ss-map-panel:first-child{position:relative}
+.ss-map-grid>.ss-map-panel:first-child:before{content:"⌕";position:absolute;top:258px;left:31px;color:#7fc6fb;font-size:23px;pointer-events:none}
+.ss-map-panel h3[style]{padding-top:11px;border-top:1px solid rgba(161,197,227,.14)}
+.ss-map-legend{gap:11px;font-weight:600;color:#c8d8e8;margin:15px 0;font-size:12px}
+.ss-map-swatch{width:23px;height:23px;border-radius:6px;border:1px solid #ffffff25;box-shadow:inset 0 1px rgba(255,255,255,.18)}
+.ss-map-note{color:#b7cce0;font-size:12px;line-height:1.6}
+.ss-map-grid>.ss-map-panel:nth-child(2){padding:14px;background:radial-gradient(ellipse at 50% 35%,#10375d55,transparent 75%),linear-gradient(145deg,#09203b,#081b32)}
+.ss-map-grid>.ss-map-panel:nth-child(2)>h3{margin:2px 6px 10px;font-size:14px;color:#bcd8ed}
+.ss-map-svg{height:min(67vh,660px);min-height:485px;background:radial-gradient(ellipse at 48% 40%,rgba(18,73,117,.2),transparent 70%),#081b32;border-radius:12px}
+.ss-map-svg path{stroke:#c3dbed;stroke-width:.9;fill-opacity:.96;transition:fill-opacity .15s ease,filter .15s ease}
+.ss-map-svg path:hover{stroke:#fff;stroke-width:2.1;filter:drop-shadow(0 0 4px #a2dbff)}
+.ss-map-svg path.picked{stroke:#fff;stroke-width:2.9;filter:drop-shadow(0 0 7px rgba(106,197,255,.75))}
+.ss-map-detail{padding:0;overflow:hidden;background:linear-gradient(145deg,#102d4e,#0c213c)}
+.ss-map-detail>.ss-map-city{margin:0;padding:27px 19px 3px;background:radial-gradient(circle at 85% 15%,#2477aa77,transparent 47%),linear-gradient(120deg,#0c456f,#173e67);font-size:26px;letter-spacing:-.5px}
+.ss-map-detail>.ss-map-city:before{content:"●";color:#62bcff;font-size:17px;margin-right:9px;vertical-align:3px}
+.ss-map-detail>.ss-map-city+.ss-map-note{margin:0 0 17px;padding:4px 19px 20px;background:linear-gradient(120deg,#0c456f,#173e67);border-bottom:1px solid rgba(119,195,242,.24)}
+.ss-map-detail>h3{padding:0 15px;font-size:15px;margin:15px 0}
+.ss-map-detail>.ss-map-info{margin:10px 12px;padding:14px;border-radius:11px;background:linear-gradient(125deg,rgba(28,63,99,.95),rgba(18,49,80,.92));border:1px solid rgba(137,181,214,.23);box-shadow:inset 0 1px rgba(255,255,255,.055)}
+.ss-map-info strong{font-size:13px;display:inline-block;max-width:63%;color:#f2f8ff}
+.ss-map-info .ss-map-pill{border-radius:6px;padding:5px 9px;float:right;background:#526680;font-weight:750;color:#eef5fe;font-size:10px}
+.ss-map-info .ss-map-pill.yes{background:#07865e;color:#e4fff2}
+.ss-map-info .ss-map-note{margin:11px 0 3px;font-size:11px}
+.ss-map-info a{display:block;margin:9px 0 0;padding:9px 10px 9px 29px;border:1px solid #426d93;border-radius:7px;background:rgba(18,75,117,.42);color:#b8e3ff;text-decoration:none;font-size:11px;overflow-wrap:anywhere;position:relative;transition:background .15s}
+.ss-map-info a:before{content:"↗";position:absolute;left:9px;top:7px;font-size:15px}
+.ss-map-info a:hover{background:#1b5c89;border-color:#66baf1;color:white}
+.ss-map-detail>.ss-map-note:last-child{margin:17px 12px;padding:13px;border:1px solid #39668a;background:#1d456a;border-radius:10px;color:#cce6fb}
+.ss-map-open{background:linear-gradient(135deg,#11598f,#073e74);border:1px solid #87bbdf;border-radius:9px;padding:9px 14px;box-shadow:0 3px 11px rgba(0,33,78,.24)}
+.ss-map-open:hover{filter:brightness(1.12)}
+@media(max-width:1180px){.ss-map-grid{grid-template-columns:195px minmax(285px,1fr)}.ss-map-detail{grid-column:1/-1}.ss-map-svg{height:550px}.ss-map-stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:670px){.ss-map-layer{padding:13px}.ss-map-grid{display:block}.ss-map-panel{margin:0 0 12px}.ss-map-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ss-map-stat{min-height:67px;padding-left:57px}.ss-map-head>div{padding-left:0}.ss-map-head>div:before,.ss-map-head>div:after{display:none}.ss-map-svg{height:480px;min-height:400px}.ss-map-grid>.ss-map-panel:first-child:before{display:none}}
+
   `;
   function statusCity(c){return modes.filter(k=>c.data[k].length).length}
   async function loadGeo(){
@@ -134,7 +195,7 @@
     const old=host.querySelector("[data-ss-map]");if(old){old.remove();return}
     const layer=document.createElement("section");layer.className="ss-map-layer";layer.setAttribute("data-ss-map","1");
     layer.innerHTML=`
-    <div class="ss-map-head"><div><h2>▧ Mapa de Sistemas — Grupo S&S</h2><p>Consulte a presença dos sistemas por município, incluindo Caucaia.</p></div><button type="button" class="ss-map-back" data-sm-back>← Voltar ao monitor</button></div>
+    <div class="ss-map-head"><div><h2>Mapa de Sistemas — Grupo S&S</h2><p>Visualize, por município, quais sistemas do Grupo S&S estão disponíveis no Ceará.</p></div><button type="button" class="ss-map-back" data-sm-back>← Voltar ao monitor</button></div>
     <div class="ss-map-stats"><div class="ss-map-stat"><b data-sm-total>—</b><span>Municípios CE</span></div><div class="ss-map-stat"><b data-sm-covered>—</b><span>Municípios atendidos</span></div><div class="ss-map-stat"><b data-sm-portais>—</b><span>Portal do Contribuinte</span></div><div class="ss-map-stat"><b data-sm-fluxus>—</b><span>Fluxus</span></div><div class="ss-map-stat"><b data-sm-veiculos>—</b><span>Veículos</span></div></div>
     <div class="ss-map-grid"><aside class="ss-map-panel"><h3>Filtros</h3><label><input type="radio" name="ss-map-filter" value="todos" checked> Todos os sistemas</label><label><input type="radio" name="ss-map-filter" value="portais"> Portal do Contribuinte</label><label><input type="radio" name="ss-map-filter" value="fluxus"> Fluxus</label><label><input type="radio" name="ss-map-filter" value="veiculos"> Veículos</label><input type="search" data-sm-search list="ss-map-city-options" placeholder="Buscar município..."><datalist id="ss-map-city-options" data-sm-cities></datalist><h3 style="margin-top:24px">Legenda</h3><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#1679d4"></span>3 sistemas</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#15ad79"></span>2 sistemas</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#f5bf33"></span>1 sistema</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#8995a8"></span>Sem registro</div><p class="ss-map-note">As cores representam cadastro, não disponibilidade online.</p></aside><div class="ss-map-panel"><h3>Municípios do Ceará</h3><div data-sm-geo class="ss-map-note">Carregando mapa e sistemas cadastrados...</div></div><aside class="ss-map-panel ss-map-detail" data-sm-detail><h3>Selecione um município</h3></aside></div>`;
     host.appendChild(layer);layer.querySelector("[data-sm-back]").onclick=()=>layer.remove();populate(layer);
