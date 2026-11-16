@@ -4,7 +4,7 @@ window.__ssMapLabelsPhoto=true;
 const original=window.ssMapOpen;
 if(typeof original!=="function")return;
 const norm=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
-const landmarks=new Set(["caucaia","fortaleza","sobral","juazeirodonorte","crato","maracanau","quixada","iguatu","itapipoca","aracati","crateus","russas","pacajus","caninde","tiangua","acarau"]);
+const noSystemColor="#8995a8"; // cor dos municípios sem sistema no mapa inicial
 const cache=new Map();
 async function photo(name){
  const key=norm(name);if(cache.has(key))return cache.get(key);
@@ -57,7 +57,7 @@ function labels(layer,svg){
  parent.replaceChild(wrapper,svg);wrapper.append(svg);
  const tooltip=document.createElement("div");tooltip.className="ss-map-hover-name";wrapper.append(tooltip);
  const controls=document.createElement("div");controls.className="ss-map-name-controls";
- controls.innerHTML='<label><input type="checkbox" data-sm-all-names> Exibir todos os nomes</label><span><button type="button" data-sm-plus title="Aproximar">+</button><button type="button" data-sm-minus title="Afastar">−</button><button type="button" data-sm-reset title="Restaurar">↺</button></span>';
+ controls.innerHTML='<label><input type="checkbox" data-sm-all-names> Exibir todos os municípios atendidos</label><span><button type="button" data-sm-plus title="Aproximar">+</button><button type="button" data-sm-minus title="Afastar">−</button><button type="button" data-sm-reset title="Restaurar">↺</button></span>';
  parent.insertBefore(controls,wrapper);
  const labels=[],ns="http://www.w3.org/2000/svg";
  for(const path of [...svg.querySelectorAll("path")]){
@@ -66,7 +66,8 @@ function labels(layer,svg){
   let box;try{box=path.getBBox()}catch(e){continue}
   const text=document.createElementNS(ns,"text");text.textContent=name;text.classList.add("ss-map-municipio-label");
   text.setAttribute("x",String(box.x+box.width/2));text.setAttribute("y",String(box.y+box.height/2));
-  labels.push({text,key:norm(name)});
+  const registered=String(path.getAttribute("fill")||"").toLowerCase()!==noSystemColor;
+  labels.push({text,key:norm(name),registered});
   path.addEventListener("pointerenter",()=>{tooltip.textContent=name;tooltip.classList.add("visible")});
   path.addEventListener("pointermove",e=>{const rect=wrapper.getBoundingClientRect();tooltip.style.left=Math.max(5,Math.min(rect.width-165,e.clientX-rect.left+13))+"px";tooltip.style.top=Math.max(5,e.clientY-rect.top-40)+"px"});
   path.addEventListener("pointerleave",()=>tooltip.classList.remove("visible"));
@@ -76,10 +77,22 @@ function labels(layer,svg){
  function redraw(){
   const title=detail.querySelector(".ss-map-city-banner h2")?.textContent||detail.querySelector(".ss-map-city")?.textContent||"";
   const active=norm(title.replace(/\s+[—-]\s+CE\s*$/,""));
-  for(const x of labels){
-   x.text.style.display=(all||landmarks.has(x.key)||x.key===active)?"":"none";
-   x.text.classList.toggle("active",x.key===active);
-   x.text.classList.toggle("all",all&&x.key!==active);
+  // Evita sobreposição na visualização padrão. Ao aproximar, mais nomes cabem.
+  const placed=[];
+  const zoom=690/(Number(svg.viewBox.baseVal.width)||690);
+  const candidates=labels.filter(x=>x.registered)
+    .sort((a,b)=>Number(b.key===active)-Number(a.key===active)
+      ||Number(b.text.textContent.length<13)-Number(a.text.textContent.length<13));
+  for(const x of labels){x.text.style.display="none";x.text.classList.toggle("active",x.key===active);x.text.classList.toggle("all",all&&x.key!==active)}
+  for(const x of candidates){
+   if(all){x.text.style.display="";continue}
+   const px=Number(x.text.getAttribute("x")),py=Number(x.text.getAttribute("y"));
+   const size=x.key===active?13:10, width=(x.text.textContent.length*size*.56+10)/zoom;
+   const height=(size+5)/zoom;
+   const box={x:px-width/2,y:py-height/2,w:width,h:height};
+   if(x.key!==active && placed.some(v=>box.x<v.x+v.w && box.x+box.w>v.x && box.y<v.y+v.h && box.y+box.h>v.y))continue;
+   x.text.style.display="";
+   placed.push(box);
   }
  }
  const obs=new MutationObserver(()=>{decorateCity(layer);redraw()});obs.observe(detail,{childList:true});
@@ -90,11 +103,11 @@ function labels(layer,svg){
   const w=Math.max(145,Math.min(690,v.w*f)),h=Math.max(160,Math.min(760,v.h*f));
   const mx=v.x+v.w/2,my=v.y+v.h/2;
   v={x:Math.max(0,Math.min(690-w,mx-w/2)),y:Math.max(0,Math.min(760-h,my-h/2)),w,h};
-  svg.setAttribute("viewBox",[v.x,v.y,w,h].join(" "));
+  svg.setAttribute("viewBox",[v.x,v.y,w,h].join(" "));redraw();
  }
  controls.querySelector("[data-sm-plus]").onclick=()=>zoom(.78);
  controls.querySelector("[data-sm-minus]").onclick=()=>zoom(1.28);
- controls.querySelector("[data-sm-reset]").onclick=()=>{v={x:0,y:0,w:690,h:760};svg.setAttribute("viewBox","0 0 690 760")};
+ controls.querySelector("[data-sm-reset]").onclick=()=>{v={x:0,y:0,w:690,h:760};svg.setAttribute("viewBox","0 0 690 760");redraw()};
 }
 function begin(layer){
  const watcher=new MutationObserver(()=>{
