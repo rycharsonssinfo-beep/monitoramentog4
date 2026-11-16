@@ -9,6 +9,8 @@ main = root / "main.py"
 js = (root / "scripts" / "mapa_sistemas_embed.js").read_text(encoding="utf-8").strip()
 extra_js = (root / "scripts" / "mapa_sistemas_enhance.js").read_text(encoding="utf-8").strip()
 extra_css = (root / "scripts" / "mapa_sistemas_enhance.css").read_text(encoding="utf-8").strip()
+report_js = (root / "scripts" / "mapa_sistemas_report.js").read_text(encoding="utf-8").strip()
+report_css = (root / "scripts" / "mapa_sistemas_report.css").read_text(encoding="utf-8").strip()
 css_js = (
     '(function(){if(!document.getElementById("ss-map-enhance-v21")){'
     'const tag=document.createElement("style");'
@@ -16,7 +18,14 @@ css_js = (
     'tag.textContent=' + json.dumps(extra_css, ensure_ascii=False) + ';'
     'document.head.appendChild(tag);}})();'
 )
-full = js + "\n" + css_js + "\n" + extra_js
+report_css_js = (
+    '(function(){if(!document.getElementById("ss-map-report-css")){'
+    'const tag=document.createElement("style");'
+    'tag.id="ss-map-report-css";'
+    'tag.textContent=' + json.dumps(report_css, ensure_ascii=False) + ';'
+    'document.head.appendChild(tag);}})();'
+)
+full = js + "\n" + css_js + "\n" + extra_js + "\n" + report_css_js + "\n" + report_js
 source = main.read_text(encoding="utf-8")
 
 start_marker = "(function ssMapInstall(){"
@@ -53,4 +62,4 @@ if source == previous:
     raise SystemExit(0)
 ast.parse(source, filename=str(main))
 main.write_text(source, encoding="utf-8")
-print("Rótulos, ampliação e banner fotográfico integrados; Python válido.")
+print("Mapa e relatório de cobertura integrados; Python válido.")
