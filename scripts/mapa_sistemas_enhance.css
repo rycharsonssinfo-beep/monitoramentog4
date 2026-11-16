@@ -133,3 +133,47 @@
  .ss-map-controls-right{width:100%;justify-content:flex-end}
  .ss-map-layer.ss-map-expanded .ss-map-svg{height:620px}
 }
+
+
+/* v3.2: Painel municipal com rolagem independente e margem de segurança
+   para rodapés flutuantes do Streamlit, inclusive com vários ambientes. */
+@media(min-width:1201px){
+  .ss-map-layer .ss-map-grid{align-items:start}
+  .ss-map-layer .ss-map-detail{
+    height:auto;
+    min-height:300px;
+    max-height:max(320px,calc(100dvh - 290px));
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+    padding-bottom:100px;
+    scrollbar-width:thin;
+    scrollbar-color:#6aadd4 #0b243f;
+    scroll-padding-bottom:100px;
+  }
+  .ss-map-layer.ss-map-expanded .ss-map-detail{
+    max-height:max(360px,calc(100dvh - 170px));
+  }
+}
+.ss-map-layer .ss-map-detail::-webkit-scrollbar{width:9px}
+.ss-map-layer .ss-map-detail::-webkit-scrollbar-track{background:#102b49}
+.ss-map-layer .ss-map-detail::-webkit-scrollbar-thumb{background:#538cb5;border:2px solid #102b49;border-radius:9px}
+.ss-map-layer .ss-map-detail .ss-map-city-banner{position:relative;top:auto}
+.ss-map-layer .ss-map-detail>.ss-map-note:last-child{margin:15px 12px 20px}
+.ss-map-layer .ss-map-detail .ss-map-service-entry:last-child{padding-bottom:5px}
+.ss-map-layer .ss-map-service-link{min-height:38px;box-sizing:border-box}
+.ss-map-layer .ss-map-service-link span{flex:0 0 auto}
+.ss-map-layer .ss-map-service-link small{max-width:52%}
+@media(max-width:1200px){
+  .ss-map-layer .ss-map-detail{
+    max-height:min(680px,calc(100dvh - 140px));
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    padding-bottom:90px;
+    scrollbar-width:thin;
+  }
+}
+@media(max-width:720px){
+  .ss-map-layer .ss-map-detail{max-height:min(580px,calc(100dvh - 110px));padding-bottom:100px}
+}
