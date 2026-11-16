@@ -12956,7 +12956,8 @@ function labels(layer,svg){
  svg.addEventListener("pointerdown",e=>{
    if(e.button!==0 && e.pointerType==="mouse")return;
    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-   try{svg.setPointerCapture(e.pointerId)}catch(_){}
+   // Não capturar no pointerdown: o clique precisa alcançar o <path> do município.
+   // A captura só é ativada quando o usuário realmente começa a arrastar.
    if(activePointers.size===1){
      dragStart={x:e.clientX,y:e.clientY,view:{...v}};dragged=false;
      svg.classList.add("ss-map-dragging");
@@ -12976,7 +12977,10 @@ function labels(layer,svg){
    }
    if(!dragStart)return;
    const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
-   if(Math.abs(dx)+Math.abs(dy)>5)dragged=true;
+   if(Math.abs(dx)+Math.abs(dy)>5 && !dragged){
+     dragged=true;
+     try{svg.setPointerCapture(e.pointerId)}catch(_){}
+   }
    if(!dragged)return;
    const rect=svg.getBoundingClientRect();
    const scale=Math.min(rect.width/v.w,rect.height/v.h);
