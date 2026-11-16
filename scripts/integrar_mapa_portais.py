@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
-"""Sincroniza Mapa de Sistemas incorporado ao Monitor de Portais, de forma idempotente."""
+"""Sincroniza mapa e melhorias visuais ao main.py sem duplicar a navegação."""
 from pathlib import Path
 import ast
+import json
 
 root = Path(__file__).resolve().parents[1]
 main = root / "main.py"
 js = (root / "scripts" / "mapa_sistemas_embed.js").read_text(encoding="utf-8").strip()
+extra_js = (root / "scripts" / "mapa_sistemas_enhance.js").read_text(encoding="utf-8").strip()
+extra_css = (root / "scripts" / "mapa_sistemas_enhance.css").read_text(encoding="utf-8").strip()
+css_js = (
+    '(function(){if(!document.getElementById("ss-map-enhance-v21")){'
+    'const tag=document.createElement("style");'
+    'tag.id="ss-map-enhance-v21";'
+    'tag.textContent=' + json.dumps(extra_css, ensure_ascii=False) + ';'
+    'document.head.appendChild(tag);}})();'
+)
+full = js + "\n" + css_js + "\n" + extra_js
 source = main.read_text(encoding="utf-8")
 
 start_marker = "(function ssMapInstall(){"
@@ -16,33 +27,30 @@ event_anchor = 'host.querySelector(\'[data-portal="report-button"]\').onclick=()
 event = 'host.querySelector(\'[data-portal="map-button"]\').onclick=()=>window.ssMapOpen(host);'
 
 if source.count(end_marker) != 1:
-    raise SystemExit("Âncora portalStart ausente ou duplicada; operação cancelada.")
-if source.count(start_marker) > 1:
-    raise SystemExit("Há múltiplos mapas incorporados; operação cancelada.")
+    raise SystemExit("Âncora portalStart ausente ou duplicada.")
+if source.count(start_marker) != 1:
+    raise SystemExit("Âncora ssMapInstall ausente ou duplicada.")
 
-if start_marker in source:
-    begin = source.index(start_marker)
-    end = source.index(end_marker, begin)
-    old_js = source[begin:end].rstrip()
-    if not old_js.endswith("})();"):
-        raise SystemExit("Limites do mapa não reconhecidos; operação cancelada.")
-    source = source[:begin] + js + source[end:]
-else:
-    source = source.replace(end_marker, "\n" + js + end_marker, 1)
+begin = source.index(start_marker)
+end = source.index(end_marker, begin)
+old_block = source[begin:end].rstrip()
+if not old_block.endswith("})();"):
+    raise SystemExit("Limite do componente não reconhecido. Nenhum arquivo alterado.")
+source = source[:begin] + full + source[end:]
 
 if new_button not in source:
     if source.count(button_anchor) != 1:
-        raise SystemExit("Botão Relatórios ausente ou ambíguo; operação cancelada.")
+        raise SystemExit("Botão Relatórios não encontrado de forma única.")
     source = source.replace(button_anchor, button_anchor + new_button, 1)
 if event not in source:
     if source.count(event_anchor) != 1:
-        raise SystemExit("Evento do relatório ausente ou ambíguo; operação cancelada.")
+        raise SystemExit("Evento do botão Relatórios não encontrado de forma única.")
     source = source.replace(event_anchor, event_anchor + "\n  " + event, 1)
 
-if source == main.read_text(encoding="utf-8"):
-    print("Mapa premium já sincronizado; nenhuma alteração necessária.")
+previous = main.read_text(encoding="utf-8")
+if source == previous:
+    print("Mapa e melhorias visuais já atualizados.")
     raise SystemExit(0)
-
 ast.parse(source, filename=str(main))
 main.write_text(source, encoding="utf-8")
-print("Mapa premium integrado com sucesso. Sintaxe Python aprovada.")
+print("Rótulos, ampliação e banner fotográfico integrados; Python válido.")
