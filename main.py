@@ -2723,12 +2723,9 @@ def _render_account_sidebar():
         if display_name:
             st.write(f"**{display_name}**")
         st.caption(email)
-        st.page_link(
-            "pages/Mapa_de_Sistemas.py",
-            label="🗺️ Mapa de Sistemas",
-            icon=":material/map:",
-            use_container_width=True,
-        )
+        if st.button("🗺️ Mapa de Sistemas", key="ss_abrir_mapa_sistemas", use_container_width=True):
+            st.session_state["_ss_mapa_sistemas_aberto"] = not st.session_state.get("_ss_mapa_sistemas_aberto", False)
+            st.rerun()
         if st.button("Sair", key="monitor_auth_logout", use_container_width=True):
             _auth_logout()
             st.query_params.clear()
@@ -6788,6 +6785,14 @@ if not _monitor_account_active:
         st.error("Conta ainda não autorizada ou desativada. Solicite a liberação ao administrador do Grupo S&S.")
     st.stop()
 _render_account_sidebar()
+if st.session_state.get("_ss_mapa_sistemas_aberto"):
+    import runpy
+    _mapa_file = Path(__file__).resolve().parent / "pages" / "Mapa_de_Sistemas.py"
+    if _mapa_file.is_file():
+        runpy.run_path(str(_mapa_file), run_name="__ss_mapa_sistemas__")
+    else:
+        st.error("Arquivo do Mapa de Sistemas não encontrado.")
+    st.stop()
 
 
 
