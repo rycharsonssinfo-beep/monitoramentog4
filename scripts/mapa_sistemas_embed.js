@@ -132,7 +132,7 @@
       if(!city)continue;
       const url=portalSafeUrl(r.url)||"";
       if(!city.data[mode].some(x=>x.url===url&&x.name===String(r.entidade||raw)))
-        city.data[mode].push({name:String(r.entidade||raw),url,estado:portalState(r)});
+        city.data[mode].push({name:String(r.entidade||raw),url,estado:portalState(r),ultima_verificacao:String(r.ultima_verificacao||"")});
     }
     return cities;
   }
@@ -151,6 +151,7 @@
       await Promise.all([loadGeo(),loadSystemData()]);
       if(!layer.isConnected)return;
       const cities=cityRows(geo.features),keyMap=new Map(cities.map(c=>[c.key,c]));
+      layer.dispatchEvent(new CustomEvent("ss-map-data-ready",{detail:{cities:cities.map(c=>({name:c.name,code:c.code,key:c.key,systems:c.data}))}}));
       const count=c=>statusCity(c);
       layer.querySelector("[data-sm-total]").textContent=cities.length;
       layer.querySelector("[data-sm-covered]").textContent=cities.filter(c=>count(c)).length;
