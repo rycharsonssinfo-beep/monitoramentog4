@@ -1,0 +1,34 @@
+name: Integrar mapa no Monitor de Portais S&S
+on:
+  push:
+    paths:
+      - "scripts/integrar_mapa_portais.py"
+      - "scripts/mapa_sistemas_embed.js"
+      - ".github/workflows/integrar_mapa_portais.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  integrar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter branch principal
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Validar sintaxe do componente JavaScript
+        run: node --check scripts/mapa_sistemas_embed.js
+      - name: Aplicar mapa no painel e validar Python
+        run: python scripts/integrar_mapa_portais.py
+      - name: Publicar ajuste restrito ao main.py
+        run: |
+          if ! git diff --quiet -- main.py; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add main.py
+            git commit -m "feat: abre Mapa de Sistemas dentro do Monitor de Portais"
+            git push origin HEAD:main
+          else
+            echo "Mapa já integrado; sem alterações."
+          fi
