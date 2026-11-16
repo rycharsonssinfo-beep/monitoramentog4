@@ -12809,7 +12809,7 @@ async function portalGenerateReport(host){
     host.appendChild(layer);layer.querySelector("[data-sm-back]").onclick=()=>layer.remove();populate(layer);
   };
 })();
-(function(){if(!document.getElementById("ss-map-enhance-v21")){const tag=document.createElement("style");tag.id="ss-map-enhance-v21";tag.textContent="/* Mapa de Sistemas S&S — melhoria de identificação e fotografia v2.1 */\n.ss-map-name-controls{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:5px 3px 12px;flex-wrap:wrap}\n.ss-map-name-controls label{display:inline-flex!important;gap:7px;align-items:center;margin:0!important;padding:3px 5px!important;font-size:11px!important;color:#d9edff!important;min-height:0!important}\n.ss-map-name-controls input{accent-color:#35a6f2}\n.ss-map-name-controls span{display:flex;gap:5px}\n.ss-map-name-controls button{min-width:30px;height:29px;background:#16466f;border:1px solid #5b88b1;border-radius:7px;color:white;font-size:17px;cursor:pointer}\n.ss-map-name-controls button:hover{background:#236a9c}\n.ss-map-svg-wrapper{position:relative;border-radius:12px;overflow:hidden}\n.ss-map-hover-name{position:absolute;left:0;top:0;z-index:5;pointer-events:none;background:#061c34f5;border:1px solid #70b8ee;border-radius:9px;padding:9px 12px;box-shadow:0 9px 26px #001023a8;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;opacity:0;transition:opacity .1s}\n.ss-map-hover-name.visible{opacity:1}\n.ss-map-svg text.ss-map-municipio-label{font-size:10px;font-weight:800;fill:#fff;stroke:#08213b;stroke-width:3.1px;paint-order:stroke fill;stroke-linejoin:round;text-anchor:middle;pointer-events:none}\n.ss-map-svg text.ss-map-municipio-label.active{font-size:13px;stroke:#06345d;stroke-width:4px}\n.ss-map-svg text.ss-map-municipio-label.all{font-size:7px;stroke-width:2px}\n.ss-map-city-banner{position:relative;width:100%;height:168px;background:radial-gradient(circle at 85% 15%,#3683b2,#15446d 55%,#0b2a4d);overflow:hidden;border-bottom:1px solid #477ba4}\n.ss-map-city-banner>img{display:block;width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:center 47%;filter:saturate(1.1) contrast(1.06)}\n.ss-map-city-banner:after{content:\"\";position:absolute;inset:0;z-index:1;background:linear-gradient(0deg,#07182ee8 0%,#0a274650 80%);pointer-events:none}\n.ss-map-city-banner-overlay{position:absolute;left:19px;right:15px;bottom:17px;z-index:2}\n.ss-map-city-banner-overlay h2{margin:0 0 6px;color:#fff;font-size:25px;font-weight:850;letter-spacing:-.55px;line-height:1.15;text-shadow:0 3px 12px #051c39}\n.ss-map-city-banner-overlay h2:before{content:\"●\";color:#70c9ff;font-size:13px;margin-right:9px;vertical-align:3px}\n.ss-map-city-banner-overlay p{margin:0;font-size:11px;color:#d8ebfa}\n.ss-map-city-credit{position:absolute;top:8px;right:9px;z-index:3;padding:5px 8px;border-radius:6px;background:#051b33b8;color:white;font-size:9px;text-decoration:none;max-width:85%;text-align:right}\n.ss-map-city-credit:hover{color:#bde8ff;text-decoration:underline}\n.ss-map-detail:has(.ss-map-city-banner)>h3{margin:18px 15px 12px}\n.ss-map-detail:has(.ss-map-city-banner)>.ss-map-info{margin:10px 12px}\n@media(max-width:670px){.ss-map-city-banner{height:150px}.ss-map-name-controls{gap:4px}}";document.head.appendChild(tag);}})();
+(function(){if(!document.getElementById("ss-map-enhance-v21")){const tag=document.createElement("style");tag.id="ss-map-enhance-v21";tag.textContent="/* Mapa de Sistemas S&S — melhoria de identificação e fotografia v2.1 */\n.ss-map-name-controls{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:5px 3px 12px;flex-wrap:wrap}\n.ss-map-name-controls label{display:inline-flex!important;gap:7px;align-items:center;margin:0!important;padding:3px 5px!important;font-size:11px!important;color:#d9edff!important;min-height:0!important}\n.ss-map-name-controls input{accent-color:#35a6f2}\n.ss-map-name-controls span{display:flex;gap:5px}\n.ss-map-name-controls button{min-width:30px;height:29px;background:#16466f;border:1px solid #5b88b1;border-radius:7px;color:white;font-size:17px;cursor:pointer}\n.ss-map-name-controls button:hover{background:#236a9c}\n.ss-map-svg-wrapper{position:relative;border-radius:12px;overflow:hidden}\n.ss-map-hover-name{position:absolute;left:0;top:0;z-index:5;pointer-events:none;background:#061c34f5;border:1px solid #70b8ee;border-radius:9px;padding:9px 12px;box-shadow:0 9px 26px #001023a8;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;opacity:0;transition:opacity .1s}\n.ss-map-hover-name.visible{opacity:1}\n.ss-map-svg text.ss-map-municipio-label{font-size:10px;font-weight:800;fill:#fff;stroke:#08213b;stroke-width:3.1px;paint-order:stroke fill;stroke-linejoin:round;text-anchor:middle;pointer-events:none}\n.ss-map-svg text.ss-map-municipio-label.active{font-size:13px;stroke:#06345d;stroke-width:4px}\n.ss-map-svg text.ss-map-municipio-label.all{font-size:7px;stroke-width:2px}\n.ss-map-city-banner{position:relative;width:100%;height:168px;background:radial-gradient(circle at 85% 15%,#3683b2,#15446d 55%,#0b2a4d);overflow:hidden;border-bottom:1px solid #477ba4}\n.ss-map-city-banner>img{display:block;width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:center 47%;filter:saturate(1.1) contrast(1.06)}\n.ss-map-city-banner:after{content:\"\";position:absolute;inset:0;z-index:1;background:linear-gradient(0deg,#07182ee8 0%,#0a274650 80%);pointer-events:none}\n.ss-map-city-banner-overlay{position:absolute;left:19px;right:15px;bottom:17px;z-index:2}\n.ss-map-city-banner-overlay h2{margin:0 0 6px;color:#fff;font-size:25px;font-weight:850;letter-spacing:-.55px;line-height:1.15;text-shadow:0 3px 12px #051c39}\n.ss-map-city-banner-overlay h2:before{content:\"●\";color:#70c9ff;font-size:13px;margin-right:9px;vertical-align:3px}\n.ss-map-city-banner-overlay p{margin:0;font-size:11px;color:#d8ebfa}\n.ss-map-city-credit{position:absolute;top:8px;right:9px;z-index:3;padding:5px 8px;border-radius:6px;background:#051b33b8;color:white;font-size:9px;text-decoration:none;max-width:85%;text-align:right}\n.ss-map-city-credit:hover{color:#bde8ff;text-decoration:underline}\n.ss-map-detail:has(.ss-map-city-banner)>h3{margin:18px 15px 12px}\n.ss-map-detail:has(.ss-map-city-banner)>.ss-map-info{margin:10px 12px}\n@media(max-width:670px){.ss-map-city-banner{height:150px}.ss-map-name-controls{gap:4px}}\n\n/* Navegação fluida do mapa: wheel, arraste e pinça no toque. */\n.ss-map-svg-wrapper{overscroll-behavior:contain;touch-action:none}\n.ss-map-svg{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}\n.ss-map-svg.ss-map-dragging{cursor:grabbing}\n.ss-map-svg path{touch-action:none}\n.ss-map-name-controls button{transition:background .16s,border-color .16s}\n.ss-map-name-controls button:focus-visible{outline:2px solid #66c6ff;outline-offset:2px}";document.head.appendChild(tag);}})();
 (function(){
 if(window.__ssMapLabelsPhoto)return;
 window.__ssMapLabelsPhoto=true;
@@ -12911,15 +12911,103 @@ function labels(layer,svg){
  decorateCity(layer);redraw();
  controls.querySelector("[data-sm-all-names]").onchange=e=>{all=e.target.checked;redraw()};
  let v={x:0,y:0,w:690,h:760};
- function zoom(f){
-  const w=Math.max(145,Math.min(690,v.w*f)),h=Math.max(160,Math.min(760,v.h*f));
-  const mx=v.x+v.w/2,my=v.y+v.h/2;
-  v={x:Math.max(0,Math.min(690-w,mx-w/2)),y:Math.max(0,Math.min(760-h,my-h/2)),w,h};
-  svg.setAttribute("viewBox",[v.x,v.y,w,h].join(" "));redraw();
+ const WIDTH=690,HEIGHT=760,MIN_W=85;
+ const activePointers=new Map();
+ let dragStart=null,pinchDistance=0,dragged=false,suppressClick=false;
+ function clampView(x,y,w,h){
+   w=Math.min(WIDTH,Math.max(MIN_W,w));
+   h=HEIGHT*w/WIDTH;
+   return {x:Math.max(0,Math.min(WIDTH-w,x)),y:Math.max(0,Math.min(HEIGHT-h,y)),w,h};
+ }
+ function renderView(){
+   svg.setAttribute("viewBox",[v.x,v.y,v.w,v.h].map(n=>Number(n.toFixed(3))).join(" "));
+   redraw();
+ }
+ function coordinate(clientX,clientY){
+   const rect=svg.getBoundingClientRect();
+   // SVG preserveAspectRatio=xMidYMid meet: descontar margens internas se necessário.
+   const factor=Math.min(rect.width/v.w,rect.height/v.h);
+   const vw=v.w*factor,vh=v.h*factor;
+   const ox=rect.left+(rect.width-vw)/2,oy=rect.top+(rect.height-vh)/2;
+   return {x:Math.max(0,Math.min(1,(clientX-ox)/vw)),y:Math.max(0,Math.min(1,(clientY-oy)/vh))};
+ }
+ function zoom(f,clientX,clientY){
+   const r=svg.getBoundingClientRect();
+   const at=coordinate(clientX??r.left+r.width/2,clientY??r.top+r.height/2);
+   const w=Math.min(WIDTH,Math.max(MIN_W,v.w*f)),h=HEIGHT*w/WIDTH;
+   const worldX=v.x+at.x*v.w,worldY=v.y+at.y*v.h;
+   v=clampView(worldX-at.x*w,worldY-at.y*h,w,h);
+   renderView();
  }
  controls.querySelector("[data-sm-plus]").onclick=()=>zoom(.78);
  controls.querySelector("[data-sm-minus]").onclick=()=>zoom(1.28);
- controls.querySelector("[data-sm-reset]").onclick=()=>{v={x:0,y:0,w:690,h:760};svg.setAttribute("viewBox","0 0 690 760");redraw()};
+ controls.querySelector("[data-sm-reset]").onclick=()=>{
+   v={x:0,y:0,w:WIDTH,h:HEIGHT};renderView();
+ };
+ // A roda do mouse aplica zoom sobre o local do cursor, sem rolar o painel.
+ svg.addEventListener("wheel",e=>{
+   if(!e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey){
+     e.preventDefault();
+     const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?420:1);
+     zoom(Math.exp(Math.max(-150,Math.min(150,delta))*.00175),e.clientX,e.clientY);
+   }
+ },{passive:false});
+ function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+ svg.addEventListener("pointerdown",e=>{
+   if(e.button!==0 && e.pointerType==="mouse")return;
+   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   try{svg.setPointerCapture(e.pointerId)}catch(_){}
+   if(activePointers.size===1){
+     dragStart={x:e.clientX,y:e.clientY,view:{...v}};dragged=false;
+     svg.classList.add("ss-map-dragging");
+   }else if(activePointers.size===2){
+     pinchDistance=distance(...activePointers.values());dragStart=null;
+   }
+ });
+ svg.addEventListener("pointermove",e=>{
+   if(!activePointers.has(e.pointerId))return;
+   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(activePointers.size===2){
+     const points=[...activePointers.values()];
+     const d=distance(points[0],points[1]);
+     const mid={x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2};
+     if(pinchDistance>0&&d>0){zoom(pinchDistance/d,mid.x,mid.y);dragged=true}
+     pinchDistance=d;return;
+   }
+   if(!dragStart)return;
+   const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
+   if(Math.abs(dx)+Math.abs(dy)>5)dragged=true;
+   if(!dragged)return;
+   const rect=svg.getBoundingClientRect();
+   const scale=Math.min(rect.width/v.w,rect.height/v.h);
+   v=clampView(v.x-dx/scale,v.y-dy/scale,v.w,v.h);
+   dragStart={x:e.clientX,y:e.clientY,view:{...v}};
+   renderView();
+ });
+ function finishPointer(e){
+   if(!activePointers.has(e.pointerId))return;
+   activePointers.delete(e.pointerId);
+   if(dragged){
+     suppressClick=true;
+     setTimeout(()=>{suppressClick=false},150);
+   }
+   if(activePointers.size===1){
+     const p=[...activePointers.values()][0];
+     dragStart={x:p.x,y:p.y,view:{...v}};
+     pinchDistance=0;
+   }else if(activePointers.size===0){
+     dragStart=null;pinchDistance=0;
+     svg.classList.remove("ss-map-dragging");
+   }
+ }
+ svg.addEventListener("pointerup",finishPointer);
+ svg.addEventListener("pointercancel",finishPointer);
+ svg.addEventListener("lostpointercapture",finishPointer);
+ svg.addEventListener("click",e=>{
+   if(suppressClick){e.preventDefault();e.stopImmediatePropagation();suppressClick=false}
+ },true);
+ svg.addEventListener("dblclick",e=>{e.preventDefault();zoom(.7,e.clientX,e.clientY)});
+
 }
 function begin(layer){
  const watcher=new MutationObserver(()=>{
