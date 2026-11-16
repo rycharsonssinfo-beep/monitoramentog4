@@ -12804,6 +12804,8 @@ async function portalGenerateReport(host){
       }
       function select(c,focus=false){
         selected=c.key;update();
+        const selectedFeedback=layer.querySelector("[data-sm-search-feedback]");
+        if(selectedFeedback)selectedFeedback.textContent="Município selecionado: "+c.name;
         const safe=portalEscape;
         let html='<div class="ss-map-city">'+safe(c.name)+' — CE</div><div class="ss-map-note">Código IBGE: '+safe(c.code||"não informado")+'</div><h3>Sistemas cadastrados</h3>';
         for(const mode of modes){
@@ -12853,7 +12855,6 @@ async function portalGenerateReport(host){
         const key=norm(raw),exact=keyMap.get(key);
         const city=exact||(allowPartial?findCity(raw):null);
         if(city){
-          feedback.textContent="Município localizado: "+city.name;
           select(city,true);
         }else if(allowPartial)feedback.textContent="Município não encontrado na malha do Ceará.";
       }
