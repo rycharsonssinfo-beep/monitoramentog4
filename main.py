@@ -2723,6 +2723,12 @@ def _render_account_sidebar():
         if display_name:
             st.write(f"**{display_name}**")
         st.caption(email)
+        st.page_link(
+            "pages/Mapa_de_Sistemas.py",
+            label="🗺️ Mapa de Sistemas",
+            icon=":material/map:",
+            use_container_width=True,
+        )
         if st.button("Sair", key="monitor_auth_logout", use_container_width=True):
             _auth_logout()
             st.query_params.clear()
