@@ -105,7 +105,7 @@ def registros():
     return result
 
 
-st.set_page_config(page_title="Mapa de Sistemas | Grupo S&S", page_icon="🗺️", layout="wide")
+# Layout e configuração principal são definidos por main.py.
 # A página deve respeitar a sessão do Monitor, mesmo em acesso direto à URL.
 import time
 if (not st.session_state.get("_monitor_auth_authenticated")
