@@ -1,0 +1,36 @@
+/* Relatório de Cobertura — layout integrado ao Mapa de Sistemas */
+.ss-map-report-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.ss-map-report-open{background:linear-gradient(135deg,#0d695c,#0a4f5b);border:1px solid #46b4a5;color:#e7fff8;border-radius:10px;padding:11px 15px;cursor:pointer;font-weight:800;letter-spacing:.08px;font-size:12px;box-shadow:inset 0 1px #ffffff15}
+.ss-map-report-open:hover:not(:disabled){background:linear-gradient(135deg,#137b6e,#14677b);border-color:#7fe3c7}
+.ss-map-report-open:disabled{opacity:.5;cursor:wait}
+.ss-map-report-backdrop{position:fixed;z-index:400;inset:0;background:rgba(2,12,27,.78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;color:#eef6ff}
+.ss-map-report-window{display:flex;flex-direction:column;width:min(1180px,100%);max-height:min(93vh,1030px);overflow:hidden;background:linear-gradient(145deg,#112e4d,#0a2038);border:1px solid rgba(117,184,222,.46);border-radius:17px;box-shadow:0 28px 95px rgba(0,8,22,.72)}
+.ss-map-report-head{display:flex;align-items:start;justify-content:space-between;gap:16px;padding:21px 24px;border-bottom:1px solid #335575}
+.ss-map-report-head h2{margin:0;font-size:23px;letter-spacing:-.5px;color:white;font-weight:850}
+.ss-map-report-head p{margin:8px 0 0;color:#adcce0;font-size:12px}
+.ss-map-report-close{display:grid;place-items:center;background:#193d5c;border:1px solid #527b9b;color:white;width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:16px}
+.ss-map-report-close:hover{background:#23618c}
+.ss-map-report-controls{display:flex;align-items:end;justify-content:space-between;gap:15px;padding:19px 24px 13px;flex-wrap:wrap}
+.ss-map-report-controls>label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:700;color:#c7e4f2;min-width:285px;flex:1}
+.ss-map-report-controls select{width:100%;max-width:460px;border:1px solid #5b88ae;border-radius:9px;background:#0a2844;color:white;font-size:13px;padding:12px 14px;outline:none;cursor:pointer}
+.ss-map-report-controls select:focus{outline:2px solid #5cbbeb;outline-offset:2px}
+.ss-map-report-actions2{display:flex;gap:8px;flex-wrap:wrap}
+.ss-map-report-actions2 button{min-height:42px;padding:0 15px;border-radius:9px;color:#fff;border:1px solid #5c9cc3;cursor:pointer;font-size:12px;font-weight:800}
+.ss-map-report-actions2 button.excel{background:#0b7555;border-color:#40b88b}
+.ss-map-report-actions2 button.excel:hover{background:#118764}
+.ss-map-report-actions2 button.pdf{background:#265b8e;border-color:#76b0e3}
+.ss-map-report-actions2 button.pdf:hover{background:#316eae}
+.ss-map-report-message{padding:0 24px 12px;min-height:26px;color:#a9cddd;font-size:11px;line-height:1.5}
+.ss-map-report-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;padding:0 24px 17px}
+.ss-map-report-metrics>div{background:#173b60;border:1px solid #335f85;border-radius:10px;padding:12px 13px}
+.ss-map-report-metrics b{font-size:22px;font-variant-numeric:tabular-nums;color:white;display:block;line-height:1.2}
+.ss-map-report-metrics span{display:block;font-size:11px;color:#b5d4e8;margin-top:5px}
+.ss-map-report-table-wrap{overflow:auto;margin:0 24px;background:#09213a;border:1px solid #375d80;border-radius:10px;min-height:180px;flex:1}
+.ss-map-report-table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}
+.ss-map-report-table th{text-align:left;position:sticky;top:0;background:#185580;color:#ebf8ff;padding:12px 13px;font-weight:800;z-index:1}
+.ss-map-report-table td{padding:10px 13px;border-bottom:1px solid rgba(124,176,217,.13);color:#e0edfa}
+.ss-map-report-table tbody tr:nth-child(even){background:#112e4d}
+.ss-map-report-table tbody tr:hover{background:#21466b}
+.ss-map-report-footer{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;padding:14px 24px 20px;color:#9dbed5;font-size:11px;line-height:1.5}
+.ss-map-report-footer span:first-child{color:#d9edfb;font-weight:750}
+@media(max-width:780px){.ss-map-report-backdrop{padding:7px}.ss-map-report-window{max-height:96vh}.ss-map-report-head{padding:16px}.ss-map-report-controls{padding:15px 16px 10px}.ss-map-report-metrics{padding:0 16px 14px;grid-template-columns:repeat(2,1fr)}.ss-map-report-message{padding-left:16px;padding-right:16px}.ss-map-report-table-wrap{margin:0 16px}.ss-map-report-footer{padding:12px 16px}.ss-map-report-actions{width:100%}.ss-map-report-open{flex:1}}
