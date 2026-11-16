@@ -106,6 +106,18 @@ def registros():
 
 
 st.set_page_config(page_title="Mapa de Sistemas | Grupo S&S", page_icon="🗺️", layout="wide")
+# A página deve respeitar a sessão do Monitor, mesmo em acesso direto à URL.
+import time
+if (not st.session_state.get("_monitor_auth_authenticated")
+        or not str(st.session_state.get("_monitor_auth_access_token") or "").strip()):
+    st.error("Acesso restrito. Entre no Monitor Grupo S&S antes de abrir o mapa.")
+    st.stop()
+_exp = float(st.session_state.get("_monitor_auth_expires_at") or 0)
+if _exp and time.time() >= (_exp - 90):
+    st.warning("Sua sessão expirou. Volte ao Monitor para autenticar-se novamente.")
+    st.stop()
+
+
 st.markdown(
     "<style>.block-container{padding-top:1rem;padding-bottom:1rem;max-width:100%}"
     "header[data-testid='stHeader']{background:transparent}</style>",
