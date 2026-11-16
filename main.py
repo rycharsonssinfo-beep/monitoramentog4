@@ -13153,7 +13153,7 @@ window.ssMapOpen=function(host){
  if(layer&&!layer.dataset.ssEnhanced){layer.dataset.ssEnhanced="1";begin(layer)}
 };
 })();
-(function(){if(!document.getElementById("ss-map-report-css")){const tag=document.createElement("style");tag.id="ss-map-report-css";tag.textContent="/* Relatório de Cobertura — layout integrado ao Mapa de Sistemas */\n.ss-map-report-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}\n.ss-map-report-open{background:linear-gradient(135deg,#0d695c,#0a4f5b);border:1px solid #46b4a5;color:#e7fff8;border-radius:10px;padding:11px 15px;cursor:pointer;font-weight:800;letter-spacing:.08px;font-size:12px;box-shadow:inset 0 1px #ffffff15}\n.ss-map-report-open:hover:not(:disabled){background:linear-gradient(135deg,#137b6e,#14677b);border-color:#7fe3c7}\n.ss-map-report-open:disabled{opacity:.5;cursor:wait}\n.ss-map-report-backdrop{position:fixed;z-index:400;inset:0;background:rgba(2,12,27,.78);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;color:#eef6ff}\n.ss-map-report-window{display:flex;flex-direction:column;width:min(1180px,100%);max-height:min(93vh,1030px);overflow:hidden;background:linear-gradient(145deg,#112e4d,#0a2038);border:1px solid rgba(117,184,222,.46);border-radius:17px;box-shadow:0 28px 95px rgba(0,8,22,.72)}\n.ss-map-report-head{display:flex;align-items:start;justify-content:space-between;gap:16px;padding:21px 24px;border-bottom:1px solid #335575}\n.ss-map-report-head h2{margin:0;font-size:23px;letter-spacing:-.5px;color:white;font-weight:850}\n.ss-map-report-head p{margin:8px 0 0;color:#adcce0;font-size:12px}\n.ss-map-report-close{display:grid;place-items:center;background:#193d5c;border:1px solid #527b9b;color:white;width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:16px}\n.ss-map-report-close:hover{background:#23618c}\n.ss-map-report-controls{display:flex;align-items:end;justify-content:space-between;gap:15px;padding:19px 24px 13px;flex-wrap:wrap}\n.ss-map-report-controls>label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:700;color:#c7e4f2;min-width:285px;flex:1}\n.ss-map-report-controls select{width:100%;max-width:460px;border:1px solid #5b88ae;border-radius:9px;background:#0a2844;color:white;font-size:13px;padding:12px 14px;outline:none;cursor:pointer}\n.ss-map-report-controls select:focus{outline:2px solid #5cbbeb;outline-offset:2px}\n.ss-map-report-actions2{display:flex;gap:8px;flex-wrap:wrap}\n.ss-map-report-actions2 button{min-height:42px;padding:0 15px;border-radius:9px;color:#fff;border:1px solid #5c9cc3;cursor:pointer;font-size:12px;font-weight:800}\n.ss-map-report-actions2 button.excel{background:#0b7555;border-color:#40b88b}\n.ss-map-report-actions2 button.excel:hover{background:#118764}\n.ss-map-report-actions2 button.pdf{background:#265b8e;border-color:#76b0e3}\n.ss-map-report-actions2 button.pdf:hover{background:#316eae}\n.ss-map-report-message{padding:0 24px 12px;min-height:26px;color:#a9cddd;font-size:11px;line-height:1.5}\n.ss-map-report-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;padding:0 24px 17px}\n.ss-map-report-metrics>div{background:#173b60;border:1px solid #335f85;border-radius:10px;padding:12px 13px}\n.ss-map-report-metrics b{font-size:22px;font-variant-numeric:tabular-nums;color:white;display:block;line-height:1.2}\n.ss-map-report-metrics span{display:block;font-size:11px;color:#b5d4e8;margin-top:5px}\n.ss-map-report-table-wrap{overflow:auto;margin:0 24px;background:#09213a;border:1px solid #375d80;border-radius:10px;min-height:180px;flex:1}\n.ss-map-report-table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:12px}\n.ss-map-report-table th{text-align:left;position:sticky;top:0;background:#185580;color:#ebf8ff;padding:12px 13px;font-weight:800;z-index:1}\n.ss-map-report-table td{padding:10px 13px;border-bottom:1px solid rgba(124,176,217,.13);color:#e0edfa}\n.ss-map-report-table tbody tr:nth-child(even){background:#112e4d}\n.ss-map-report-table tbody tr:hover{background:#21466b}\n.ss-map-report-footer{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;padding:14px 24px 20px;color:#9dbed5;font-size:11px;line-height:1.5}\n.ss-map-report-footer span:first-child{color:#d9edfb;font-weight:750}\n@media(max-width:780px){.ss-map-report-backdrop{padding:7px}.ss-map-report-window{max-height:96vh}.ss-map-report-head{padding:16px}.ss-map-report-controls{padding:15px 16px 10px}.ss-map-report-metrics{padding:0 16px 14px;grid-template-columns:repeat(2,1fr)}.ss-map-report-message{padding-left:16px;padding-right:16px}.ss-map-report-table-wrap{margin:0 16px}.ss-map-report-footer{padding:12px 16px}.ss-map-report-actions{width:100%}.ss-map-report-open{flex:1}}";document.head.appendChild(tag);}})();
+(function(){if(!document.getElementById("ss-map-report-css")){const tag=document.createElement("style");tag.id="ss-map-report-css";tag.textContent="/* Relatório de Cobertura Premium v3.3 — referência aprovada */\n.ss-map-report-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}\n.ss-map-report-open{background:linear-gradient(135deg,#0c725c,#0b4d66);border:1px solid #49bba9;color:#f1fff9;border-radius:10px;padding:11px 16px;cursor:pointer;font-weight:850;font-size:12px;box-shadow:inset 0 1px rgba(255,255,255,.14),0 5px 13px rgba(0,25,44,.16)}\n.ss-map-report-open:hover:not(:disabled){background:#117c6e;border-color:#7fe6ca}\n.ss-map-report-open:disabled{opacity:.5;cursor:wait}\n.ss-map-report-backdrop{position:fixed;z-index:450;inset:0;background:rgba(1,12,29,.83);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:18px;color:#ecf7ff}\n.ss-map-report-window{display:flex;flex-direction:column;width:min(1510px,100%);max-height:min(95dvh,1050px);height:min(92dvh,945px);overflow:hidden;background:radial-gradient(ellipse at 80% -20%,rgba(24,115,172,.17),transparent 65%),linear-gradient(135deg,#071d37,#0a294b 50%,#071c35);border:1px solid #3c91c6;border-radius:19px;box-shadow:0 30px 115px rgba(0,8,22,.8),inset 0 1px rgba(189,230,255,.15);color:#ecf7ff}\n.ss-map-report-head{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px 27px 14px}\n.ss-map-report-title-group{display:flex;align-items:center;gap:15px;min-width:0}\n.ss-map-report-title-icon{flex-shrink:0;display:grid;place-items:center;width:52px;height:52px;font-size:30px;color:#a3e6ff;border:1px solid #41a9e5;border-radius:13px;background:linear-gradient(135deg,#075b96,#0b365c);box-shadow:inset 0 1px #ffffff30,0 8px 16px #05112870}\n.ss-map-report-head h2{margin:0;font-size:clamp(22px,2vw,31px);letter-spacing:-.8px;color:#fff;font-weight:900;line-height:1.15}\n.ss-map-report-head p{margin:5px 0 0;color:#b4d5eb;font-size:12px;line-height:1.4}\n.ss-map-report-close{width:39px;height:39px;border-radius:10px;border:1px solid #467b9e;background:#153f64;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0}\n.ss-map-report-close:hover{background:#236991}\n.ss-map-report-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 27px 17px;border-bottom:1px solid #25577c;flex-wrap:wrap}\n.ss-map-report-formats{display:flex;gap:6px;align-items:center;background:rgba(3,23,43,.38);border:1px solid #29597d;border-radius:11px;padding:4px}\n.ss-map-report-formats button{min-width:140px;border:1px solid transparent;background:transparent;border-radius:8px;padding:11px 18px;font-size:12px;font-weight:850;color:#bcd6e9;cursor:pointer}\n.ss-map-report-formats button:hover{background:#18466b;color:#f2faff}\n.ss-map-report-formats button.selected{color:#fff;background:linear-gradient(135deg,#09649e,#134c8d);border-color:#62caff;box-shadow:inset 0 1px #ffffff4a,0 0 14px #18a2e333}\n.ss-map-report-actions2{display:flex;gap:9px;flex-wrap:wrap}\n.ss-map-report-actions2 button{min-height:43px;padding:0 16px;border-radius:9px;border:1px solid #559fc8;color:white;font-size:12px;font-weight:850;cursor:pointer}\n.ss-map-report-actions2 button.excel{background:linear-gradient(140deg,#087f57,#086b55);border-color:#51c49e}\n.ss-map-report-actions2 button.excel:hover{background:#139568}\n.ss-map-report-actions2 button.pdf{background:linear-gradient(140deg,#1b68a1,#114e83);border-color:#69b6ed}\n.ss-map-report-actions2 button.pdf:hover{background:#2278b6}\n.ss-map-report-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(325px,.95fr);gap:14px;padding:17px 24px 23px;min-height:0;flex:1}\n.ss-map-report-left{display:flex;flex-direction:column;gap:0;min-width:0;min-height:0;overflow-y:auto;padding:0 3px 4px 1px;scrollbar-width:thin;scrollbar-color:#447da8 #092642}\n.ss-map-report-controls{padding:0 0 9px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}\n.ss-map-report-controls label{color:#bcd8eb;font-size:11px;font-weight:800;display:flex;flex-direction:column;gap:6px;width:100%}\n.ss-map-report-controls select{width:min(100%,415px);padding:11px 14px;border:1px solid #4588b4;background:#082845;border-radius:9px;color:#f3fbff;cursor:pointer;font-size:12px;outline:none}\n.ss-map-report-controls select:focus{border-color:#6dcefa;box-shadow:0 0 0 3px rgba(24,151,231,.2)}\n.ss-map-report-message{font-size:11px;color:#aacce2;min-height:29px;padding:5px 0 11px;line-height:1.4}\n.ss-map-report-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0 0 16px}\n.ss-map-report-metric{min-width:0;padding:11px 6px 12px;background:linear-gradient(135deg,#173b63,#123453);border:1px solid #3c6588;border-radius:11px;text-align:center;display:flex;align-items:center;flex-direction:column;gap:3px;box-shadow:inset 0 1px #ffffff11}\n.ss-map-report-metric .glyph{font-size:17px;color:#5fd2fd;min-height:20px;line-height:20px}\n.ss-map-report-metric:nth-child(2) .glyph{color:#3bdbac}\n.ss-map-report-metric:nth-child(3) .glyph{color:#ff9986}\n.ss-map-report-metric:nth-child(4) .glyph{color:#a0b9ff}\n.ss-map-report-metric:nth-child(5) .glyph{color:#3bc5f3}\n.ss-map-report-metric:nth-child(6) .glyph{color:#ffca56}\n.ss-map-report-metric b{font-size:clamp(15px,1.55vw,24px);color:#fff;line-height:1.1;font-variant-numeric:tabular-nums;font-weight:900}\n.ss-map-report-metric span:last-child{font-size:10px;color:#c0d7e7;text-align:center;line-height:1.2}\n.ss-map-report-section{display:flex;align-items:end;justify-content:space-between;gap:10px;border-top:1px solid #285579;padding:15px 4px 9px}\n.ss-map-report-section h3{font-size:16px;letter-spacing:-.2px;margin:0;color:#f0faff}\n.ss-map-report-section p{margin:5px 0 0;color:#a5c4d9;font-size:11px;line-height:1.3}\n.ss-map-report-short-count{font-size:10px;color:#c6e3f4;font-weight:800;white-space:nowrap;background:#174164;border:1px solid #3b7299;border-radius:6px;padding:5px 7px}\n.ss-map-report-table-wrap{flex:1;min-height:170px;max-height:370px;overflow:auto;border-radius:10px;background:#081f37;border:1px solid #3d6f96;scrollbar-color:#527f9f #102b49;scrollbar-width:thin}\n.ss-map-report-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap}\n.ss-map-report-table thead{position:sticky;top:0;z-index:2}\n.ss-map-report-table th{background:linear-gradient(180deg,#226796,#15517c);padding:10px 11px;font-weight:800;color:#fff;text-align:left}\n.ss-map-report-table td{padding:9px 11px;border-bottom:1px solid rgba(124,173,205,.15);color:#e5f2fc;overflow:hidden;text-overflow:ellipsis;max-width:220px}\n.ss-map-report-table td.center{text-align:center;font-weight:850;font-size:12px;color:#71daa9}\n.ss-map-report-table tbody tr:nth-child(even){background:rgba(24,68,105,.48)}\n.ss-map-report-table tbody tr:hover{background:#20547b}\n.ss-map-report-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px}\n.ss-map-report-cards>div{cursor:pointer;border:1px solid #41698b;border-radius:11px;background:linear-gradient(130deg,#153a60,#0a2d4e);padding:12px 14px;min-height:93px;display:flex;flex-direction:column;gap:8px}\n.ss-map-report-cards>div.selected{border-color:#57c8fc;box-shadow:inset 0 0 0 1px #2a86b0,0 0 14px #146c9b2b;background:linear-gradient(135deg,#124f7b,#0a375f)}\n.ss-map-report-cards strong{font-size:12px;color:#f8fbff}\n.ss-map-report-cards span{font-size:11px;line-height:1.4;color:#a8c9df}\n.ss-map-report-footer{margin-top:12px;padding:11px 12px;border:1px solid #3a759e;border-radius:9px;background:rgba(17,70,109,.52);color:#c4e4f8;font-size:11px;line-height:1.45}\n.ss-map-report-preview{display:flex;flex-direction:column;min-width:0;min-height:0;background:linear-gradient(145deg,#133c60,#082745);border-radius:13px;border:1px solid #3988b6;padding:11px 11px 10px;box-shadow:inset 0 1px #ffffff24}\n.ss-map-report-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 11px;color:#eaf7ff;font-size:12px}\n.ss-map-report-preview-head strong{font-size:13px}\n.ss-map-report-preview-head>span{font-size:9px;font-weight:850;padding:5px 8px;background:#157553;border-radius:99px;color:#edfff4;white-space:nowrap}\n.ss-map-report-paper-wrap{min-height:0;flex:1;overflow:auto;background:rgba(2,15,28,.34);border-radius:9px;padding:7px;display:flex;justify-content:center;scrollbar-width:thin;scrollbar-color:#74a5c7 #173952}\n.ss-map-report-paper{width:100%;max-width:510px;min-height:455px;height:min-content;position:relative;overflow:hidden;border-radius:6px;background:#fff;color:#0f2c48;padding:19px 19px 55px;box-shadow:0 8px 18px rgba(0,5,14,.42);font-family:Arial,sans-serif}\n.ss-map-report-paper:before{content:\"\";position:absolute;right:0;top:0;border-top:27px solid #0f5796;border-left:75px solid transparent;width:0;height:0}\n.ss-map-paper-brand{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:24px}\n.ss-map-paper-brand>div{display:flex;align-items:center;gap:8px;min-width:0}\n.ss-map-paper-brand span{font-size:13px;background:#1268a3;color:white;padding:8px 6px;border-radius:7px;letter-spacing:-1px;font-weight:900}\n.ss-map-paper-brand strong{font-size:12px;color:#104775;line-height:1.1;max-width:115px}\n.ss-map-paper-brand em{font-size:8px;font-weight:650;color:#5a829c;white-space:nowrap}\n.ss-map-report-paper h3{font-size:20px;margin:0 0 4px;color:#102f53;letter-spacing:-.6px;line-height:1.15}\n.ss-map-report-paper>p{font-size:9px;margin:0 0 23px;color:#59768e;line-height:1.4}\n.ss-map-paper-kicker{font-size:10px;font-weight:900;color:#154b78;border-left:3px solid #188bc6;padding-left:7px;margin-bottom:10px;margin-top:10px}\n.ss-map-paper-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:19px}\n.ss-map-paper-stats>div{border:1px solid #d7e5ee;padding:7px 2px;text-align:center;min-width:0}\n.ss-map-paper-stats>div:first-child{border-radius:5px 0 0 5px}\n.ss-map-paper-stats>div:last-child{border-radius:0 5px 5px 0}\n.ss-map-paper-stats b{display:block;color:#0e4571;font-size:12px;font-variant-numeric:tabular-nums}\n.ss-map-paper-stats small{display:block;font-size:6.5px;color:#52728d;margin-top:3px;line-height:1.2}\n.ss-map-report-paper table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px}\n.ss-map-report-paper th{background:#125782;color:#fff;text-align:left;padding:6px 4px;font-size:7px}\n.ss-map-report-paper td{padding:6px 4px;border-bottom:1px solid #dce6ef;color:#153958;overflow-wrap:anywhere;font-size:7.5px}\n.ss-map-report-paper tbody tr:nth-child(even){background:#eef5fa}\n.ss-map-report-paper td.center{text-align:center;color:#11865d;font-weight:850}\n.ss-map-paper-bottom{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(165deg,#eef8ff 0%,#ceeafa 54%,#1e79b5 54%,#134f85 100%);height:41px;padding:20px 18px 7px;display:flex;align-items:end;justify-content:space-between;font-size:8px;color:#174a74}\n.ss-map-paper-bottom strong{color:#fff;font-size:10px}\n.ss-map-report-preview-foot{font-size:10px;text-align:center;color:#aed0e7;line-height:1.3;padding:9px 2px 1px}\n.ss-map-report-close:focus-visible,.ss-map-report-formats button:focus-visible,.ss-map-report-actions2 button:focus-visible{outline:2px solid #9ce0ff;outline-offset:2px}\n@media(max-width:1190px){\n.ss-map-report-layout{grid-template-columns:minmax(0,1fr);overflow:auto;display:block}\n.ss-map-report-left{overflow:visible}\n.ss-map-report-preview{margin-top:18px;min-height:580px}\n.ss-map-report-paper-wrap{overflow:visible}\n.ss-map-report-window{height:95dvh}\n.ss-map-report-table-wrap{max-height:310px}\n}\n@media(max-width:740px){\n.ss-map-report-backdrop{padding:5px}\n.ss-map-report-window{height:98dvh;max-height:98dvh;border-radius:12px}\n.ss-map-report-head{padding:14px 14px 10px}\n.ss-map-report-title-icon{height:42px;width:42px;font-size:25px}\n.ss-map-report-head h2{font-size:20px}\n.ss-map-report-head p{font-size:10px}\n.ss-map-report-toolbar{padding:8px 13px 13px;gap:9px}\n.ss-map-report-formats{width:100%}\n.ss-map-report-formats button{flex:1;min-width:0;padding:10px}\n.ss-map-report-actions2{width:100%}\n.ss-map-report-actions2 button{flex:1;padding:0 9px}\n.ss-map-report-layout{padding:12px}\n.ss-map-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}\n.ss-map-report-metric b{font-size:20px}\n.ss-map-report-cards{grid-template-columns:1fr}\n.ss-map-report-table-wrap{max-height:290px}\n.ss-map-report-preview{min-height:530px}\n.ss-map-report-preview-head{flex-wrap:wrap}\n.ss-map-report-paper{padding:13px 10px 50px;min-height:450px}\n.ss-map-report-paper h3{font-size:17px}\n.ss-map-paper-stats small{font-size:5.6px}\n}";document.head.appendChild(tag);}})();
 /* Relatório de Cobertura dos Sistemas — Monitor S&S
    Exportação integralmente no navegador, sem envio dos cadastros a terceiros.
    XLSX nativo (OOXML/ZIP sem bibliotecas externas); PDF via impressão do navegador. */
@@ -13355,45 +13355,90 @@ window.ssMapOpen=function(host){
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),12000);
   }
-  function printPdf(cities,sc){
+  function printPdf(cities,sc,format="gerencial",statewideTotal=184){
+    if(format!=="gerencial"&&format!=="tecnico")throw Error("Formato de PDF inválido.");
     const win=window.open("","_blank");
-    if(!win)throw Error("O navegador bloqueou a janela. Autorize pop-ups para gerar o PDF.");
-    const t=summary(cities),detail=records(cities);
-    const summaryRow=(label,val)=>'<div class="kpi"><b>'+esc(val)+'</b><small>'+esc(label)+'</small></div>';
-    const coverage=cities.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.code||"")+'</td>'+
-      '<td class="center">'+nSystems(c)+'</td>'+
-      SYS.map(([m])=>'<td class="center">'+(c.systems[m]?.length?"Sim":"—")+'</td>').join("")+
-      '<td class="center">'+nEnvs(c)+'</td></tr>').join("");
-    const details=detail.map(r=>'<tr><td>'+esc(r.municipio)+'</td><td>'+esc(r.sistema)+'</td>'+
+    if(!win)throw Error("Janela bloqueada. Autorize pop-ups para salvar o PDF.");
+    const stats=summary(cities),details=format==="tecnico"?records(cities):[];
+    const fraction=statewideTotal?100*stats.covered/statewideTotal:0;
+    const percent=v=>v.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%";
+    const kpis=[
+      ["Municípios",stats.municipios],["Atendidos",stats.covered],
+      ["Sem cadastro",stats.missing],["Ambientes",stats.environments],
+      ["Online na última leitura",stats.online],["Cobertura do Ceará",percent(fraction)]
+    ];
+    const kpiHTML=kpis.map(([label,value])=>'<div class="kpi"><b>'+esc(value)+'</b><span>'+esc(label)+'</span></div>').join("");
+    const coverage=cities.map(c=>'<tr><td class="name">'+esc(c.name)+'</td><td>'+esc(c.code||"")+'</td>'+
+      SYS.map(([m])=>'<td class="center">'+(c.systems[m]?.length?"✓":"—")+'</td>').join("")+
+      '<td class="num">'+nEnvs(c)+'</td><td class="num">'+nOnline(c)+'</td></tr>').join("");
+    const detailsRows=details.map(r=>'<tr><td>'+esc(r.municipio)+'</td><td>'+esc(r.sistema)+'</td>'+
       '<td>'+esc(r.entidade)+'</td><td class="url">'+
-      ((r.url||"").startsWith("https://")||(r.url||"").startsWith("http://")?
-        '<a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer">'+esc(r.url)+'</a>':
-        esc(r.url))+'</td>'+
-      '<td>'+esc(r.situacao)+'</td><td>'+esc(r.ultima)+'</td></tr>').join("");
-    const doc='<!doctype html><html lang="pt-br"><head><meta charset="utf-8"/><title>Relatório de Cobertura dos Sistemas</title>'+
-      '<style>@page{size:A4 landscape;margin:14mm}*{box-sizing:border-box}body{margin:0;font:10px Arial,sans-serif;color:#18334a}'+
-      'header{border-bottom:3px solid #146296;margin-bottom:16px;padding-bottom:12px}h1{font-size:20px;margin:0;color:#123f68}'+
-      '.sub{font-size:10px;color:#50677b;margin-top:7px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0 14px}.kpi{border:1px solid #bacddc;border-radius:6px;padding:7px 11px;min-width:0;break-inside:avoid}.kpi b{display:block;color:#104e7b;font-size:16px}.kpi small{display:block;color:#47667e;margin-top:3px;font-size:9px}'+
-      'h2{color:#154f7c;font-size:15px;margin:14px 0 8px;break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th{background:#144d78;color:#fff;text-align:left;padding:7px 6px;font-size:9px}td{padding:5px 6px;border-bottom:1px solid #dde8ef;font-size:9px;overflow-wrap:anywhere}tr:nth-child(even) td{background:#f2f7fb}.center{text-align:center}.coverage-table td{padding:3px 6px;line-height:1.2}.detail-table td{padding:5px 6px;line-height:1.25}.url{font-size:8px;overflow-wrap:anywhere;word-break:break-word}.url a{color:#17639a;text-decoration:underline;text-underline-offset:2px}'+
-      '.note{font-size:9px;color:#47677c;margin:15px 0}.section-break{break-before:page}'+
-      '@media screen{body{padding:26px;max-width:1100px;margin:auto;background:white}}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>'+
-      '<header><h1>RELATÓRIO DE COBERTURA DOS SISTEMAS</h1><div class="sub">Grupo S&S · Ceará · '+esc(scopes[sc])+' · Emitido em '+esc(now())+'</div></header>'+
-      '<div class="stats">'+summaryRow("Municípios",t.municipios)+summaryRow("Atendidos",t.covered)+
-      summaryRow("Sem cadastro",t.missing)+summaryRow("Ambientes",t.environments)+
-      summaryRow("Ambientes online",t.online)+summaryRow("Portal",t.portals)+
-      summaryRow("Fluxus",t.fluxus)+summaryRow("Veículos",t.vehicles)+'</div>'+
-      '<p class="note">Critério: cadastro indica presença do sistema; online corresponde somente à última leitura conhecida. A ausência de cadastro não comprova ausência de contrato.</p>'+
-      '<h2>Cobertura por município</h2><table class="coverage-table"><thead><tr><th>Município</th><th>IBGE</th><th>Tipos</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th></tr></thead><tbody>'+
-      coverage+'</tbody></table>'+
-      '<h2 class="section-break">Detalhamento dos ambientes cadastrados ('+detail.length+')</h2><table class="detail-table"><thead><tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>URL</th><th>Situação</th><th>Última verificação</th></tr></thead><tbody>'+
-      details+'</tbody></table>'+
-      '<p class="note">Fonte: cadastros e última verificação obtidos no Monitor de Portais S&S. Documento emitido localmente pelo navegador.</p>'+
-      '</body></html>';
+      (r.url?'<a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer">'+esc(r.url)+'</a>':"—")+
+      '</td><td>'+esc(r.situacao)+'</td><td>'+esc(r.ultima)+'</td></tr>').join("");
+    const isTech=format==="tecnico";
+    const caption=isTech?"RELATÓRIO TÉCNICO COMPLETO":"RELATÓRIO GERENCIAL";
+    const style=[
+      '@page{size:A4 landscape;margin:10mm 11mm}',
+      '*{box-sizing:border-box}',
+      'html,body{margin:0;background:#fff;color:#163047;font-family:Arial,"Segoe UI",sans-serif;font-size:9px}',
+      '.brand{display:flex;align-items:center;justify-content:space-between;border-top:4px solid #1c71af;border-bottom:1px solid #c3dbea;padding:8px 0 9px;gap:15px}',
+      '.brand-name{font-weight:900;font-size:17px;color:#0e4c7c;letter-spacing:-.4px}',
+      '.brand-name .icon{display:inline-block;background:linear-gradient(135deg,#12649e,#56bbeb);color:#fff;border-radius:6px;padding:5px 7px;margin-right:8px}',
+      '.stamp{color:#4f6a80;font-size:9px;text-align:right;line-height:1.6}',
+      'h1{font-size:18px;color:#103f6d;margin:13px 0 4px;letter-spacing:-.4px}',
+      '.subtitle{font-size:9px;color:#587187;margin:0 0 12px}',
+      '.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:11px 0 12px}',
+      '.kpi{border:1px solid #c4d5e5;border-radius:6px;padding:8px 7px;min-width:0;break-inside:avoid;background:#f9fcff}',
+      '.kpi b{display:block;font-size:16px;color:#124a77;margin-bottom:4px}',
+      '.kpi span{display:block;font-size:8px;color:#4c657a;line-height:1.25}',
+      '.note{background:#f0f6fb;padding:7px 9px;border-left:3px solid #2b7eb6;color:#48667d;font-size:8px;margin:10px 0 12px;line-height:1.4}',
+      'h2{color:#124e7b;font-size:12px;margin:10px 0 7px;break-after:avoid}',
+      'table{width:100%;border-collapse:collapse;table-layout:fixed}',
+      'thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}',
+      'th{background:#165682;color:#fff;text-align:left;padding:6px 6px;font-size:8.2px}',
+      'td{padding:4px 6px;border-bottom:1px solid #dde8ef;line-height:1.22;font-size:8.4px;overflow-wrap:anywhere}',
+      'tbody tr:nth-child(even){background:#f1f6fa}',
+      'td.center,td.num{text-align:center;font-weight:700}',
+      'td.name{font-weight:700;color:#1b3f5b}',
+      '.coverage-table th:nth-child(1){width:29%}.coverage-table th:nth-child(2){width:12%}',
+      '.coverage-table th:nth-child(3),.coverage-table th:nth-child(4),.coverage-table th:nth-child(5){width:11%}',
+      '.coverage-table th:nth-child(6),.coverage-table th:nth-child(7){width:13%}',
+      '.detail-table{margin-top:3px}',
+      '.detail-table th:nth-child(1){width:12%}.detail-table th:nth-child(2){width:13%}',
+      '.detail-table th:nth-child(3){width:21%}.detail-table th:nth-child(4){width:29%}',
+      '.detail-table th:nth-child(5){width:15%}.detail-table th:nth-child(6){width:10%}',
+      '.detail-table td{font-size:7.6px;padding:3.7px 5px;line-height:1.15}',
+      '.detail-table .url{font-size:7px;word-break:break-word;overflow-wrap:anywhere}',
+      '.detail-table .url a{color:#125e99;text-decoration:underline;text-underline-offset:2px}',
+      '.section-title{padding-top:11px}',
+      '.footer{margin-top:16px;padding-top:6px;border-top:2px solid #bfd7e9;display:flex;justify-content:space-between;color:#63819a;font-size:8px;gap:12px}',
+      '.footer strong{color:#1f608e}',
+      '@media screen{body{padding:25px;max-width:1230px;margin:auto;box-shadow:0 0 14px #dde5ed}}',
+      '@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact};}',
+    ].join("");
+    const technical=isTech?
+      '<h2 class="section-title">Detalhamento dos ambientes cadastrados ('+details.length+')</h2>'+
+      '<table class="detail-table"><thead><tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>URL</th>'+
+      '<th>Situação</th><th>Última verificação</th></tr></thead><tbody>'+detailsRows+'</tbody></table>':"";
+    const doc='<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+caption+' — Cobertura dos Sistemas</title>'+
+      '<style>'+style+'</style></head><body>'+
+      '<div class="brand"><div class="brand-name"><span class="icon">S&S</span>Monitor Grupo S&S</div>'+
+      '<div class="stamp">Ceará · '+esc(scopes[sc])+'<br/>Emissão: '+esc(now())+'</div></div>'+
+      '<h1>Relatório de Cobertura dos Sistemas</h1>'+
+      '<p class="subtitle">'+esc(caption)+' · Municípios e ambientes presentes no Monitor de Portais S&S</p>'+
+      '<div class="stats">'+kpiHTML+'</div>'+
+      '<p class="note">Cobertura = municípios atendidos neste recorte / '+esc(statewideTotal)+
+      ' municípios do Ceará. Os valores online refletem a última consulta registrada, não disponibilidade em tempo real.</p>'+
+      '<h2>Cobertura municipal ('+cities.length+' municípios)</h2>'+
+      '<table class="coverage-table"><thead><tr><th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th>'+
+      '<th>Veículos</th><th>Ambientes</th><th>Online</th></tr></thead><tbody>'+coverage+'</tbody></table>'+
+      technical+
+      '<div class="footer"><span>Fonte: Monitor Grupo S&S · Cadastros e últimas verificações</span>'+
+      '<strong>Documento gerado localmente para consulta</strong></div></body></html>';
     win.document.open();win.document.write(doc);win.document.close();
-    // A impressão do navegador permite selecionar "Salvar como PDF" sem bibliotecas externas.
-    const start=()=>{try{win.focus();win.print()}catch(e){console.error("PDF:",e)}};
-    if(win.document.readyState==="complete")setTimeout(start,400);
-    else win.addEventListener("load",()=>setTimeout(start,400),{once:true});
+    const start=()=>{try{win.focus();win.print()}catch(e){console.error("Relatório PDF:",e)}};
+    if(win.document.readyState==="complete")setTimeout(start,350);
+    else win.addEventListener("load",()=>setTimeout(start,350),{once:true});
   }
   function attach(host){
     const layer=host.querySelector("[data-ss-map]");
@@ -13408,7 +13453,8 @@ window.ssMapOpen=function(host){
     controls.append(back);
     const open=document.createElement("button");
     open.type="button";open.className="ss-map-report-open";
-    open.textContent="▤ Relatório de Cobertura";open.title="Consultar e exportar cobertura por município";
+    open.textContent="▤ Relatório de Cobertura";
+    open.title="Consultar a cobertura e gerar relatórios Gerencial, Técnico ou Excel";
     open.disabled=true;controls.prepend(open);
     layer.addEventListener("ss-map-data-ready",e=>{data.cities=e.detail?.cities||[];open.disabled=false});
     layer.addEventListener("ss-map-filter-change",e=>{data.modes=e.detail?.modes||[]});
@@ -13416,70 +13462,167 @@ window.ssMapOpen=function(host){
       data.selected=e.detail?.key||"";data.selectedName=e.detail?.name||"";
     });
     open.addEventListener("click",()=>{
-      if(!data.cities){return}
+      if(!data.cities)return;
       layer.querySelector(".ss-map-report-backdrop")?.remove();
       const overlay=document.createElement("div");overlay.className="ss-map-report-backdrop";
-      overlay.innerHTML='<section class="ss-map-report-window" role="dialog" aria-modal="true" aria-label="Relatório de Cobertura dos Sistemas">'+
-        '<div class="ss-map-report-head"><div><h2>Relatório de Cobertura</h2><p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p></div>'+
-        '<button type="button" class="ss-map-report-close" aria-label="Fechar relatório">✕</button></div>'+
-        '<div class="ss-map-report-controls"><label>Abrangência <select data-coverage-scope>'+
-          '<option value="all">Todos os municípios do Ceará</option>'+
-          '<option value="covered">Somente municípios com sistemas</option>'+
-          '<option value="filtered">Aplicar combinação de filtros do mapa</option>'+
-          '<option value="selected">Somente município selecionado</option>'+
-        '</select></label><div class="ss-map-report-actions2"><button type="button" data-report-excel class="excel">↓ Exportar Excel (.xlsx)</button>'+
-        '<button type="button" data-report-pdf class="pdf">▤ Gerar PDF</button></div></div>'+
-        '<div class="ss-map-report-message" data-report-feedback aria-live="polite"></div>'+
-        '<div class="ss-map-report-metrics" data-report-metrics></div>'+
-        '<div class="ss-map-report-table-wrap"><table class="ss-map-report-table"><thead><tr>'+
-        '<th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th><th>Online</th>'+
-        '</tr></thead><tbody data-report-preview></tbody></table></div>'+
-        '<div class="ss-map-report-footer"><span data-report-count></span>'+
-        '<span>Excel: 3 abas. No PDF, escolha “Salvar como PDF” e desative “Cabeçalhos e rodapés” na janela de impressão.</span></div></section>';
+      overlay.innerHTML=
+        '<section class="ss-map-report-window" role="dialog" aria-modal="true" aria-label="Relatório de Cobertura dos Sistemas">'+
+          '<header class="ss-map-report-head"><div class="ss-map-report-title-group">'+
+            '<span class="ss-map-report-title-icon" aria-hidden="true">▤</span><div>'+
+            '<h2>Relatório de Cobertura</h2>'+
+            '<p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p>'+
+            '</div></div>'+
+            '<button type="button" class="ss-map-report-close" aria-label="Fechar relatório">✕</button>'+
+          '</header>'+
+          '<div class="ss-map-report-toolbar">'+
+            '<div class="ss-map-report-formats" role="group" aria-label="Formato do PDF">'+
+              '<button type="button" data-report-mode="gerencial" class="selected" aria-pressed="true">▥ &nbsp; Gerencial</button>'+
+              '<button type="button" data-report-mode="tecnico" aria-pressed="false">⚙ &nbsp; Técnico</button>'+
+            '</div>'+
+            '<div class="ss-map-report-actions2">'+
+              '<button type="button" data-report-excel class="excel">↓ &nbsp; Exportar Excel (.xlsx)</button>'+
+              '<button type="button" data-report-pdf class="pdf">▤ &nbsp; Gerar PDF</button>'+
+            '</div>'+
+          '</div>'+
+          '<div class="ss-map-report-layout">'+
+            '<div class="ss-map-report-left">'+
+              '<div class="ss-map-report-controls"><label>Abrangência do relatório'+
+                '<select data-coverage-scope>'+
+                  '<option value="covered" selected>Somente municípios com sistemas</option>'+
+                  '<option value="all">Todos os municípios do Ceará</option>'+
+                  '<option value="filtered">Aplicar combinação de filtros do mapa</option>'+
+                  '<option value="selected">Somente município selecionado</option>'+
+                '</select></label></div>'+
+              '<div class="ss-map-report-message" data-report-feedback aria-live="polite"></div>'+
+              '<div class="ss-map-report-metrics" data-report-metrics></div>'+
+              '<div class="ss-map-report-section"><div><h3 data-report-left-title>Cobertura Municipal</h3>'+
+                  '<p data-report-left-subtitle>Visão consolidada da cobertura por município e sistema.</p></div>'+
+                '<span class="ss-map-report-short-count" data-report-count></span></div>'+
+              '<div class="ss-map-report-table-wrap"><table class="ss-map-report-table">'+
+                '<thead data-report-thead></thead><tbody data-report-preview></tbody>'+
+              '</table></div>'+
+              '<div class="ss-map-report-cards">'+
+                '<div data-report-card="gerencial" class="selected"><strong>▥ &nbsp; Relatório Gerencial</strong>'+
+                  '<span>PDF resumido: indicadores e cobertura por município, sem repetir todos os ambientes.</span></div>'+
+                '<div data-report-card="tecnico"><strong>⚙ &nbsp; Relatório Técnico</strong>'+
+                  '<span>PDF detalhado: todas as entidades, URLs e últimas verificações registradas.</span></div>'+
+              '</div>'+
+              '<div class="ss-map-report-footer"><span>O Excel permanece completo com três abas: Resumo, Cobertura Municipal e Ambientes.</span></div>'+
+            '</div>'+
+            '<aside class="ss-map-report-preview">'+
+              '<div class="ss-map-report-preview-head"><div>▤ &nbsp; <strong data-report-preview-title>Prévia do PDF (Gerencial)</strong></div>'+
+                '<span>Prévia ilustrativa</span></div>'+
+              '<div class="ss-map-report-paper-wrap"><div class="ss-map-report-paper" data-report-paper></div></div>'+
+              '<div class="ss-map-report-preview-foot">A4 horizontal na impressão · A quantidade de páginas varia conforme a abrangência e as configurações do navegador.</div>'+
+            '</aside>'+
+          '</div>'+
+        '</section>';
       layer.append(overlay);
-      const choose=overlay.querySelector("[data-coverage-scope]");
+      let mode="gerencial";
+      const scope=overlay.querySelector("[data-coverage-scope]");
       const msg=overlay.querySelector("[data-report-feedback]");
-      const result=()=>rowsFor(data,choose.value);
-      function render(){
-        const cities=result(),stats=summary(cities);
-        overlay.querySelector("[data-report-metrics]").innerHTML=
-          [["Municípios",stats.municipios],["Atendidos",stats.covered],
-           ["Sem cadastro",stats.missing],["Ambientes",stats.environments],
-           ["Online na última leitura",stats.online]].map(([label,value])=>
-             '<div><b>'+value+'</b><span>'+label+'</span></div>').join("");
-        const lines=cities.slice(0,18).map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.code||"")+'</td>'+
-          SYS.map(([m])=>'<td>'+(c.systems[m]?.length?"✓":"—")+'</td>').join("")+
-          '<td>'+nEnvs(c)+'</td><td>'+nOnline(c)+'</td></tr>').join("");
-        overlay.querySelector("[data-report-preview]").innerHTML=lines||
-          '<tr><td colspan="7">Nenhum município encontrado para este recorte.</td></tr>';
-        overlay.querySelector("[data-report-count]").textContent=
-          'Prévia: '+Math.min(cities.length,18)+' de '+cities.length+' municípios (exportação completa).';
-        const hasFilters=data.modes.length>0;
-        msg.textContent=choose.value==="filtered"&&!hasFilters?
-          'Nenhum filtro ativo no mapa. Neste recorte serão incluídos todos os municípios com sistema cadastrado.':
-          choose.value==="selected"?'Município: '+(data.selectedName||"não selecionado"):
-          'Relatório atualizado com a situação dos cadastros disponíveis nesta sessão.';
+      const byScope=()=>rowsFor(data,scope.value);
+      const formatLabel=()=>mode==="gerencial"?"Gerencial":"Técnico";
+      const formatBtn=[...overlay.querySelectorAll("[data-report-mode]")];
+      function paperPreview(cities,t){
+        const selected=cities.slice(0,7);
+        const display=mode==="tecnico"?records(cities).slice(0,7):[];
+        const cover=Math.round((data.cities?.length?100*t.covered/data.cities.length:0)*10)/10;
+        const coverageRows=selected.map(c=>'<tr><td>'+esc(c.name)+'</td>'+
+          SYS.map(([m])=>'<td class="center">'+(c.systems[m]?.length?"✓":"—")+'</td>').join("")+
+          '<td class="center">'+nEnvs(c)+'</td></tr>').join("");
+        const technicalRows=display.map(r=>'<tr><td>'+esc(r.municipio)+'</td>'+
+          '<td>'+esc(r.sistema)+'</td><td>'+esc(r.entidade)+'</td><td>'+esc(r.situacao)+'</td></tr>').join("");
+        const metrics=[["Municípios",t.municipios],["Atendidos",t.covered],
+          ["Sem cadastro",t.missing],["Ambientes",t.environments],
+          ["Online",t.online],["Cobertura",cover.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%"]];
+        overlay.querySelector("[data-report-paper]").innerHTML=
+          '<div class="ss-map-paper-brand"><div><span>S&S</span><strong>Monitor Grupo S&S</strong></div><em>CEARÁ · '+esc(now().split(",")[0])+'</em></div>'+
+          '<h3>Relatório de Cobertura</h3><p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p>'+
+          '<div class="ss-map-paper-kicker">'+(mode==="gerencial"?"RESUMO GERENCIAL":"RESUMO TÉCNICO")+'</div>'+
+          '<div class="ss-map-paper-stats">'+metrics.map(([k,v])=>'<div><b>'+esc(v)+'</b><small>'+esc(k)+'</small></div>').join("")+'</div>'+
+          '<div class="ss-map-paper-kicker">'+(mode==="gerencial"?"COBERTURA MUNICIPAL · AMOSTRA":"AMBIENTES · AMOSTRA")+'</div>'+
+          (mode==="gerencial"?
+            '<table><thead><tr><th>Município</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Amb.</th></tr></thead><tbody>'+
+              (coverageRows||'<tr><td colspan="5">Nenhum município no recorte</td></tr>')+'</tbody></table>':
+            '<table><thead><tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>Situação</th></tr></thead><tbody>'+
+              (technicalRows||'<tr><td colspan="4">Nenhum ambiente cadastrado</td></tr>')+'</tbody></table>')+
+          '<div class="ss-map-paper-bottom"><span>Monitor S&S · Visualização ilustrativa</span><strong>GRUPO S&S</strong></div>';
       }
-      choose.onchange=render;render();
+      function render(){
+        const cities=byScope(),t=summary(cities);
+        const statewide=data.cities?.length||184;
+        const coverage=statewide?100*t.covered/statewide:0;
+        const metrics=[["Municípios",t.municipios,"▤"],
+          ["Atendidos",t.covered,"✓"],["Sem cadastro",t.missing,"×"],
+          ["Ambientes",t.environments,"◈"],["Online",t.online,"◉"],
+          ["Cobertura CE",coverage.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%","◷"]];
+        overlay.querySelector("[data-report-metrics]").innerHTML=metrics.map(([label,value,ico])=>
+          '<div class="ss-map-report-metric"><span class="glyph">'+ico+'</span>'+
+          '<b>'+esc(value)+'</b><span>'+esc(label)+'</span></div>').join("");
+        const title=overlay.querySelector("[data-report-left-title]");
+        const subtitle=overlay.querySelector("[data-report-left-subtitle]");
+        const thead=overlay.querySelector("[data-report-thead]");
+        const tbody=overlay.querySelector("[data-report-preview]");
+        if(mode==="gerencial"){
+          title.textContent="Cobertura Municipal";
+          subtitle.textContent="Visão consolidada da cobertura por município e sistema.";
+          thead.innerHTML='<tr><th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th></tr>';
+          tbody.innerHTML=cities.slice(0,18).map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.code||"")+'</td>'+
+            SYS.map(([key])=>'<td class="center">'+(c.systems[key]?.length?"✓":"—")+'</td>').join("")+
+            '<td class="center">'+nEnvs(c)+'</td></tr>').join("")||
+            '<tr><td colspan="6">Nenhum município encontrado no recorte.</td></tr>';
+          overlay.querySelector("[data-report-count]").textContent=
+            Math.min(18,cities.length)+" / "+cities.length+" municípios";
+        }else{
+          title.textContent="Detalhamento dos Ambientes";
+          subtitle.textContent="Entidades e sistemas cadastrados, conforme a última verificação.";
+          thead.innerHTML='<tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>Status</th></tr>';
+          const details=records(cities);
+          tbody.innerHTML=details.slice(0,18).map(r=>'<tr><td>'+esc(r.municipio)+'</td><td>'+esc(r.sistema)+'</td>'+
+            '<td title="'+esc(r.entidade)+'">'+esc(r.entidade)+'</td><td>'+esc(r.situacao)+'</td></tr>').join("")||
+            '<tr><td colspan="4">Nenhum ambiente encontrado no recorte.</td></tr>';
+          overlay.querySelector("[data-report-count]").textContent=
+            Math.min(18,details.length)+" / "+details.length+" ambientes";
+        }
+        const hasFilters=data.modes.length>0;
+        msg.textContent=scope.value==="filtered"&&!hasFilters?
+          "Nenhum filtro marcado no mapa; serão exibidos todos os municípios atendidos.":
+          scope.value==="selected"?"Município selecionado: "+(data.selectedName||"nenhum"):
+          "Prévia atualizada com os cadastros disponíveis nesta sessão.";
+        overlay.querySelector("[data-report-preview-title]").textContent="Prévia do PDF ("+formatLabel()+")";
+        paperPreview(cities,t);
+        formatBtn.forEach(btn=>{
+          const selected=btn.dataset.reportMode===mode;
+          btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected));
+        });
+        overlay.querySelectorAll("[data-report-card]").forEach(card=>
+          card.classList.toggle("selected",card.dataset.reportCard===mode));
+      }
+      formatBtn.forEach(btn=>btn.onclick=()=>{mode=btn.dataset.reportMode;render()});
+      overlay.querySelectorAll("[data-report-card]").forEach(card=>
+        card.addEventListener("click",()=>{mode=card.dataset.reportCard;render()}));
+      scope.onchange=render;
       overlay.querySelector(".ss-map-report-close").onclick=()=>overlay.remove();
       overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
       overlay.querySelector("[data-report-excel]").onclick=()=>{
         try{
-          const cities=result();
-          if(!cities.length){msg.textContent="Não há municípios neste recorte.";return}
-          download(makeXlsx(cities,choose.value),"cobertura_sistemas_CE_"+dateKey()+".xlsx");
-          msg.textContent="Planilha Excel gerada com resumo, cobertura e ambientes.";
-        }catch(err){console.error(err);msg.textContent="Não foi possível gerar o Excel: "+String(err.message||err)}
+          const cities=byScope();
+          if(!cities.length){msg.textContent="Nenhum município encontrado no recorte.";return}
+          download(makeXlsx(cities,scope.value),"cobertura_sistemas_CE_"+dateKey()+".xlsx");
+          msg.textContent="Excel completo exportado: Resumo, Cobertura Municipal e Ambientes.";
+        }catch(err){console.error(err);msg.textContent="Falha ao exportar Excel: "+String(err.message||err)}
       };
       overlay.querySelector("[data-report-pdf]").onclick=()=>{
         try{
-          const cities=result();
-          if(!cities.length){msg.textContent="Não há municípios neste recorte.";return}
-          printPdf(cities,choose.value);
-          msg.textContent="Na janela de impressão, escolha a opção Salvar como PDF.";
-        }catch(err){console.error(err);msg.textContent=String(err.message||err)}
+          const cities=byScope();
+          if(!cities.length){msg.textContent="Nenhum município encontrado no recorte.";return}
+          printPdf(cities,scope.value,mode,data.cities.length);
+          msg.textContent="Na janela de impressão, escolha Salvar como PDF e desative cabeçalhos/rodapés.";
+        }catch(err){console.error(err);msg.textContent="Falha ao gerar PDF: "+String(err.message||err)}
       };
       overlay.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();overlay.remove()}});
+      render();
       overlay.querySelector(".ss-map-report-close").focus();
     });
   }
