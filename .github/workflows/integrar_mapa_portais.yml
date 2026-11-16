@@ -4,6 +4,8 @@ on:
     paths:
       - "scripts/integrar_mapa_portais.py"
       - "scripts/mapa_sistemas_embed.js"
+      - "scripts/mapa_sistemas_enhance.js"
+      - "scripts/mapa_sistemas_enhance.css"
       - ".github/workflows/integrar_mapa_portais.yml"
   workflow_dispatch:
 permissions:
@@ -18,7 +20,9 @@ jobs:
           ref: main
           persist-credentials: true
       - name: Validar sintaxe do componente JavaScript
-        run: node --check scripts/mapa_sistemas_embed.js
+        run: |
+          node --check scripts/mapa_sistemas_embed.js
+          node --check scripts/mapa_sistemas_enhance.js
       - name: Aplicar mapa no painel e validar Python
         run: python scripts/integrar_mapa_portais.py
       - name: Publicar ajuste restrito ao main.py
