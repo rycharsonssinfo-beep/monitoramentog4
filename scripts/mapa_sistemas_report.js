@@ -297,7 +297,8 @@
     controls.append(back);
     const open=document.createElement("button");
     open.type="button";open.className="ss-map-report-open";
-    open.textContent="▤ Relatório de Cobertura";open.title="Consultar e exportar cobertura por município";
+    open.textContent="▤ Relatório de Cobertura";
+    open.title="Consultar a cobertura e gerar relatórios Gerencial, Técnico ou Excel";
     open.disabled=true;controls.prepend(open);
     layer.addEventListener("ss-map-data-ready",e=>{data.cities=e.detail?.cities||[];open.disabled=false});
     layer.addEventListener("ss-map-filter-change",e=>{data.modes=e.detail?.modes||[]});
@@ -305,70 +306,167 @@
       data.selected=e.detail?.key||"";data.selectedName=e.detail?.name||"";
     });
     open.addEventListener("click",()=>{
-      if(!data.cities){return}
+      if(!data.cities)return;
       layer.querySelector(".ss-map-report-backdrop")?.remove();
       const overlay=document.createElement("div");overlay.className="ss-map-report-backdrop";
-      overlay.innerHTML='<section class="ss-map-report-window" role="dialog" aria-modal="true" aria-label="Relatório de Cobertura dos Sistemas">'+
-        '<div class="ss-map-report-head"><div><h2>Relatório de Cobertura</h2><p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p></div>'+
-        '<button type="button" class="ss-map-report-close" aria-label="Fechar relatório">✕</button></div>'+
-        '<div class="ss-map-report-controls"><label>Abrangência <select data-coverage-scope>'+
-          '<option value="all">Todos os municípios do Ceará</option>'+
-          '<option value="covered">Somente municípios com sistemas</option>'+
-          '<option value="filtered">Aplicar combinação de filtros do mapa</option>'+
-          '<option value="selected">Somente município selecionado</option>'+
-        '</select></label><div class="ss-map-report-actions2"><button type="button" data-report-excel class="excel">↓ Exportar Excel (.xlsx)</button>'+
-        '<button type="button" data-report-pdf class="pdf">▤ Gerar PDF</button></div></div>'+
-        '<div class="ss-map-report-message" data-report-feedback aria-live="polite"></div>'+
-        '<div class="ss-map-report-metrics" data-report-metrics></div>'+
-        '<div class="ss-map-report-table-wrap"><table class="ss-map-report-table"><thead><tr>'+
-        '<th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th><th>Online</th>'+
-        '</tr></thead><tbody data-report-preview></tbody></table></div>'+
-        '<div class="ss-map-report-footer"><span data-report-count></span>'+
-        '<span>Excel: 3 abas. No PDF, escolha “Salvar como PDF” e desative “Cabeçalhos e rodapés” na janela de impressão.</span></div></section>';
+      overlay.innerHTML=
+        '<section class="ss-map-report-window" role="dialog" aria-modal="true" aria-label="Relatório de Cobertura dos Sistemas">'+
+          '<header class="ss-map-report-head"><div class="ss-map-report-title-group">'+
+            '<span class="ss-map-report-title-icon" aria-hidden="true">▤</span><div>'+
+            '<h2>Relatório de Cobertura</h2>'+
+            '<p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p>'+
+            '</div></div>'+
+            '<button type="button" class="ss-map-report-close" aria-label="Fechar relatório">✕</button>'+
+          '</header>'+
+          '<div class="ss-map-report-toolbar">'+
+            '<div class="ss-map-report-formats" role="group" aria-label="Formato do PDF">'+
+              '<button type="button" data-report-mode="gerencial" class="selected" aria-pressed="true">▥ &nbsp; Gerencial</button>'+
+              '<button type="button" data-report-mode="tecnico" aria-pressed="false">⚙ &nbsp; Técnico</button>'+
+            '</div>'+
+            '<div class="ss-map-report-actions2">'+
+              '<button type="button" data-report-excel class="excel">↓ &nbsp; Exportar Excel (.xlsx)</button>'+
+              '<button type="button" data-report-pdf class="pdf">▤ &nbsp; Gerar PDF</button>'+
+            '</div>'+
+          '</div>'+
+          '<div class="ss-map-report-layout">'+
+            '<div class="ss-map-report-left">'+
+              '<div class="ss-map-report-controls"><label>Abrangência do relatório'+
+                '<select data-coverage-scope>'+
+                  '<option value="covered" selected>Somente municípios com sistemas</option>'+
+                  '<option value="all">Todos os municípios do Ceará</option>'+
+                  '<option value="filtered">Aplicar combinação de filtros do mapa</option>'+
+                  '<option value="selected">Somente município selecionado</option>'+
+                '</select></label></div>'+
+              '<div class="ss-map-report-message" data-report-feedback aria-live="polite"></div>'+
+              '<div class="ss-map-report-metrics" data-report-metrics></div>'+
+              '<div class="ss-map-report-section"><div><h3 data-report-left-title>Cobertura Municipal</h3>'+
+                  '<p data-report-left-subtitle>Visão consolidada da cobertura por município e sistema.</p></div>'+
+                '<span class="ss-map-report-short-count" data-report-count></span></div>'+
+              '<div class="ss-map-report-table-wrap"><table class="ss-map-report-table">'+
+                '<thead data-report-thead></thead><tbody data-report-preview></tbody>'+
+              '</table></div>'+
+              '<div class="ss-map-report-cards">'+
+                '<div data-report-card="gerencial" class="selected"><strong>▥ &nbsp; Relatório Gerencial</strong>'+
+                  '<span>PDF resumido: indicadores e cobertura por município, sem repetir todos os ambientes.</span></div>'+
+                '<div data-report-card="tecnico"><strong>⚙ &nbsp; Relatório Técnico</strong>'+
+                  '<span>PDF detalhado: todas as entidades, URLs e últimas verificações registradas.</span></div>'+
+              '</div>'+
+              '<div class="ss-map-report-footer"><span>O Excel permanece completo com três abas: Resumo, Cobertura Municipal e Ambientes.</span></div>'+
+            '</div>'+
+            '<aside class="ss-map-report-preview">'+
+              '<div class="ss-map-report-preview-head"><div>▤ &nbsp; <strong data-report-preview-title>Prévia do PDF (Gerencial)</strong></div>'+
+                '<span>Prévia ilustrativa</span></div>'+
+              '<div class="ss-map-report-paper-wrap"><div class="ss-map-report-paper" data-report-paper></div></div>'+
+              '<div class="ss-map-report-preview-foot">A4 horizontal na impressão · A quantidade de páginas varia conforme a abrangência e as configurações do navegador.</div>'+
+            '</aside>'+
+          '</div>'+
+        '</section>';
       layer.append(overlay);
-      const choose=overlay.querySelector("[data-coverage-scope]");
+      let mode="gerencial";
+      const scope=overlay.querySelector("[data-coverage-scope]");
       const msg=overlay.querySelector("[data-report-feedback]");
-      const result=()=>rowsFor(data,choose.value);
-      function render(){
-        const cities=result(),stats=summary(cities);
-        overlay.querySelector("[data-report-metrics]").innerHTML=
-          [["Municípios",stats.municipios],["Atendidos",stats.covered],
-           ["Sem cadastro",stats.missing],["Ambientes",stats.environments],
-           ["Online na última leitura",stats.online]].map(([label,value])=>
-             '<div><b>'+value+'</b><span>'+label+'</span></div>').join("");
-        const lines=cities.slice(0,18).map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.code||"")+'</td>'+
-          SYS.map(([m])=>'<td>'+(c.systems[m]?.length?"✓":"—")+'</td>').join("")+
-          '<td>'+nEnvs(c)+'</td><td>'+nOnline(c)+'</td></tr>').join("");
-        overlay.querySelector("[data-report-preview]").innerHTML=lines||
-          '<tr><td colspan="7">Nenhum município encontrado para este recorte.</td></tr>';
-        overlay.querySelector("[data-report-count]").textContent=
-          'Prévia: '+Math.min(cities.length,18)+' de '+cities.length+' municípios (exportação completa).';
-        const hasFilters=data.modes.length>0;
-        msg.textContent=choose.value==="filtered"&&!hasFilters?
-          'Nenhum filtro ativo no mapa. Neste recorte serão incluídos todos os municípios com sistema cadastrado.':
-          choose.value==="selected"?'Município: '+(data.selectedName||"não selecionado"):
-          'Relatório atualizado com a situação dos cadastros disponíveis nesta sessão.';
+      const byScope=()=>rowsFor(data,scope.value);
+      const formatLabel=()=>mode==="gerencial"?"Gerencial":"Técnico";
+      const formatBtn=[...overlay.querySelectorAll("[data-report-mode]")];
+      function paperPreview(cities,t){
+        const selected=cities.slice(0,7);
+        const display=mode==="tecnico"?records(cities).slice(0,7):[];
+        const cover=Math.round((data.cities?.length?100*t.covered/data.cities.length:0)*10)/10;
+        const coverageRows=selected.map(c=>'<tr><td>'+esc(c.name)+'</td>'+
+          SYS.map(([m])=>'<td class="center">'+(c.systems[m]?.length?"✓":"—")+'</td>').join("")+
+          '<td class="center">'+nEnvs(c)+'</td></tr>').join("");
+        const technicalRows=display.map(r=>'<tr><td>'+esc(r.municipio)+'</td>'+
+          '<td>'+esc(r.sistema)+'</td><td>'+esc(r.entidade)+'</td><td>'+esc(r.situacao)+'</td></tr>').join("");
+        const metrics=[["Municípios",t.municipios],["Atendidos",t.covered],
+          ["Sem cadastro",t.missing],["Ambientes",t.environments],
+          ["Online",t.online],["Cobertura",cover.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%"]];
+        overlay.querySelector("[data-report-paper]").innerHTML=
+          '<div class="ss-map-paper-brand"><div><span>S&S</span><strong>Monitor Grupo S&S</strong></div><em>CEARÁ · '+esc(now().split(",")[0])+'</em></div>'+
+          '<h3>Relatório de Cobertura</h3><p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p>'+
+          '<div class="ss-map-paper-kicker">'+(mode==="gerencial"?"RESUMO GERENCIAL":"RESUMO TÉCNICO")+'</div>'+
+          '<div class="ss-map-paper-stats">'+metrics.map(([k,v])=>'<div><b>'+esc(v)+'</b><small>'+esc(k)+'</small></div>').join("")+'</div>'+
+          '<div class="ss-map-paper-kicker">'+(mode==="gerencial"?"COBERTURA MUNICIPAL · AMOSTRA":"AMBIENTES · AMOSTRA")+'</div>'+
+          (mode==="gerencial"?
+            '<table><thead><tr><th>Município</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Amb.</th></tr></thead><tbody>'+
+              (coverageRows||'<tr><td colspan="5">Nenhum município no recorte</td></tr>')+'</tbody></table>':
+            '<table><thead><tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>Situação</th></tr></thead><tbody>'+
+              (technicalRows||'<tr><td colspan="4">Nenhum ambiente cadastrado</td></tr>')+'</tbody></table>')+
+          '<div class="ss-map-paper-bottom"><span>Monitor S&S · Visualização ilustrativa</span><strong>GRUPO S&S</strong></div>';
       }
-      choose.onchange=render;render();
+      function render(){
+        const cities=byScope(),t=summary(cities);
+        const statewide=data.cities?.length||184;
+        const coverage=statewide?100*t.covered/statewide:0;
+        const metrics=[["Municípios",t.municipios,"▤"],
+          ["Atendidos",t.covered,"✓"],["Sem cadastro",t.missing,"×"],
+          ["Ambientes",t.environments,"◈"],["Online",t.online,"◉"],
+          ["Cobertura CE",coverage.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%","◷"]];
+        overlay.querySelector("[data-report-metrics]").innerHTML=metrics.map(([label,value,ico])=>
+          '<div class="ss-map-report-metric"><span class="glyph">'+ico+'</span>'+
+          '<b>'+esc(value)+'</b><span>'+esc(label)+'</span></div>').join("");
+        const title=overlay.querySelector("[data-report-left-title]");
+        const subtitle=overlay.querySelector("[data-report-left-subtitle]");
+        const thead=overlay.querySelector("[data-report-thead]");
+        const tbody=overlay.querySelector("[data-report-preview]");
+        if(mode==="gerencial"){
+          title.textContent="Cobertura Municipal";
+          subtitle.textContent="Visão consolidada da cobertura por município e sistema.";
+          thead.innerHTML='<tr><th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th></tr>';
+          tbody.innerHTML=cities.slice(0,18).map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.code||"")+'</td>'+
+            SYS.map(([key])=>'<td class="center">'+(c.systems[key]?.length?"✓":"—")+'</td>').join("")+
+            '<td class="center">'+nEnvs(c)+'</td></tr>').join("")||
+            '<tr><td colspan="6">Nenhum município encontrado no recorte.</td></tr>';
+          overlay.querySelector("[data-report-count]").textContent=
+            Math.min(18,cities.length)+" / "+cities.length+" municípios";
+        }else{
+          title.textContent="Detalhamento dos Ambientes";
+          subtitle.textContent="Entidades e sistemas cadastrados, conforme a última verificação.";
+          thead.innerHTML='<tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>Status</th></tr>';
+          const details=records(cities);
+          tbody.innerHTML=details.slice(0,18).map(r=>'<tr><td>'+esc(r.municipio)+'</td><td>'+esc(r.sistema)+'</td>'+
+            '<td title="'+esc(r.entidade)+'">'+esc(r.entidade)+'</td><td>'+esc(r.situacao)+'</td></tr>').join("")||
+            '<tr><td colspan="4">Nenhum ambiente encontrado no recorte.</td></tr>';
+          overlay.querySelector("[data-report-count]").textContent=
+            Math.min(18,details.length)+" / "+details.length+" ambientes";
+        }
+        const hasFilters=data.modes.length>0;
+        msg.textContent=scope.value==="filtered"&&!hasFilters?
+          "Nenhum filtro marcado no mapa; serão exibidos todos os municípios atendidos.":
+          scope.value==="selected"?"Município selecionado: "+(data.selectedName||"nenhum"):
+          "Prévia atualizada com os cadastros disponíveis nesta sessão.";
+        overlay.querySelector("[data-report-preview-title]").textContent="Prévia do PDF ("+formatLabel()+")";
+        paperPreview(cities,t);
+        formatBtn.forEach(btn=>{
+          const selected=btn.dataset.reportMode===mode;
+          btn.classList.toggle("selected",selected);btn.setAttribute("aria-pressed",String(selected));
+        });
+        overlay.querySelectorAll("[data-report-card]").forEach(card=>
+          card.classList.toggle("selected",card.dataset.reportCard===mode));
+      }
+      formatBtn.forEach(btn=>btn.onclick=()=>{mode=btn.dataset.reportMode;render()});
+      overlay.querySelectorAll("[data-report-card]").forEach(card=>
+        card.addEventListener("click",()=>{mode=card.dataset.reportCard;render()}));
+      scope.onchange=render;
       overlay.querySelector(".ss-map-report-close").onclick=()=>overlay.remove();
       overlay.addEventListener("click",e=>{if(e.target===overlay)overlay.remove()});
       overlay.querySelector("[data-report-excel]").onclick=()=>{
         try{
-          const cities=result();
-          if(!cities.length){msg.textContent="Não há municípios neste recorte.";return}
-          download(makeXlsx(cities,choose.value),"cobertura_sistemas_CE_"+dateKey()+".xlsx");
-          msg.textContent="Planilha Excel gerada com resumo, cobertura e ambientes.";
-        }catch(err){console.error(err);msg.textContent="Não foi possível gerar o Excel: "+String(err.message||err)}
+          const cities=byScope();
+          if(!cities.length){msg.textContent="Nenhum município encontrado no recorte.";return}
+          download(makeXlsx(cities,scope.value),"cobertura_sistemas_CE_"+dateKey()+".xlsx");
+          msg.textContent="Excel completo exportado: Resumo, Cobertura Municipal e Ambientes.";
+        }catch(err){console.error(err);msg.textContent="Falha ao exportar Excel: "+String(err.message||err)}
       };
       overlay.querySelector("[data-report-pdf]").onclick=()=>{
         try{
-          const cities=result();
-          if(!cities.length){msg.textContent="Não há municípios neste recorte.";return}
-          printPdf(cities,choose.value);
-          msg.textContent="Na janela de impressão, escolha a opção Salvar como PDF.";
-        }catch(err){console.error(err);msg.textContent=String(err.message||err)}
+          const cities=byScope();
+          if(!cities.length){msg.textContent="Nenhum município encontrado no recorte.";return}
+          printPdf(cities,scope.value,mode,data.cities.length);
+          msg.textContent="Na janela de impressão, escolha Salvar como PDF e desative cabeçalhos/rodapés.";
+        }catch(err){console.error(err);msg.textContent="Falha ao gerar PDF: "+String(err.message||err)}
       };
       overlay.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();overlay.remove()}});
+      render();
       overlay.querySelector(".ss-map-report-close").focus();
     });
   }
