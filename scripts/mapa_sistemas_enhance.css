@@ -1,0 +1,25 @@
+/* Mapa de Sistemas S&S — melhoria de identificação e fotografia v2.1 */
+.ss-map-name-controls{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:5px 3px 12px;flex-wrap:wrap}
+.ss-map-name-controls label{display:inline-flex!important;gap:7px;align-items:center;margin:0!important;padding:3px 5px!important;font-size:11px!important;color:#d9edff!important;min-height:0!important}
+.ss-map-name-controls input{accent-color:#35a6f2}
+.ss-map-name-controls span{display:flex;gap:5px}
+.ss-map-name-controls button{min-width:30px;height:29px;background:#16466f;border:1px solid #5b88b1;border-radius:7px;color:white;font-size:17px;cursor:pointer}
+.ss-map-name-controls button:hover{background:#236a9c}
+.ss-map-svg-wrapper{position:relative;border-radius:12px;overflow:hidden}
+.ss-map-hover-name{position:absolute;left:0;top:0;z-index:5;pointer-events:none;background:#061c34f5;border:1px solid #70b8ee;border-radius:9px;padding:9px 12px;box-shadow:0 9px 26px #001023a8;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;opacity:0;transition:opacity .1s}
+.ss-map-hover-name.visible{opacity:1}
+.ss-map-svg text.ss-map-municipio-label{font-size:10px;font-weight:800;fill:#fff;stroke:#08213b;stroke-width:3.1px;paint-order:stroke fill;stroke-linejoin:round;text-anchor:middle;pointer-events:none}
+.ss-map-svg text.ss-map-municipio-label.active{font-size:13px;stroke:#06345d;stroke-width:4px}
+.ss-map-svg text.ss-map-municipio-label.all{font-size:7px;stroke-width:2px}
+.ss-map-city-banner{position:relative;width:100%;height:168px;background:radial-gradient(circle at 85% 15%,#3683b2,#15446d 55%,#0b2a4d);overflow:hidden;border-bottom:1px solid #477ba4}
+.ss-map-city-banner>img{display:block;width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:center 47%;filter:saturate(1.1) contrast(1.06)}
+.ss-map-city-banner:after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(0deg,#07182ee8 0%,#0a274650 80%);pointer-events:none}
+.ss-map-city-banner-overlay{position:absolute;left:19px;right:15px;bottom:17px;z-index:2}
+.ss-map-city-banner-overlay h2{margin:0 0 6px;color:#fff;font-size:25px;font-weight:850;letter-spacing:-.55px;line-height:1.15;text-shadow:0 3px 12px #051c39}
+.ss-map-city-banner-overlay h2:before{content:"●";color:#70c9ff;font-size:13px;margin-right:9px;vertical-align:3px}
+.ss-map-city-banner-overlay p{margin:0;font-size:11px;color:#d8ebfa}
+.ss-map-city-credit{position:absolute;top:8px;right:9px;z-index:3;padding:5px 8px;border-radius:6px;background:#051b33b8;color:white;font-size:9px;text-decoration:none;max-width:85%;text-align:right}
+.ss-map-city-credit:hover{color:#bde8ff;text-decoration:underline}
+.ss-map-detail:has(.ss-map-city-banner)>h3{margin:18px 15px 12px}
+.ss-map-detail:has(.ss-map-city-banner)>.ss-map-info{margin:10px 12px}
+@media(max-width:670px){.ss-map-city-banner{height:150px}.ss-map-name-controls{gap:4px}}
