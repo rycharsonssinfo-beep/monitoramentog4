@@ -8,6 +8,7 @@ on:
       - "scripts/mapa_sistemas_enhance.css"
       - "scripts/mapa_sistemas_report.js"
       - "scripts/mapa_sistemas_report.css"
+      - "scripts/test_mapa_sistemas_report.cjs"
       - ".github/workflows/integrar_mapa_portais.yml"
   workflow_dispatch:
 permissions:
@@ -26,6 +27,8 @@ jobs:
           node --check scripts/mapa_sistemas_embed.js
           node --check scripts/mapa_sistemas_enhance.js
           node --check scripts/mapa_sistemas_report.js
+      - name: Testar exportação XLSX, dados e prévia PDF
+        run: node scripts/test_mapa_sistemas_report.cjs
       - name: Aplicar mapa no painel e validar Python
         run: python scripts/integrar_mapa_portais.py
       - name: Publicar ajuste restrito ao main.py
