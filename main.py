@@ -13365,13 +13365,16 @@ window.ssMapOpen=function(host){
       SYS.map(([m])=>'<td class="center">'+(c.systems[m]?.length?"Sim":"—")+'</td>').join("")+
       '<td class="center">'+nEnvs(c)+'</td></tr>').join("");
     const details=detail.map(r=>'<tr><td>'+esc(r.municipio)+'</td><td>'+esc(r.sistema)+'</td>'+
-      '<td>'+esc(r.entidade)+'</td><td class="url">'+esc(r.url)+'</td>'+
+      '<td>'+esc(r.entidade)+'</td><td class="url">'+
+      ((r.url||"").startsWith("https://")||(r.url||"").startsWith("http://")?
+        '<a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer">'+esc(r.url)+'</a>':
+        esc(r.url))+'</td>'+
       '<td>'+esc(r.situacao)+'</td><td>'+esc(r.ultima)+'</td></tr>').join("");
     const doc='<!doctype html><html lang="pt-br"><head><meta charset="utf-8"/><title>Relatório de Cobertura dos Sistemas</title>'+
       '<style>@page{size:A4 landscape;margin:14mm}*{box-sizing:border-box}body{margin:0;font:10px Arial,sans-serif;color:#18334a}'+
       'header{border-bottom:3px solid #146296;margin-bottom:16px;padding-bottom:12px}h1{font-size:20px;margin:0;color:#123f68}'+
-      '.sub{font-size:10px;color:#50677b;margin-top:7px}.stats{display:flex;flex-wrap:wrap;gap:8px;margin:13px 0 18px}.kpi{border:1px solid #bacddc;border-radius:6px;padding:8px 12px;min-width:130px}.kpi b{display:block;color:#104e7b;font-size:16px}.kpi small{color:#47667e}'+
-      'h2{color:#154f7c;font-size:15px;margin:17px 0 9px;break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th{background:#144d78;color:#fff;text-align:left;padding:7px 6px;font-size:9px}td{padding:5px 6px;border-bottom:1px solid #dde8ef;font-size:9px;overflow-wrap:anywhere}tr:nth-child(even) td{background:#f2f7fb}.center{text-align:center}.url{font-size:8px}'+
+      '.sub{font-size:10px;color:#50677b;margin-top:7px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:12px 0 14px}.kpi{border:1px solid #bacddc;border-radius:6px;padding:7px 11px;min-width:0;break-inside:avoid}.kpi b{display:block;color:#104e7b;font-size:16px}.kpi small{display:block;color:#47667e;margin-top:3px;font-size:9px}'+
+      'h2{color:#154f7c;font-size:15px;margin:14px 0 8px;break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th{background:#144d78;color:#fff;text-align:left;padding:7px 6px;font-size:9px}td{padding:5px 6px;border-bottom:1px solid #dde8ef;font-size:9px;overflow-wrap:anywhere}tr:nth-child(even) td{background:#f2f7fb}.center{text-align:center}.coverage-table td{padding:3px 6px;line-height:1.2}.detail-table td{padding:5px 6px;line-height:1.25}.url{font-size:8px;overflow-wrap:anywhere;word-break:break-word}.url a{color:#17639a;text-decoration:underline;text-underline-offset:2px}'+
       '.note{font-size:9px;color:#47677c;margin:15px 0}.section-break{break-before:page}'+
       '@media screen{body{padding:26px;max-width:1100px;margin:auto;background:white}}@media print{*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>'+
       '<header><h1>RELATÓRIO DE COBERTURA DOS SISTEMAS</h1><div class="sub">Grupo S&S · Ceará · '+esc(scopes[sc])+' · Emitido em '+esc(now())+'</div></header>'+
@@ -13380,9 +13383,9 @@ window.ssMapOpen=function(host){
       summaryRow("Ambientes online",t.online)+summaryRow("Portal",t.portals)+
       summaryRow("Fluxus",t.fluxus)+summaryRow("Veículos",t.vehicles)+'</div>'+
       '<p class="note">Critério: cadastro indica presença do sistema; online corresponde somente à última leitura conhecida. A ausência de cadastro não comprova ausência de contrato.</p>'+
-      '<h2>Cobertura por município</h2><table><thead><tr><th>Município</th><th>IBGE</th><th>Tipos</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th></tr></thead><tbody>'+
+      '<h2>Cobertura por município</h2><table class="coverage-table"><thead><tr><th>Município</th><th>IBGE</th><th>Tipos</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th></tr></thead><tbody>'+
       coverage+'</tbody></table>'+
-      '<h2 class="section-break">Detalhamento dos ambientes cadastrados ('+detail.length+')</h2><table><thead><tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>URL</th><th>Situação</th><th>Última verificação</th></tr></thead><tbody>'+
+      '<h2 class="section-break">Detalhamento dos ambientes cadastrados ('+detail.length+')</h2><table class="detail-table"><thead><tr><th>Município</th><th>Sistema</th><th>Entidade</th><th>URL</th><th>Situação</th><th>Última verificação</th></tr></thead><tbody>'+
       details+'</tbody></table>'+
       '<p class="note">Fonte: cadastros e última verificação obtidos no Monitor de Portais S&S. Documento emitido localmente pelo navegador.</p>'+
       '</body></html>';
@@ -13432,7 +13435,7 @@ window.ssMapOpen=function(host){
         '<th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th><th>Veículos</th><th>Ambientes</th><th>Online</th>'+
         '</tr></thead><tbody data-report-preview></tbody></table></div>'+
         '<div class="ss-map-report-footer"><span data-report-count></span>'+
-        '<span>Excel: 3 abas (resumo, cobertura municipal e ambientes). PDF: selecione “Salvar como PDF” na janela de impressão.</span></div></section>';
+        '<span>Excel: 3 abas. No PDF, escolha “Salvar como PDF” e desative “Cabeçalhos e rodapés” na janela de impressão.</span></div></section>';
       layer.append(overlay);
       const choose=overlay.querySelector("[data-coverage-scope]");
       const msg=overlay.querySelector("[data-report-feedback]");
