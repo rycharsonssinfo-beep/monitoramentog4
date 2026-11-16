@@ -99,6 +99,12 @@
 
   `;
   function statusCity(c){return modes.filter(k=>c.data[k].length).length}
+  function ssMapReadLabel(value){
+    return ({online:"Online na última consulta",offline:"Indisponível na última consulta",
+      stale:"Leitura desatualizada",nao_verificado:"Sem leitura",
+      suspeita_falha:"Falha em verificação",recuperando:"Recuperação em verificação",
+      verificacao_bloqueada:"Verificação bloqueada"})[value]||"Estado não confirmado";
+  }
   async function loadGeo(){
     if(geo)return geo;
     for(const url of urls){
@@ -148,7 +154,12 @@
       const count=c=>statusCity(c);
       layer.querySelector("[data-sm-total]").textContent=cities.length;
       layer.querySelector("[data-sm-covered]").textContent=cities.filter(c=>count(c)).length;
-      modes.forEach(m=>layer.querySelector("[data-sm-"+m+"]").textContent=cities.filter(c=>c.data[m].length).length);
+      modes.forEach(m=>{
+        layer.querySelector("[data-sm-"+m+"]").textContent=cities.filter(c=>c.data[m].length).length;
+        const online=cities.filter(c=>c.data[m].some(row=>row.estado==="online")).length;
+        const stat=layer.querySelector("[data-sm-online-"+m+"]");
+        if(stat)stat.textContent=online+" municípios online na última leitura";
+      });
       layer.querySelector("[data-sm-cities]").innerHTML=cities.map(c=>'<option value="'+portalEscape(c.name)+'"></option>').join("");
       let bounds=[Infinity,Infinity,-Infinity,-Infinity];
       function traverse(coords){
@@ -159,37 +170,102 @@
       cities.forEach(c=>traverse(c.f.geometry?.coordinates));
       const width=bounds[2]-bounds[0],height=bounds[3]-bounds[1];
       if(!Number.isFinite(width)||width<=0||height<=0)throw Error("Malha municipal inválida.");
-      const scale=Math.min(640/width,720/height),offX=(690-scale*width)/2,offY=(760-scale*height)/2;
+      const scale=Math.min(666/width,740/height),offX=(690-scale*width)/2,offY=(760-scale*height)/2;
       const project=p=>[offX+(p[0]-bounds[0])*scale,offY+(bounds[3]-p[1])*scale];
       const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
       svg.setAttribute("viewBox","0 0 690 760");svg.setAttribute("role","img");svg.setAttribute("aria-label","Municípios do Ceará");svg.classList.add("ss-map-svg");area.replaceWith(svg);
-      const paths=new Map();let selected="",filter="todos";
-      function update(){for(const c of cities){const p=paths.get(c.key);if(p){p.setAttribute("fill",filter==="todos"?colors[count(c)]:(c.data[filter].length?"#1679d4":"#8995a8"));p.classList.toggle("picked",selected===c.key)}}}
-      function select(c){
+      const paths=new Map();let selected="",activeModes=new Set();
+      const matches=c=>!activeModes.size||[...activeModes].every(k=>c.data[k].length>0);
+      function update(){
+        let matched=0;
+        for(const c of cities){
+          const p=paths.get(c.key);
+          if(!p)continue;
+          const match=matches(c);
+          if(match&&count(c))matched++;
+          p.setAttribute("fill",match?colors[count(c)]:"#8995a8");
+          p.dataset.ssFiltermatch=match?"1":"0";
+          p.style.opacity=match?"1":"0.53";
+          p.classList.toggle("picked",selected===c.key);
+        }
+        const status=layer.querySelector("[data-sm-filter-count]");
+        if(status)status.textContent=activeModes.size?
+          matched+" municípios com a combinação selecionada":
+          cities.filter(c=>count(c)).length+" municípios atendidos";
+        layer.dispatchEvent(new CustomEvent("ss-map-filter-change",{detail:{modes:[...activeModes]}}));
+      }
+      function select(c,focus=false){
         selected=c.key;update();
         const safe=portalEscape;
-        let html='<div class="ss-map-city">'+safe(c.name)+' — CE</div><div class="ss-map-note">Código IBGE: '+safe(c.code||"não informado")+'</div><h3>Sistemas do Grupo S&S</h3>';
+        let html='<div class="ss-map-city">'+safe(c.name)+' — CE</div><div class="ss-map-note">Código IBGE: '+safe(c.code||"não informado")+'</div><h3>Sistemas cadastrados</h3>';
         for(const mode of modes){
           const rows=c.data[mode];
-          html+='<div class="ss-map-info"><strong>'+labels[mode]+'</strong><span class="ss-map-pill '+(rows.length?"yes":"")+'">'+(rows.length?"Cadastrado":"Não identificado")+'</span>';
-          for(const row of rows){
-            html+='<div class="ss-map-note">'+safe(row.name)+(row.estado==="online"?" • Online":"")+'</div>';
-            if(row.url)html+='<a target="_blank" rel="noopener noreferrer" href="'+safe(row.url)+'">'+safe(row.url)+'</a>';
-          }
-          html+='</div>';
+          const symbol=({portais:"◎",fluxus:"⌘",veiculos:"▣"})[mode];
+          const online=rows.filter(r=>r.estado==="online").length;
+          html+='<section class="ss-map-info ss-map-service ss-map-service-'+mode+'"><div class="ss-map-service-top">'+
+            '<span class="ss-map-service-icon" aria-hidden="true">'+symbol+'</span><strong>'+labels[mode]+'</strong>'+
+            '<span class="ss-map-pill '+(rows.length?"yes":"")+'">'+(rows.length?"Cadastrado":"Não identificado")+'</span></div>';
+          if(!rows.length)html+='<p class="ss-map-empty-service">Nenhum ambiente cadastrado neste município.</p>';
+          rows.forEach(row=>{
+            const tone=row.estado==="online"?"online":row.estado==="offline"?"offline":"unknown";
+            html+='<div class="ss-map-service-entry"><div class="ss-map-entry-name">'+safe(row.name)+'</div>'+
+              '<span class="ss-map-read-status '+tone+'">'+safe(ssMapReadLabel(row.estado))+'</span>';
+            if(row.url){
+              let host="";
+              try{host=new URL(row.url).hostname}catch(_){}
+              html+='<a class="ss-map-service-link" target="_blank" rel="noopener noreferrer" href="'+safe(row.url)+'" title="'+safe(row.url)+'">'+
+                '<span>↗ &nbsp; Acessar sistema</span><small>'+safe(host)+'</small></a>';
+            }
+            html+='</div>';
+          });
+          html+='</section>';
         }
         html+='<p class="ss-map-note">'+count(c)+' tipo(s) de sistema cadastrado(s). Cadastro não confirma disponibilidade em tempo real.</p>';
         layer.querySelector("[data-sm-detail]").innerHTML=html;
+        layer.dispatchEvent(new CustomEvent("ss-map-city-selected",{detail:{key:c.key,name:c.name,focus}}));
       }
       for(const c of cities){
         const d=polyPath(c.f,project);if(!d)continue;
         const p=document.createElementNS("http://www.w3.org/2000/svg","path");
         p.setAttribute("d",d);p.setAttribute("fill",colors[count(c)]);p.setAttribute("fill-rule","evenodd");
         const title=document.createElementNS("http://www.w3.org/2000/svg","title");title.textContent=c.name;p.appendChild(title);
-        p.onclick=()=>select(c);svg.appendChild(p);paths.set(c.key,p);
+        p.onclick=()=>select(c,false);p.dataset.ssCity=c.key;svg.appendChild(p);paths.set(c.key,p);
       }
-      layer.querySelectorAll('[name="ss-map-filter"]').forEach(r=>r.onchange=()=>{filter=r.value;update()});
-      layer.querySelector("[data-sm-search]").onchange=e=>{const c=keyMap.get(norm(e.target.value));if(c)select(c)};
+      const options=[...cities].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR"));
+      const input=layer.querySelector("[data-sm-search]");
+      const feedback=layer.querySelector("[data-sm-search-feedback]");
+      const findCity=value=>{
+        const q=norm(value);
+        if(!q)return null;
+        return keyMap.get(q)||options.find(c=>c.key.startsWith(q))||options.find(c=>c.key.includes(q));
+      };
+      function runSearch(allowPartial=false){
+        const raw=input.value.trim();
+        if(!raw){feedback.textContent="Digite um município para localizar.";return}
+        const key=norm(raw),exact=keyMap.get(key);
+        const city=exact||(allowPartial?findCity(raw):null);
+        if(city){
+          feedback.textContent="Município localizado: "+city.name;
+          select(city,true);
+        }else if(allowPartial)feedback.textContent="Município não encontrado na malha do Ceará.";
+      }
+      input.addEventListener("input",()=>{
+        if(keyMap.has(norm(input.value)))runSearch(false);
+      });
+      input.addEventListener("change",()=>runSearch(true));
+      input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();runSearch(true)}});
+      const checks=[...layer.querySelectorAll("[data-sm-mode]")];
+      function changeFilters(){
+        activeModes=new Set(checks.filter(e=>e.checked).map(e=>e.dataset.smMode));
+        const allBtn=layer.querySelector("[data-sm-all-filter]");
+        if(allBtn)allBtn.classList.toggle("selected",activeModes.size===0);
+        update();
+      }
+      checks.forEach(check=>check.addEventListener("change",changeFilters));
+      layer.querySelector("[data-sm-all-filter]").onclick=()=>{
+        checks.forEach(c=>c.checked=false);changeFilters();
+      };
+      update();
       if(keyMap.has("caucaia"))select(keyMap.get("caucaia"));
     }catch(e){console.error(e);area.textContent="Erro ao carregar o mapa: "+String(e.message||e)}
   }
@@ -201,8 +277,8 @@
     const layer=document.createElement("section");layer.className="ss-map-layer";layer.setAttribute("data-ss-map","1");
     layer.innerHTML=`
     <div class="ss-map-head"><div class="ss-map-head-title"><span class="ss-map-head-icon" aria-hidden="true"><svg viewBox="0 0 32 32" width="31" height="31" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5 12 4l8 3.5L28.5 4v20.5L20 28l-8-3.5L3.5 28z"/><path d="M12 4v20.5M20 7.5V28"/></svg></span><h2>Mapa de Sistemas</h2></div><button type="button" class="ss-map-back" data-sm-back>← Voltar ao monitor</button></div>
-    <div class="ss-map-stats"><div class="ss-map-stat"><b data-sm-total>—</b><span>Municípios CE</span></div><div class="ss-map-stat"><b data-sm-covered>—</b><span>Municípios atendidos</span></div><div class="ss-map-stat"><b data-sm-portais>—</b><span>Portal do Contribuinte</span></div><div class="ss-map-stat"><b data-sm-fluxus>—</b><span>Fluxus</span></div><div class="ss-map-stat"><b data-sm-veiculos>—</b><span>Veículos</span></div></div>
-    <div class="ss-map-grid"><aside class="ss-map-panel"><h3>Filtros</h3><label><input type="radio" name="ss-map-filter" value="todos" checked> Todos os sistemas</label><label><input type="radio" name="ss-map-filter" value="portais"> Portal do Contribuinte</label><label><input type="radio" name="ss-map-filter" value="fluxus"> Fluxus</label><label><input type="radio" name="ss-map-filter" value="veiculos"> Veículos</label><input type="search" data-sm-search list="ss-map-city-options" placeholder="Buscar município..."><datalist id="ss-map-city-options" data-sm-cities></datalist><h3 style="margin-top:24px">Legenda</h3><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#1679d4"></span>3 sistemas</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#15ad79"></span>2 sistemas</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#f5bf33"></span>1 sistema</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#8995a8"></span>Sem registro</div><p class="ss-map-note">As cores representam cadastro, não disponibilidade online.</p></aside><div class="ss-map-panel"><h3>Municípios do Ceará</h3><div data-sm-geo class="ss-map-note">Carregando mapa e sistemas cadastrados...</div></div><aside class="ss-map-panel ss-map-detail" data-sm-detail><h3>Selecione um município</h3></aside></div>`;
+    <div class="ss-map-stats"><div class="ss-map-stat"><b data-sm-total>—</b><span>Municípios CE</span></div><div class="ss-map-stat"><b data-sm-covered>—</b><span>Municípios atendidos</span></div><div class="ss-map-stat" title="Municípios com Portal do Contribuinte cadastrado"><b data-sm-portais>—</b><span>Portal do Contribuinte</span><small data-sm-online-portais>—</small></div><div class="ss-map-stat" title="Municípios com Fluxus cadastrado"><b data-sm-fluxus>—</b><span>Fluxus</span><small data-sm-online-fluxus>—</small></div><div class="ss-map-stat" title="Municípios com Veículos cadastrados; cada município pode ter vários ambientes"><b data-sm-veiculos>—</b><span>Veículos · municípios</span><small data-sm-online-veiculos>—</small></div></div>
+    <div class="ss-map-grid"><aside class="ss-map-panel"><h3>Filtros</h3><button type="button" data-sm-all-filter class="ss-map-all-filter selected">Todos os sistemas</button><p class="ss-map-filter-hint">Selecione um ou mais sistemas. Os municípios destacados precisam ter todos os selecionados.</p><label class="ss-map-check"><input type="checkbox" data-sm-mode="portais"> Portal do Contribuinte</label><label class="ss-map-check"><input type="checkbox" data-sm-mode="fluxus"> Fluxus</label><label class="ss-map-check"><input type="checkbox" data-sm-mode="veiculos"> Veículos</label><div class="ss-map-search-box"><span aria-hidden="true">⌕</span><input type="search" data-sm-search list="ss-map-city-options" autocomplete="off" placeholder="Localizar município..."></div><datalist id="ss-map-city-options" data-sm-cities></datalist><div data-sm-search-feedback class="ss-map-search-feedback">Digite um município para localizar.</div><div class="ss-map-filter-summary" data-sm-filter-count>—</div><h3 style="margin-top:24px">Legenda</h3><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#1679d4"></span>3 tipos de sistema</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#15ad79"></span>2 tipos de sistema</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#f5bf33"></span>1 tipo de sistema</div><div class="ss-map-legend"><span class="ss-map-swatch" style="background:#8995a8"></span>Sem sistema identificado</div><p class="ss-map-note">Cores: quantidade de sistemas cadastrados. Situação online: última consulta do monitor.</p></aside><div class="ss-map-panel"><h3>Municípios do Ceará</h3><div data-sm-geo class="ss-map-note">Carregando mapa e sistemas cadastrados...</div></div><aside class="ss-map-panel ss-map-detail" data-sm-detail><h3>Selecione um município</h3></aside></div>`;
     host.appendChild(layer);layer.querySelector("[data-sm-back]").onclick=()=>layer.remove();populate(layer);
   };
 })();
