@@ -12950,7 +12950,11 @@ function labels(layer,svg){
  parent.replaceChild(wrapper,svg);wrapper.append(svg);
  const tooltip=document.createElement("div");tooltip.className="ss-map-hover-name";wrapper.append(tooltip);
  const controls=document.createElement("div");controls.className="ss-map-name-controls";
- controls.innerHTML='<label><input type="checkbox" data-sm-all-names> Exibir todos os municípios atendidos</label><span><button type="button" data-sm-plus title="Aproximar">+</button><button type="button" data-sm-minus title="Afastar">−</button><button type="button" data-sm-reset title="Restaurar">↺</button></span>';
+ controls.innerHTML='<label><input type="checkbox" data-sm-all-names> Exibir nomes dos municípios atendidos</label>'+
+   '<span class="ss-map-controls-right"><strong class="ss-map-zoom-level" data-sm-zoom-label>100%</strong>'+
+   '<button type="button" data-sm-plus title="Aproximar">+</button> <button type="button" data-sm-minus title="Afastar">−</button>'+
+   '<button type="button" data-sm-reset title="Restaurar">↺</button>'+
+   '<button type="button" data-sm-expand class="ss-map-expand" title="Expandir mapa" aria-pressed="false">⛶ Expandir</button></span>';
  parent.insertBefore(controls,wrapper);
  const labels=[],ns="http://www.w3.org/2000/svg";
  for(const path of [...svg.querySelectorAll("path")]){
@@ -12960,7 +12964,7 @@ function labels(layer,svg){
   const text=document.createElementNS(ns,"text");text.textContent=name;text.classList.add("ss-map-municipio-label");
   text.setAttribute("x",String(box.x+box.width/2));text.setAttribute("y",String(box.y+box.height/2));
   const registered=String(path.getAttribute("fill")||"").toLowerCase()!==noSystemColor;
-  labels.push({text,key:norm(name),registered});
+  labels.push({text,key:norm(name),registered,path});
   path.addEventListener("pointerenter",()=>{tooltip.textContent=name;tooltip.classList.add("visible")});
   path.addEventListener("pointermove",e=>{const rect=wrapper.getBoundingClientRect();tooltip.style.left=Math.max(5,Math.min(rect.width-165,e.clientX-rect.left+13))+"px";tooltip.style.top=Math.max(5,e.clientY-rect.top-40)+"px"});
   path.addEventListener("pointerleave",()=>tooltip.classList.remove("visible"));
@@ -12970,29 +12974,50 @@ function labels(layer,svg){
  function redraw(){
   const title=detail.querySelector(".ss-map-city-banner h2")?.textContent||detail.querySelector(".ss-map-city")?.textContent||"";
   const active=norm(title.replace(/\s+[—-]\s+CE\s*$/,""));
-  // Evita sobreposição na visualização padrão. Ao aproximar, mais nomes cabem.
+  const view=svg.viewBox.baseVal;
+  const scale=690/Math.max(view.width,1);
   const placed=[];
-  const zoom=690/(Number(svg.viewBox.baseVal.width)||690);
-  const candidates=labels.filter(x=>x.registered)
-    .sort((a,b)=>Number(b.key===active)-Number(a.key===active)
-      ||Number(b.text.textContent.length<13)-Number(a.text.textContent.length<13));
-  for(const x of labels){x.text.style.display="none";x.text.classList.toggle("active",x.key===active);x.text.classList.toggle("all",all&&x.key!==active)}
-  for(const x of candidates){
-   if(all){x.text.style.display="";continue}
-   const px=Number(x.text.getAttribute("x")),py=Number(x.text.getAttribute("y"));
-   const size=x.key===active?13:10, width=(x.text.textContent.length*size*.56+10)/zoom;
-   const height=(size+5)/zoom;
-   const box={x:px-width/2,y:py-height/2,w:width,h:height};
-   if(x.key!==active && placed.some(v=>box.x<v.x+v.w && box.x+box.w>v.x && box.y<v.y+v.h && box.y+box.h>v.y))continue;
-   x.text.style.display="";
-   placed.push(box);
+  const visible=labels.filter(x=>x.registered && x.path.dataset.ssFiltermatch!=="0");
+  visible.sort((a,b)=>Number(b.key===active)-Number(a.key===active)
+     ||a.text.textContent.length-b.text.textContent.length||a.key.localeCompare(b.key));
+  for(const x of labels){
+    x.text.style.display="none";
+    x.text.classList.toggle("active",x.key===active);
+    x.text.classList.toggle("all",all && x.key!==active);
+    const pxSize=(x.key===active?12:10);
+    x.text.style.fontSize=(pxSize/scale).toFixed(2)+"px";
+    x.text.style.strokeWidth=((x.key===active?3.7:2.8)/scale).toFixed(2)+"px";
   }
+  for(const x of visible){
+    const px=Number(x.text.getAttribute("x")),py=Number(x.text.getAttribute("y"));
+    if(px<view.x-12||py<view.y-12||px>view.x+view.width+12||py>view.y+view.height+12)continue;
+    const fontPx=x.key===active?12:10;
+    const boxW=(x.text.textContent.length*fontPx*.58+12)/scale;
+    const boxH=(fontPx+8)/scale;
+    const box={x:px-boxW/2,y:py-boxH/2,w:boxW,h:boxH};
+    if(!all && x.key!==active && placed.some(other=>
+      box.x<other.x+other.w&&box.x+box.w>other.x&&
+      box.y<other.y+other.h&&box.y+box.h>other.y))continue;
+    x.text.style.display="";
+    placed.push(box);
+  }
+  const zoomLabel=controls.querySelector("[data-sm-zoom-label]");
+  if(zoomLabel)zoomLabel.textContent=Math.round(scale*100)+"%";
  }
  const obs=new MutationObserver(()=>{decorateCity(layer);redraw()});obs.observe(detail,{childList:true});
+ layer.addEventListener("ss-map-filter-change",redraw);
  decorateCity(layer);redraw();
  controls.querySelector("[data-sm-all-names]").onchange=e=>{all=e.target.checked;redraw()};
  let v={x:0,y:0,w:690,h:760};
  const WIDTH=690,HEIGHT=760,MIN_W=85;
+ const expanded=controls.querySelector("[data-sm-expand]");
+ expanded.addEventListener("click",()=>{
+   const on=layer.classList.toggle("ss-map-expanded");
+   expanded.textContent=on?"⛶ Visão padrão":"⛶ Expandir";
+   expanded.setAttribute("aria-pressed",String(on));
+   expanded.title=on?"Restaurar disposição do painel":"Expandir mapa";
+   requestAnimationFrame(redraw);
+ });
  const activePointers=new Map();
  let dragStart=null,pinchDistance=0,dragged=false,suppressClick=false;
  function clampView(x,y,w,h){
@@ -13025,6 +13050,22 @@ function labels(layer,svg){
  controls.querySelector("[data-sm-reset]").onclick=()=>{
    v={x:0,y:0,w:WIDTH,h:HEIGHT};renderView();
  };
+ function focusCity(key){
+   const match=labels.find(x=>x.key===key);
+   if(!match)return;
+   let box;try{box=match.path.getBBox()}catch(_){return}
+   if(!box||!Number.isFinite(box.x)||!box.width||!box.height)return;
+   const targetWidth=Math.max(MIN_W*1.5,Math.min(WIDTH,
+     Math.max(box.width*4.7,box.height*(WIDTH/HEIGHT)*4.7,150)));
+   const targetHeight=HEIGHT*targetWidth/WIDTH;
+   v=clampView(box.x+box.width/2-targetWidth/2,
+               box.y+box.height/2-targetHeight/2,targetWidth,targetHeight);
+   renderView();
+ }
+ layer.addEventListener("ss-map-city-selected",event=>{
+   redraw();
+   if(event.detail?.focus)focusCity(String(event.detail.key||""));
+ });
  // A roda do mouse aplica zoom sobre o local do cursor, sem rolar o painel.
  svg.addEventListener("wheel",e=>{
    if(!e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey){
@@ -13092,6 +13133,9 @@ function labels(layer,svg){
    if(suppressClick){e.preventDefault();e.stopImmediatePropagation();suppressClick=false}
  },true);
  svg.addEventListener("dblclick",e=>{e.preventDefault();zoom(.7,e.clientX,e.clientY)});
+ layer.addEventListener("keydown",e=>{
+   if(e.key==="Escape"&&layer.classList.contains("ss-map-expanded"))expanded.click();
+ });
 
 }
 function begin(layer){
