@@ -23,3 +23,11 @@
 .ss-map-detail:has(.ss-map-city-banner)>h3{margin:18px 15px 12px}
 .ss-map-detail:has(.ss-map-city-banner)>.ss-map-info{margin:10px 12px}
 @media(max-width:670px){.ss-map-city-banner{height:150px}.ss-map-name-controls{gap:4px}}
+
+/* Navegação fluida do mapa: wheel, arraste e pinça no toque. */
+.ss-map-svg-wrapper{overscroll-behavior:contain;touch-action:none}
+.ss-map-svg{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.ss-map-svg.ss-map-dragging{cursor:grabbing}
+.ss-map-svg path{touch-action:none}
+.ss-map-name-controls button{transition:background .16s,border-color .16s}
+.ss-map-name-controls button:focus-visible{outline:2px solid #66c6ff;outline-offset:2px}
