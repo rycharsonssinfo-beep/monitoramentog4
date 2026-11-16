@@ -99,15 +99,103 @@ function labels(layer,svg){
  decorateCity(layer);redraw();
  controls.querySelector("[data-sm-all-names]").onchange=e=>{all=e.target.checked;redraw()};
  let v={x:0,y:0,w:690,h:760};
- function zoom(f){
-  const w=Math.max(145,Math.min(690,v.w*f)),h=Math.max(160,Math.min(760,v.h*f));
-  const mx=v.x+v.w/2,my=v.y+v.h/2;
-  v={x:Math.max(0,Math.min(690-w,mx-w/2)),y:Math.max(0,Math.min(760-h,my-h/2)),w,h};
-  svg.setAttribute("viewBox",[v.x,v.y,w,h].join(" "));redraw();
+ const WIDTH=690,HEIGHT=760,MIN_W=85;
+ const activePointers=new Map();
+ let dragStart=null,pinchDistance=0,dragged=false,suppressClick=false;
+ function clampView(x,y,w,h){
+   w=Math.min(WIDTH,Math.max(MIN_W,w));
+   h=HEIGHT*w/WIDTH;
+   return {x:Math.max(0,Math.min(WIDTH-w,x)),y:Math.max(0,Math.min(HEIGHT-h,y)),w,h};
+ }
+ function renderView(){
+   svg.setAttribute("viewBox",[v.x,v.y,v.w,v.h].map(n=>Number(n.toFixed(3))).join(" "));
+   redraw();
+ }
+ function coordinate(clientX,clientY){
+   const rect=svg.getBoundingClientRect();
+   // SVG preserveAspectRatio=xMidYMid meet: descontar margens internas se necessário.
+   const factor=Math.min(rect.width/v.w,rect.height/v.h);
+   const vw=v.w*factor,vh=v.h*factor;
+   const ox=rect.left+(rect.width-vw)/2,oy=rect.top+(rect.height-vh)/2;
+   return {x:Math.max(0,Math.min(1,(clientX-ox)/vw)),y:Math.max(0,Math.min(1,(clientY-oy)/vh))};
+ }
+ function zoom(f,clientX,clientY){
+   const r=svg.getBoundingClientRect();
+   const at=coordinate(clientX??r.left+r.width/2,clientY??r.top+r.height/2);
+   const w=Math.min(WIDTH,Math.max(MIN_W,v.w*f)),h=HEIGHT*w/WIDTH;
+   const worldX=v.x+at.x*v.w,worldY=v.y+at.y*v.h;
+   v=clampView(worldX-at.x*w,worldY-at.y*h,w,h);
+   renderView();
  }
  controls.querySelector("[data-sm-plus]").onclick=()=>zoom(.78);
  controls.querySelector("[data-sm-minus]").onclick=()=>zoom(1.28);
- controls.querySelector("[data-sm-reset]").onclick=()=>{v={x:0,y:0,w:690,h:760};svg.setAttribute("viewBox","0 0 690 760");redraw()};
+ controls.querySelector("[data-sm-reset]").onclick=()=>{
+   v={x:0,y:0,w:WIDTH,h:HEIGHT};renderView();
+ };
+ // A roda do mouse aplica zoom sobre o local do cursor, sem rolar o painel.
+ svg.addEventListener("wheel",e=>{
+   if(!e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey){
+     e.preventDefault();
+     const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?420:1);
+     zoom(Math.exp(Math.max(-150,Math.min(150,delta))*.00175),e.clientX,e.clientY);
+   }
+ },{passive:false});
+ function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+ svg.addEventListener("pointerdown",e=>{
+   if(e.button!==0 && e.pointerType==="mouse")return;
+   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   try{svg.setPointerCapture(e.pointerId)}catch(_){}
+   if(activePointers.size===1){
+     dragStart={x:e.clientX,y:e.clientY,view:{...v}};dragged=false;
+     svg.classList.add("ss-map-dragging");
+   }else if(activePointers.size===2){
+     pinchDistance=distance(...activePointers.values());dragStart=null;
+   }
+ });
+ svg.addEventListener("pointermove",e=>{
+   if(!activePointers.has(e.pointerId))return;
+   activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(activePointers.size===2){
+     const points=[...activePointers.values()];
+     const d=distance(points[0],points[1]);
+     const mid={x:(points[0].x+points[1].x)/2,y:(points[0].y+points[1].y)/2};
+     if(pinchDistance>0&&d>0){zoom(pinchDistance/d,mid.x,mid.y);dragged=true}
+     pinchDistance=d;return;
+   }
+   if(!dragStart)return;
+   const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
+   if(Math.abs(dx)+Math.abs(dy)>5)dragged=true;
+   if(!dragged)return;
+   const rect=svg.getBoundingClientRect();
+   const scale=Math.min(rect.width/v.w,rect.height/v.h);
+   v=clampView(v.x-dx/scale,v.y-dy/scale,v.w,v.h);
+   dragStart={x:e.clientX,y:e.clientY,view:{...v}};
+   renderView();
+ });
+ function finishPointer(e){
+   if(!activePointers.has(e.pointerId))return;
+   activePointers.delete(e.pointerId);
+   if(dragged){
+     suppressClick=true;
+     setTimeout(()=>{suppressClick=false},150);
+   }
+   if(activePointers.size===1){
+     const p=[...activePointers.values()][0];
+     dragStart={x:p.x,y:p.y,view:{...v}};
+     pinchDistance=0;
+   }else if(activePointers.size===0){
+     dragStart=null;pinchDistance=0;
+     svg.classList.remove("ss-map-dragging");
+   }
+ }
+ svg.addEventListener("pointerup",finishPointer);
+ svg.addEventListener("pointercancel",finishPointer);
+ svg.addEventListener("lostpointercapture",finishPointer);
+ svg.addEventListener("click",e=>{
+   if(suppressClick){e.preventDefault();e.stopImmediatePropagation();suppressClick=false}
+ },true);
+ svg.addEventListener("dblclick",e=>{e.preventDefault();zoom(.7,e.clientX,e.clientY)});
+
 }
 function begin(layer){
  const watcher=new MutationObserver(()=>{
