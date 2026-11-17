@@ -8,6 +8,7 @@ const readJson=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)|
 const options=Object.assign({},DEFAULTS,readJson(CONFIG_KEY,{}));
 const seen=readJson(SEEN_KEY,{});
 let mascot="",stateFn=null,fetcher=null,detailsFn=null,latest=[],active=null,lastRead=0,bgStarted=false;
+const outages=new Map(); // Última queda conhecida por município, inclusive durante recuperação
 let ac=null,audioUnlocked=false,bgBusy=false;
 const html=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ms=v=>{const d=Date.parse(v||"");return Number.isFinite(d)?d:NaN;};
@@ -33,7 +34,7 @@ function eligible(row){
 function elapsed(row){const t=ms(row.mudou_em||row.inicio_falha);return Number.isFinite(t)?Math.max(0,Math.floor((now()-t)/60000)):0;}
 function timeLabel(date){const t=ms(date);return Number.isFinite(t)?new Date(t).toLocaleString("pt-BR"):"Não informada";}
 function playAudio(force){
-  if(!options.sound&&!force)return;
+  if((!options.sound&&!force)||Number(options.volume)<=0)return;
   if(!force&&(!active||active.silent||active.type==="recovery"))return;
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -117,7 +118,7 @@ function render(){
   const info="<div class='sspa-body'>"+logo+"<div class='sspa-info'>"
     +"<h2 id='sspa-title'>"+(test?"Simulação visual e sonora":recovery?municipality+" voltou a funcionar":municipality+" está indisponível há mais de "+minimum+" minutos")+"</h2>"
     +"<span class='sspa-status' "+(recovery?"style='background:#179765'":"")+">"+(test?"MODO DE TESTE":recovery?"Recuperado":"Queda confirmada")+"</span>"
-    +"<p>Tempo de queda: <b>"+(test?11:elapsed(r))+" min</b></p>"
+    +"<p>Tempo de queda: <b>"+(test?11:recovery?Number(r.__durationMin||0):elapsed(r))+" min</b></p>"
     +"<p>Última verificação: "+html(timeLabel(r.ultima_verificacao||new Date().toISOString()))+"</p>"
     +(active.expanded?"<p>Identificador: "+html(rowId(r))+"</p><p>Estado HTTP: "+html(r.http_status==null?"Sem resposta":r.http_status)+"</p><p>Detalhe: "+html(r.detalhe||"Não informado")+"</p>":"")
     +"<p class='sspa-note'>"+(audioUnlocked?"Áudio autorizado neste navegador.":"O som depende da permissão de reprodução do navegador.")+"</p>"
@@ -152,19 +153,35 @@ function render(){
 function process(rows){
   if(!options.enabled||!Array.isArray(rows))return;
   latest=rows;lastRead=now();
-  // Encerra a queda ativa assim que a coleta confirmar disponibilidade.
+  const recovered=[];
+  for(const row of rows){
+    const status=state(row),id=rowId(row);
+    if(status==="offline"){outages.set(id,row);continue;}
+    if(status!=="online")continue; // "recuperando" ainda não confirma disponibilidade
+    const prior=outages.get(id);outages.delete(id);
+    if(prior&&seen[outageKey(prior)]){
+      const start=ms(prior.mudou_em||prior.inicio_falha);
+      const end=ms(row.mudou_em||row.ultima_verificacao);
+      const duration=Number.isFinite(start)&&Number.isFinite(end)
+        ?Math.max(0,Math.floor((end-start)/60000)):0;
+      recovered.push(Object.assign({},row,{__durationMin:duration}));
+    }
+  }
   if(active&&active.type==="offline"){
-    const r=rows.find(item=>rowId(item)===rowId(active.row));
-    if(r&&state(r)==="online"){
-      if(options.recovery){active={row:r,type:"recovery",key:"",silent:true};render();}
+    const restored=recovered.find(row=>rowId(row)===rowId(active.row));
+    if(restored){
+      if(options.recovery){active={row:restored,type:"recovery",key:"",silent:true};render();}
       else dismiss();
       return;
     }
   }
   if(active)return;
+  if(options.recovery&&recovered.length){
+    markActive(recovered[0],"recovery");return;
+  }
   for(const row of rows){
     if(!eligible(row))continue;
-    const k=outageKey(row);if(seen[k])continue;
+    const key=outageKey(row);if(seen[key])continue;
     markActive(row,"offline");break;
   }
 }
