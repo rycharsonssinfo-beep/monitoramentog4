@@ -15,6 +15,9 @@ on:
       - "scripts/mapa_sistemas_report.css"
       - "scripts/mapa_sistemas_operacao.js"
       - "scripts/mapa_sistemas_operacao.css"
+      - "scripts/mapa_sistemas_status.js"
+      - "scripts/mapa_sistemas_status.css"
+      - "scripts/test_mapa_sistemas_status.cjs"
       - "scripts/test_mapa_sistemas_operacao.cjs"
       - "scripts/test_mapa_sistemas_report.cjs"
       - ".github/workflows/integrar_mapa_portais.yml"
@@ -37,11 +40,15 @@ jobs:
           node --check scripts/logo_grupo_ss_oficial.js
           node --check scripts/mapa_sistemas_report.js
           node --check scripts/mapa_sistemas_operacao.js
+          node --check scripts/mapa_sistemas_status.js
+          node --check scripts/test_mapa_sistemas_status.cjs
           node --check scripts/test_mapa_sistemas_operacao.cjs
       - name: Testar exportação XLSX, dados e prévia PDF
         run: node scripts/test_mapa_sistemas_report.cjs
       - name: Testar disponibilidade, cobertura e histórico
         run: node scripts/test_mapa_sistemas_operacao.cjs
+      - name: Testar filtros clicáveis de status no mapa
+        run: node scripts/test_mapa_sistemas_status.cjs
       - name: Validar integrador de ícones Python
         run: python -m py_compile scripts/integrar_mapa_portais.py
       - name: Aplicar mapa no painel e validar Python
