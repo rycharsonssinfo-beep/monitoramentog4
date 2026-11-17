@@ -335,6 +335,7 @@
       repaint();
     },60000);
   }
+  window.ssMapLoadCityEvents=loadCityEvents;
   window.ssMapOperationalState=liveState;
   window.ssMapAnalyzeCoverage=analyze;
   window.ssMapOpen=function(host){previous(host);attach(host)};
