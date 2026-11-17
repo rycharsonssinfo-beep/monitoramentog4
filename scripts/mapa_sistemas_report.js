@@ -9,6 +9,13 @@
   const SYS=[["portais","Portal do Contribuinte"],["fluxus","Fluxus"],["veiculos","Veículos"]];
   const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const xml=s=>String(s??"").replace(/[<>&"']/g,ch=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&apos;"}[ch]));
+  const officialLogoSrc=()=>{
+    const logo=window.__SS_OFICIAL_LOGO__;
+    if(typeof logo!=="string"||!/^data:image\/png;base64,iVBORw0KGgo/.test(logo)){
+      throw Error("Logomarca oficial do Grupo S&S ausente. O relatório não será gerado com marca genérica.");
+    }
+    return logo;
+  };
   const now=()=>new Date().toLocaleString("pt-BR");
   const dateKey=()=>new Date().toISOString().slice(0,10);
   const sort=(a,b)=>String(a.name).localeCompare(String(b.name),"pt-BR");
@@ -226,8 +233,8 @@
       '*{box-sizing:border-box}',
       'html,body{margin:0;background:#fff;color:#163047;font-family:Arial,"Segoe UI",sans-serif;font-size:9px}',
       '.brand{display:flex;align-items:center;justify-content:space-between;border-top:4px solid #1c71af;border-bottom:1px solid #c3dbea;padding:8px 0 9px;gap:15px}',
-      '.brand-name{font-weight:900;font-size:17px;color:#0e4c7c;letter-spacing:-.4px}',
-      '.brand-name .icon{display:inline-block;background:linear-gradient(135deg,#12649e,#56bbeb);color:#fff;border-radius:6px;padding:5px 7px;margin-right:8px}',
+      '.brand-logo{display:flex;align-items:center;min-height:53px}',
+      '.brand-logo img{display:block;width:238px;max-width:100%;height:auto;max-height:62px;object-fit:contain;object-position:left center}',
       '.stamp{color:#4f6a80;font-size:9px;text-align:right;line-height:1.6}',
       'h1{font-size:18px;color:#103f6d;margin:13px 0 4px;letter-spacing:-.4px}',
       '.subtitle{font-size:9px;color:#587187;margin:0 0 12px}',
@@ -266,7 +273,7 @@
       '<th>Situação</th><th>Última verificação</th></tr></thead><tbody>'+detailsRows+'</tbody></table>':"";
     const doc='<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>'+caption+' — Cobertura dos Sistemas</title>'+
       '<style>'+style+'</style></head><body>'+
-      '<div class="brand"><div class="brand-name"><span class="icon">S&S</span>Monitor Grupo S&S</div>'+
+      '<div class="brand"><div class="brand-logo"><img src="'+officialLogoSrc()+'" alt="Logomarca oficial Grupo S&S"></div>'+
       '<div class="stamp">Ceará · '+esc(scopes[sc])+'<br/>Emissão: '+esc(now())+'</div></div>'+
       '<h1>Relatório de Cobertura dos Sistemas</h1>'+
       '<p class="subtitle">'+esc(caption)+' · Municípios e ambientes presentes no Monitor de Portais S&S</p>'+
@@ -381,7 +388,7 @@
           ["Sem cadastro",t.missing],["Ambientes",t.environments],
           ["Online",t.online],["Cobertura",cover.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%"]];
         overlay.querySelector("[data-report-paper]").innerHTML=
-          '<div class="ss-map-paper-brand"><div><span>S&S</span><strong>Monitor Grupo S&S</strong></div><em>CEARÁ · '+esc(now().split(",")[0])+'</em></div>'+
+          '<div class="ss-map-paper-brand"><img class="ss-map-paper-official-logo" src="'+officialLogoSrc()+'" alt="Logomarca oficial Grupo S&S"><em>CEARÁ · '+esc(now().split(",")[0])+'</em></div>'+
           '<h3>Relatório de Cobertura</h3><p>Municípios, sistemas e ambientes cadastrados no Monitor S&S.</p>'+
           '<div class="ss-map-paper-kicker">'+(mode==="gerencial"?"RESUMO GERENCIAL":"RESUMO TÉCNICO")+'</div>'+
           '<div class="ss-map-paper-stats">'+metrics.map(([k,v])=>'<div><b>'+esc(v)+'</b><small>'+esc(k)+'</small></div>').join("")+'</div>'+
