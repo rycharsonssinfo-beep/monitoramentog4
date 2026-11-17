@@ -71,7 +71,7 @@
       if(!selected){
         paths.forEach(p=>{
           p.style.removeProperty("fill");
-          p.style.removeProperty("opacity");
+          p.style.opacity=p.dataset.ssFiltermatch==="0"?".53":"1";
           p.classList.remove("ss-map-status-match","ss-map-status-dim");
         });
         info.hidden=true;
