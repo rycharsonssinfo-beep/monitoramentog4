@@ -141,7 +141,7 @@
       if(!city)continue;
       const url=portalSafeUrl(r.url)||"";
       if(!city.data[mode].some(x=>x.url===url&&x.name===String(r.entidade||raw)))
-        city.data[mode].push({id:String(r.id||""),municipio:String(r.municipio||""),name:String(r.entidade||raw),url,estado:portalState(r),ultima_verificacao:String(r.ultima_verificacao||"")});
+        city.data[mode].push({id:String(r.id||""),municipio:String(r.municipio||""),name:String(r.entidade||raw),url,estado:portalState(r),ultima_verificacao:String(r.ultima_verificacao||""),inicio_falha:String(r.inicio_falha||""),http_status:r.http_status==null?null:Number(r.http_status),latencia_ms:r.latencia_ms==null?null:Number(r.latencia_ms),detalhe:String(r.detalhe||"").slice(0,500),mudou_em:String(r.mudou_em||"")});
     }
     return cities;
   }
