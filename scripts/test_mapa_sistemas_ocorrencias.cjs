@@ -31,7 +31,7 @@ assert.match(obj.html,/Desde a falha/);
 assert.match(obj.html,/Tempo &lt;b&gt;esgotado&lt;\/b&gt;/);
 assert.doesNotMatch(obj.html,/<script>/);
 assert.match(obj.html,/IPM &lt;script&gt;/);
-assert.match(obj.html,/22/);
+assert.match(obj.html,/Há 1 ambiente\(s\) sem verificação recente/);
 const ev=win.ssMapIncidentsEvents([
  {mode:"veiculos",rows:[
   {portal_id:"veiculos_caucaia",municipio:"Caucaia",estado_anterior:"online",estado_atual:"offline",
@@ -45,7 +45,7 @@ assert.match(ev,/Indisponibilidade registrada/);
 assert.match(ev,/Recuperado/);
 assert.match(ev,/IPM &lt;script&gt;/);
 assert.match(ev,/Histórico parcialmente indisponível/);
-assert.match(source,/loadCityEvents/);
+assert.match(source,/ssMapLoadCityEvents/);
 assert.match(source,/ss-map-data-ready/);
 assert.match(source,/ss-map-city-selected/);
 assert.match(source,/ss-map-snapshot-updated/);
