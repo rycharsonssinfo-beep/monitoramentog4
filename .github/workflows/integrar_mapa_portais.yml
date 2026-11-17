@@ -6,6 +6,10 @@ on:
       - "scripts/mapa_sistemas_embed.js"
       - "scripts/mapa_sistemas_enhance.js"
       - "scripts/mapa_sistemas_enhance.css"
+      - "scripts/mapa_sistemas_icones.css"
+      - "scripts/assets/mapa_portal_contribuinte.webp"
+      - "scripts/assets/mapa_fluxus.webp"
+      - "scripts/assets/mapa_veiculos.webp"
       - "scripts/logo_grupo_ss_oficial.js"
       - "scripts/mapa_sistemas_report.js"
       - "scripts/mapa_sistemas_report.css"
@@ -31,6 +35,8 @@ jobs:
           node --check scripts/mapa_sistemas_report.js
       - name: Testar exportação XLSX, dados e prévia PDF
         run: node scripts/test_mapa_sistemas_report.cjs
+      - name: Validar integrador de ícones Python
+        run: python -m py_compile scripts/integrar_mapa_portais.py
       - name: Aplicar mapa no painel e validar Python
         run: python scripts/integrar_mapa_portais.py
       - name: Publicar ajuste restrito ao main.py
