@@ -14256,6 +14256,300 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
     if(layer)attach(layer);
   };
 })();
+(function(){if(!document.getElementById("ss-map-sync-incidents-css")){const tag=document.createElement("style");tag.id="ss-map-sync-incidents-css";tag.textContent="/* Monitor S&S — atualização automática do Mapa de Sistemas */\n.ss-map-layer .ss-map-syncbar{\n display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;\n gap:12px;margin:12px 0 2px;padding:10px 14px;\n background:linear-gradient(105deg,#113a5e,#0b2945);\n border:1px solid #326d98;border-radius:10px;color:#e2f4ff;\n}\n.ss-map-sync-details{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:center;min-width:0}\n.ss-map-sync-details strong{font-size:12px;line-height:1.3}\n.ss-map-sync-details small{color:#b7d4e6;font-size:10px;flex-basis:100%;padding-left:15px;line-height:1.4}\n.ss-map-sync-period{font-size:10px;color:#a4d8f4}\n.ss-map-sync-dot{height:8px;width:8px;border-radius:50%;background:#2dcdab;box-shadow:0 0 0 3px #2dcdab26}\n.ss-map-syncbar[data-sync-tone=\"warning\"]{border-color:#ba914a}\n.ss-map-syncbar[data-sync-tone=\"warning\"] .ss-map-sync-dot{background:#e4bb65}\n.ss-map-syncbar[data-sync-tone=\"error\"]{border-color:#bd6772}\n.ss-map-syncbar[data-sync-tone=\"error\"] .ss-map-sync-dot{background:#ef7784}\n.ss-map-syncbar.working .ss-map-sync-dot{background:#67bbff;animation:ss-sync-pulse 1s ease infinite alternate}\n@keyframes ss-sync-pulse{to{opacity:.35;transform:scale(.8)}}\n.ss-map-sync-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}\n.ss-map-sync-actions span{color:#b6d3e8;font-size:10px;white-space:normal}\n.ss-map-sync-actions button{\n background:#155887;border:1px solid #65a5d0;border-radius:8px;color:#f0faff;\n padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;\n}\n.ss-map-sync-actions button:hover:not(:disabled){background:#2177ab}\n.ss-map-sync-actions button:disabled{opacity:.65;cursor:wait}\n.ss-map-sync-actions button:focus-visible{outline:2px solid #a6e5ff;outline-offset:2px}\n@media(max-width:800px){\n .ss-map-layer .ss-map-syncbar{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 11px}\n .ss-map-sync-actions{justify-content:space-between;width:100%}\n}\n@media(max-width:480px){\n .ss-map-sync-actions{align-items:stretch}\n .ss-map-sync-actions span{align-self:center}\n}\n/* Painel de ocorrências por município — sem barra de rolagem própria */\n.ss-map-layer .ss-map-incidents{\n margin:11px 0 13px;border:1px solid #467b9e;background:linear-gradient(150deg,#143b5e,#0c2b49);\n border-radius:10px;min-width:0;overflow:visible;color:#eaf6ff;\n}\n.ss-map-layer .ss-map-incidents.has-failures{border-color:#bd6d78}\n.ss-map-incidents>summary{\n list-style:none;display:flex;align-items:center;gap:10px;min-width:0;\n cursor:pointer;padding:11px;border-radius:10px;\n}\n.ss-map-incidents>summary::-webkit-details-marker{display:none}\n.ss-map-incidents>summary strong{display:block;font-size:12px;font-weight:850;color:#f0faff}\n.ss-map-incidents>summary small{display:block;color:#b7d2e5;font-size:10px;line-height:1.4;margin-top:4px}\n.ss-map-incidents-icon{\n flex:0 0 32px;display:grid;place-items:center;\n width:32px;height:32px;background:#215d8b;border:1px solid #6da9d1;\n border-radius:9px;font-weight:900;font-size:18px;color:#f4fbff;\n}\n.ss-map-incidents.has-failures .ss-map-incidents-icon{background:#883746;border-color:#d98a91}\n.ss-map-incidents-arrow{margin-left:auto;color:#abd6f2;font-size:19px;transition:transform .18s}\n.ss-map-incidents[open] .ss-map-incidents-arrow{transform:rotate(180deg)}\n.ss-map-incidents>summary:focus-visible{outline:2px solid #99dfff;outline-offset:2px}\n.ss-map-incidents-body{padding:11px;border-top:1px solid #3d6482}\n.ss-map-incidents-kpis{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}\n.ss-map-incidents-kpis span{display:inline-flex;align-items:center;gap:5px;\n font-size:9px;font-weight:700;background:#0d2b47;border:1px solid #4a6c85;\n border-radius:7px;padding:6px 8px}\n.ss-map-incidents-kpis span b{color:#f2faff;font-size:12px}\n.ss-map-incidents-kpis span.offline{border-color:#ab5b67}\n.ss-map-incidents-kpis span.offline b{color:#ffa8b1}\n.ss-map-incidents-kpis span.attention{border-color:#a88949}\n.ss-map-incidents-kpis span.attention b{color:#ffdc91}\n.ss-map-incidents-kpis span.stale{border-color:#6c8193}\n.ss-map-incidents-list{display:grid;gap:7px;margin:9px 0}\n.ss-map-incident-item{border:1px solid #466885;border-left:3px solid #c9616d;background:#0b2a46;border-radius:8px;padding:10px;overflow-wrap:anywhere}\n.ss-map-incident-item.observacao{border-left-color:#ddb04d}\n.ss-map-incident-title{display:flex;justify-content:space-between;align-items:start;gap:8px}\n.ss-map-incident-title strong{font-size:11px;color:#fff;line-height:1.4}\n.ss-map-incident-title span{font-size:9px;background:#823943;color:#ffe0e3;border-radius:6px;padding:4px 6px;white-space:nowrap}\n.ss-map-incident-item.observacao .ss-map-incident-title span{background:#725527;color:#ffe6b5}\n.ss-map-incident-item>small{display:block;margin:5px 0;color:#adcce1;font-size:9px}\n.ss-map-incident-meta{display:flex;gap:5px 10px;flex-wrap:wrap;margin-top:6px}\n.ss-map-incident-meta span{font-size:9px;color:#c5deed}\n.ss-map-incident-item p{font-size:10px;color:#cbdde9;margin:8px 0 0;line-height:1.45}\n.ss-map-incident-item a{display:inline-block;margin-top:8px;color:#96dfff;text-decoration:underline;font-size:10px;font-weight:750}\n.ss-map-incidents-caution{font-size:10px;color:#ffdfa3;background:#62492242;border:1px solid #967342;border-radius:7px;padding:8px;line-height:1.45;margin:8px 0}\n.ss-map-incidents-empty{font-size:11px;color:#b9d7e8;line-height:1.45;margin:10px 0}\n.ss-map-incidents-events-head{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid #466a86;padding-top:12px;margin:14px 0 8px}\n.ss-map-incidents-events-head strong{font-size:11px;color:#f3fbff}\n.ss-map-incidents-events-head small{font-size:9px;color:#bad2e1}\n.ss-map-incidents-timeline{list-style:none;margin:0;padding:0;display:grid;gap:6px}\n.ss-map-incidents-timeline li{border-left:2px solid #c66b77;background:#0a2944;border-radius:6px;padding:8px 9px}\n.ss-map-incidents-timeline li.recovered{border-left-color:#35be99}\n.ss-map-incidents-timeline li>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}\n.ss-map-incidents-timeline li strong{font-size:10px;color:#fff}\n.ss-map-incidents-timeline time{font-size:9px;color:#bed4e6}\n.ss-map-incidents-timeline li small{display:block;font-size:9px;color:#add3e5;margin-top:6px}\n.ss-map-incidents-timeline li p{font-size:9px;color:#b9ccdc;margin:5px 0 0;line-height:1.45}\n.ss-map-incidents-loading{color:#b8d4e8;font-size:10px;padding:7px 0}\n.ss-map-incidents-reload{\n border:1px solid #4f8caf;background:#14537f;color:#effaff;cursor:pointer;\n border-radius:8px;padding:8px 11px;font-size:10px;font-weight:800;margin-top:12px;\n}\n.ss-map-incidents-reload:hover{background:#1f6798}\n.ss-map-incidents-reload:focus-visible{outline:2px solid #a2e5ff;outline-offset:2px}\n.ss-map-incidents-note{font-size:9px;line-height:1.45;margin:10px 0 0;color:#a8c5d8}\n@media(max-width:550px){\n .ss-map-incident-title{flex-direction:column}\n .ss-map-incidents-kpis span{flex:1 1 auto}\n .ss-map-incident-meta{gap:5px 7px}\n}";document.head.appendChild(tag);}})();
+/* Atualização automática — Monitor Grupo S&S, Mapa de Sistemas.
+ * Consulta somente fontes já autorizadas pelo painel; não executa novas sondagens HTTP.
+ * Atualiza os dados sem recriar SVG, zoom ou controles de município.
+ */
+(function ssMapAutoSyncInstall(){
+  if(window.__ssMapAutoSyncInstalled)return;
+  const previous=window.ssMapOpen;
+  if(typeof previous!=="function")return;
+  window.__ssMapAutoSyncInstalled=true;
+  const PERIOD=60000;
+  const fmt=t=>t?new Date(t).toLocaleTimeString("pt-BR"):"—";
+  function attach(layer){
+    if(layer.dataset.ssMapAutoSync)return;
+    layer.dataset.ssMapAutoSync="1";
+    const bar=document.createElement("div");
+    bar.className="ss-map-syncbar";
+    bar.innerHTML=
+      '<div class="ss-map-sync-details">'+
+      '<span class="ss-map-sync-dot" data-sync-dot aria-hidden="true"></span>'+
+      '<strong>Atualização automática</strong><span class="ss-map-sync-period">a cada 60 segundos</span>'+
+      '<small class="ss-map-sync-description" data-sync-description aria-live="polite">Aguardando a primeira leitura…</small></div>'+
+      '<div class="ss-map-sync-actions"><span data-sync-clock>Última sincronização: —</span>'+
+      '<button type="button" data-sync-now disabled>↻ Atualizar agora</button></div>';
+    layer.querySelector(".ss-map-head")?.insertAdjacentElement("afterend",bar);
+    const btn=bar.querySelector("[data-sync-now]");
+    const desc=bar.querySelector("[data-sync-description]");
+    const clock=bar.querySelector("[data-sync-clock]");
+    let ready=false,busy=false,lastSuccess=0,next=0,lastErrors=[],timer=null,stopped=false;
+    function status(text,tone="idle"){
+      desc.textContent=text;
+      bar.dataset.syncTone=tone;
+    }
+    function refreshStatus(){
+      if(!layer.isConnected){dispose();return}
+      const suffix=ready&&!busy&&next?" · próxima em "+Math.max(0,Math.ceil((next-Date.now())/1000))+"s":"";
+      clock.textContent="Última sincronização: "+fmt(lastSuccess)+suffix;
+    }
+    function onFirstReady(e){
+      ready=true;
+      lastErrors=e.detail?.errors||[];
+      lastSuccess=Date.now();
+      next=Date.now()+PERIOD;
+      btn.disabled=false;
+      status(lastErrors.length?
+        "Leitura parcial. Fontes com falha: "+lastErrors.join(", "):
+        "Dados sincronizados; mapa, seleção e zoom preservados.",
+        lastErrors.length?"warning":"ok");
+      refreshStatus();
+    }
+    async function refresh(manual=false){
+      if(!ready||busy||!layer.isConnected||typeof layer.ssMapRefresh!=="function")return;
+      if(!manual&&document.hidden)return;
+      busy=true;btn.disabled=true;bar.classList.add("working");
+      status("Consultando as fontes dos sistemas…");
+      try{
+        const result=await layer.ssMapRefresh();
+        if(!layer.isConnected)return;
+        if(!result||result.skipped)throw Error("Atualização não concluída.");
+        lastSuccess=result.at||Date.now();
+        lastErrors=result.errors||[];
+        status(lastErrors.length?
+          "Atualização parcial; dados anteriores preservados para "+lastErrors.join(", "):
+          "Dados sincronizados com sucesso; seleção e filtros preservados.",
+          lastErrors.length?"warning":"ok");
+      }catch(err){
+        console.warn("Mapa S&S: falha na atualização automática",err);
+        status("Falha ao sincronizar. Mantida a última leitura válida. Nova tentativa em 60 segundos.","error");
+      }finally{
+        busy=false;bar.classList.remove("working");
+        next=Date.now()+PERIOD;
+        btn.disabled=!ready;
+        refreshStatus();
+      }
+    }
+    function tick(){
+      if(!layer.isConnected){dispose();return}
+      refreshStatus();
+      if(ready&&!busy&&next&&Date.now()>=next&&!document.hidden)refresh();
+    }
+    function visibility(){
+      if(!document.hidden&&ready&&!busy&&Date.now()>=next)refresh();
+    }
+    function dispose(){
+      if(stopped)return;stopped=true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange",visibility);
+    }
+    btn.addEventListener("click",()=>refresh(true));
+    layer.addEventListener("ss-map-refresh-ready",onFirstReady);
+    document.addEventListener("visibilitychange",visibility);
+    timer=setInterval(tick,10000);
+    // API de teste e atualização por outras seções do monitor, restrita à camada.
+    layer.ssMapRefreshNow=()=>refresh(true);
+  }
+  window.ssMapOpen=function(host){
+    previous(host);
+    const layer=host.querySelector("[data-ss-map]");
+    if(layer)attach(layer);
+  };
+})();
+/* Mapa de Sistemas — diagnóstico de ocorrências por município.
+ * Usa exclusivamente os dados consolidados e eventos reais do Supabase.
+ */
+(function ssMapIncidentPanelInstall(){
+  if(window.__ssMapIncidentPanelInstalled)return;
+  const previous=window.ssMapOpen;
+  if(typeof previous!=="function")return;
+  window.__ssMapIncidentPanelInstalled=true;
+  const SYSTEMS=[
+    {key:"portais",name:"Portal do Contribuinte"},
+    {key:"fluxus",name:"Fluxus"},
+    {key:"veiculos",name:"Veículos"}
+  ];
+  const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const date=x=>{const t=Date.parse(x||"");return Number.isFinite(t)?new Date(t).toLocaleString("pt-BR"):"Não informada"};
+  const status=row=>window.ssMapOperationalState?.(row)||"sem_leitura";
+  const statusNames={online:"Online",offline:"Indisponível",observacao:"Em observação",desatualizado:"Leitura desatualizada",sem_leitura:"Sem leitura válida"};
+  function ongoing(city){
+    const all=[];
+    if(!city)return all;
+    for(const mode of SYSTEMS){
+      for(const row of city.systems?.[mode.key]||[]){
+        const state=status(row);
+        if(state==="online")continue;
+        all.push({mode:mode.name,modeKey:mode.key,row,state});
+      }
+    }
+    const order={offline:0,observacao:1,desatualizado:2,sem_leitura:3};
+    return all.sort((a,b)=>(order[a.state]??5)-(order[b.state]??5)||
+      String(a.row.name).localeCompare(String(b.row.name),"pt-BR"));
+  }
+  function elapsed(start,now=Date.now()){
+    const t=Date.parse(start||"");
+    if(!Number.isFinite(t)||t>now)return"";
+    const minutes=Math.floor((now-t)/60000);
+    const h=Math.floor(minutes/60),m=minutes%60;
+    if(h>=24)return Math.floor(h/24)+"d "+h%24+"h";
+    return h? h+"h "+m+"min":m+" min";
+  }
+  function currentMarkup(city){
+    const rows=ongoing(city);
+    const offline=rows.filter(r=>r.state==="offline").length;
+    const attention=rows.filter(r=>r.state==="observacao").length;
+    const stale=rows.filter(r=>r.state==="desatualizado"||r.state==="sem_leitura").length;
+    let html='<div class="ss-map-incidents-kpis">'+
+      '<span class="offline"><b>'+offline+'</b> Indisponíveis</span>'+
+      '<span class="attention"><b>'+attention+'</b> Em observação</span>'+
+      '<span class="stale"><b>'+stale+'</b> Sem leitura recente</span></div>';
+    const active=rows.filter(r=>r.state==="offline"||r.state==="observacao");
+    if(!active.length)html+='<p class="ss-map-incidents-empty">Nenhuma indisponibilidade recente confirmada nos ambientes deste município.</p>';
+    else html+='<div class="ss-map-incidents-list">'+active.map(({mode,row,state})=>{
+      const hasCode=Number.isFinite(row.http_status)&&row.http_status>0;
+      const duration=state==="offline"?elapsed(row.inicio_falha):"";
+      const detail=String(row.detalhe||"").trim().slice(0,210);
+      return '<article class="ss-map-incident-item '+state+'">'+
+        '<div class="ss-map-incident-title"><strong>'+esc(row.name||mode)+'</strong>'+
+        '<span>'+esc(statusNames[state])+'</span></div>'+
+        '<small>'+esc(mode)+'</small>'+
+        '<div class="ss-map-incident-meta">'+
+          '<span>Última verificação: '+esc(date(row.ultima_verificacao))+'</span>'+
+          (hasCode?'<span>HTTP '+esc(row.http_status)+'</span>':'')+
+          (Number.isFinite(row.latencia_ms)&&row.latencia_ms>0?'<span>'+esc(Math.round(row.latencia_ms))+' ms</span>':'')+
+          (duration?'<span>Desde a falha: '+esc(duration)+'</span>':'')+
+        '</div>'+
+        (detail?'<p>'+esc(detail)+'</p>':'')+
+        (row.url?'<a href="'+esc(row.url)+'" target="_blank" rel="noopener noreferrer">Acessar ambiente</a>':'')+
+      '</article>';
+    }).join("")+'</div>';
+    if(stale)html+='<p class="ss-map-incidents-caution">Há '+stale+' ambiente(s) sem verificação recente. O último estado conhecido não comprova indisponibilidade atual.</p>';
+    return {html,offline,attention,stale,active:active.length};
+  }
+  function eventsMarkup(groups,city){
+    const failures=[],errors=[];
+    let truncated=false;
+    for(const group of groups||[]){
+      if(group.error)errors.push(group.mode);
+      if(group.truncated)truncated=true;
+      const mode=SYSTEMS.find(s=>s.key===group.mode);
+      const byId=new Map((city.systems?.[group.mode]||[]).map(r=>[String(r.id),r]));
+      for(const ev of group.rows||[]){
+        const newer=String(ev.estado_atual||"").toLowerCase();
+        const older=String(ev.estado_anterior||"").toLowerCase();
+        if(!["offline","suspeita_falha","recuperando","verificacao_bloqueada"].includes(newer) &&
+           !(newer==="online"&&older!=="online"))continue;
+        failures.push({ev,mode:mode?.name||group.mode,env:byId.get(String(ev.portal_id))});
+      }
+    }
+    failures.sort((a,b)=>Date.parse(b.ev.ocorrido_em||"")-Date.parse(a.ev.ocorrido_em||""));
+    let html='<div class="ss-map-incidents-events-head"><strong>Eventos registrados (7 dias)</strong>'+
+      '<small>'+failures.length+' ocorrência(s) ou recuperação(ões) na amostra</small></div>';
+    if(errors.length)html+='<p class="ss-map-incidents-caution">Histórico parcialmente indisponível: '+esc(errors.join(", "))+'.</p>';
+    if(!failures.length)html+='<p class="ss-map-incidents-empty">Sem alterações de estado registradas neste período para os ambientes identificados.</p>';
+    else html+='<ol class="ss-map-incidents-timeline">'+failures.slice(0,7).map(({ev,mode,env})=>{
+      const newer=String(ev.estado_atual||"").toLowerCase();
+      const recovered=newer==="online";
+      const label=recovered?"Recuperado":newer==="offline"?"Indisponibilidade registrada":"Mudança de estado";
+      const http=Number(ev.codigo_http);
+      const detail=String(ev.detalhe||"").slice(0,160);
+      return '<li class="'+(recovered?"recovered":"failure")+'">'+
+        '<div><strong>'+esc(label)+'</strong><time>'+esc(date(ev.ocorrido_em))+'</time></div>'+
+        '<small>'+esc(mode)+' · '+esc(env?.name||ev.municipio||"Ambiente")+
+        (Number.isFinite(http)&&http>0?' · HTTP '+esc(http):'')+'</small>'+
+        (detail?'<p>'+esc(detail)+'</p>':'')+'</li>';
+    }).join("")+'</ol>';
+    if(truncated||failures.length>7)html+='<p class="ss-map-incidents-caution">Mostrando eventos recentes; abra Histórico do município para mais detalhes.</p>';
+    return html;
+  }
+  function attach(layer){
+    if(layer.dataset.ssMapIncidents)return;
+    layer.dataset.ssMapIncidents="1";
+    let cities=[],key="",loadToken=0,loadTime=0,loadedKey="",events=null;
+    const current=()=>cities.find(c=>c.key===key)||null;
+    function insert(city){
+      const detail=layer.querySelector("[data-sm-detail]");
+      if(!detail||!city)return;
+      const history=detail.querySelector(".ss-map-history");
+      const heading=detail.querySelector("h3");
+      if(!heading)return;
+      const panel=document.createElement("details");
+      panel.className="ss-map-incidents";
+      panel.innerHTML='<summary><span class="ss-map-incidents-icon" aria-hidden="true">!</span>'+
+        '<span><strong>Ocorrências do município</strong>'+
+        '<small data-incidents-summary>Diagnóstico das últimas verificações</small></span>'+
+        '<span class="ss-map-incidents-arrow" aria-hidden="true">⌄</span></summary>'+
+        '<div class="ss-map-incidents-body"><div data-incidents-current></div>'+
+        '<div data-incidents-events></div>'+
+        '<button type="button" class="ss-map-incidents-reload" data-incidents-reload>↻ Atualizar ocorrências</button>'+
+        '<p class="ss-map-incidents-note">Fonte: cadastros e eventos do Monitor S&S. Duração somente quando a data de início da falha está registrada.</p></div>';
+      if(history)history.before(panel);else heading.before(panel);
+      const refresh=()=>update(false);
+      panel.querySelector("[data-incidents-reload]").addEventListener("click",()=>update(true));
+      panel.addEventListener("toggle",()=>{if(panel.open)refresh()});
+      const summary=currentMarkup(city);
+      panel.open=summary.active>0;
+      renderCurrent(panel,city);
+      // A abertura dispara toggle; não duplicar consultas simultâneas.
+    }
+    function renderCurrent(panel,city){
+      const result=currentMarkup(city);
+      panel.querySelector("[data-incidents-current]").innerHTML=result.html;
+      panel.querySelector("[data-incidents-summary]").textContent=
+        result.active?result.active+" ambiente(s) em ocorrência":
+          result.stale?result.stale+" ambiente(s) sem leitura recente":"Nenhuma indisponibilidade recente";
+      panel.classList.toggle("has-failures",result.offline>0);
+    }
+    async function update(force=false){
+      const city=current();
+      const panel=layer.querySelector(".ss-map-incidents");
+      if(!panel||!city)return;
+      renderCurrent(panel,city);
+      if(!panel.open)return;
+      const now=Date.now();
+      if(!force&&events&&loadedKey===city.key&&now-loadTime<120000){
+        panel.querySelector("[data-incidents-events]").innerHTML=eventsMarkup(events,city);
+        return;
+      }
+      const token=++loadToken;
+      const slot=panel.querySelector("[data-incidents-events]");
+      slot.innerHTML='<p class="ss-map-incidents-loading">Consultando eventos registrados…</p>';
+      try{
+        if(typeof window.ssMapLoadCityEvents!=="function")throw Error("Consulta de eventos não disponível.");
+        const result=await window.ssMapLoadCityEvents(city,7);
+        if(token!==loadToken||!panel.isConnected||city.key!==key)return;
+        events=result;loadedKey=city.key;loadTime=Date.now();
+        slot.innerHTML=eventsMarkup(result,city);
+      }catch(err){
+        if(token!==loadToken||!panel.isConnected)return;
+        console.warn("Ocorrências municipais:",err);
+        slot.innerHTML='<p class="ss-map-incidents-caution">Não foi possível consultar os eventos. Os estados atuais permanecem disponíveis.</p>';
+      }
+    }
+    layer.addEventListener("ss-map-data-ready",e=>{
+      cities=e.detail?.cities||[];
+      if(key)update(false);
+    });
+    layer.addEventListener("ss-map-city-selected",e=>{
+      key=e.detail?.key||"";
+      loadToken++;events=null;loadedKey="";
+      insert(current());
+    });
+    layer.addEventListener("ss-map-snapshot-updated",()=>{
+      if(key)update(false);
+    });
+    layer.ssMapIncidentRefresh=()=>update(true);
+  }
+  window.ssMapIncidentsCurrent=currentMarkup;
+  window.ssMapIncidentsEvents=eventsMarkup;
+  window.ssMapOpen=function(host){
+    previous(host);
+    const layer=host.querySelector("[data-ss-map]");
+    if(layer)attach(layer);
+  };
+})();
 function portalStart(host){
   portalHosts.add(host);
   const img=portalEscape(portalConfig.logo||g4fConfig.ss_official_logo||g4fConfig.logo||'');
