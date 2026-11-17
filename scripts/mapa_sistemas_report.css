@@ -67,8 +67,8 @@
 .ss-map-report-paper:before{content:"";position:absolute;right:0;top:0;border-top:27px solid #0f5796;border-left:75px solid transparent;width:0;height:0}
 .ss-map-paper-brand{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:24px}
 .ss-map-paper-brand>div{display:flex;align-items:center;gap:8px;min-width:0}
-.ss-map-paper-brand span{font-size:13px;background:#1268a3;color:white;padding:8px 6px;border-radius:7px;letter-spacing:-1px;font-weight:900}
-.ss-map-paper-brand strong{font-size:12px;color:#104775;line-height:1.1;max-width:115px}
+.ss-map-paper-brand .ss-map-paper-official-logo{display:block;max-width:65%;width:224px;height:auto;max-height:62px;object-fit:contain;object-position:left center;flex:0 1 auto}
+.ss-map-paper-brand>div{display:none}
 .ss-map-paper-brand em{font-size:8px;font-weight:650;color:#5a829c;white-space:nowrap}
 .ss-map-report-paper h3{font-size:20px;margin:0 0 4px;color:#102f53;letter-spacing:-.6px;line-height:1.15}
 .ss-map-report-paper>p{font-size:9px;margin:0 0 23px;color:#59768e;line-height:1.4}
@@ -182,3 +182,7 @@
   .ss-map-report-paper{padding:12px 8px 47px}
   .ss-map-report-paper h3{font-size:16px}
 }
+
+/* Logomarca oficial responsiva na prévia: proporção preservada, sem substitutos. */
+@media(max-width:740px){.ss-map-paper-brand .ss-map-paper-official-logo{max-width:64%;width:195px;max-height:52px}}
+@media(max-width:390px){.ss-map-paper-brand .ss-map-paper-official-logo{max-width:61%;width:165px;max-height:45px}}
