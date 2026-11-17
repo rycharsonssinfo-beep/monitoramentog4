@@ -45,7 +45,7 @@ assert.match(ev,/Indisponibilidade registrada/);
 assert.match(ev,/Recuperado/);
 assert.match(ev,/IPM &lt;script&gt;/);
 assert.match(ev,/Histórico parcialmente indisponível/);
-assert.match(source,/ssMapLoadCityEvents/);
+// A consulta de eventos pertence ao histórico reutilizado, não à aba Situação atual.
 assert.match(source,/ss-map-data-ready/);
 assert.match(source,/ss-map-city-selected/);
 assert.match(source,/ss-map-snapshot-updated/);
@@ -64,6 +64,7 @@ assert.match(historySource,/data-history-days="1">24 horas/);
 assert.match(historySource,/data-history-days="7" class="active">7 dias/);
 assert.match(historySource,/data-history-days="30">30 dias/);
 assert.match(historySource,/loadCityEvents\(city,days\)/);
+assert.match(historySource,/window\.ssMapLoadCityEvents=loadCityEvents/);
 const css=fs.readFileSync("scripts/mapa_sistemas_sync_ocorrencias.css","utf8");
 assert.match(css,/ss-map-monitor-tabs/);
 assert.match(css,/ss-map-monitor-view\[hidden\]/);
