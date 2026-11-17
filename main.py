@@ -12719,12 +12719,12 @@ async function portalGenerateReport(host){
     }
     throw Error("Não foi possível carregar a malha municipal do Ceará.");
   }
-  async function loadSystemData(){
-    if(lastDataFetch && Date.now()-lastDataFetch<30000)return;
+  async function loadSystemData(force=false){
+    if(!force && lastDataFetch && Date.now()-lastDataFetch<30000)return [...lastLoadErrors];
     const errors=[];
     await Promise.all(modes.map(async m=>{
       try{
-        const select="id,municipio,uf,url,estado,ultima_verificacao"+(m==="veiculos"?",cidade,entidade,categoria":"");
+        const select="id,municipio,uf,url,estado,ultima_verificacao,inicio_falha,http_status,latencia_ms,detalhe,mudou_em"+(m==="veiculos"?",cidade,entidade,categoria":"");
         const fetched=await portalFetchTable(portalServices[m].current,select,"order=municipio.asc&limit=500");
         if(!Array.isArray(fetched))throw Error("Consulta retornou um formato inesperado.");
         portalDatas[m]=fetched;
@@ -12736,6 +12736,7 @@ async function portalGenerateReport(host){
     }));
     lastDataFetch=Date.now();
     lastLoadErrors=errors;
+    return [...errors];
   }
   function cityRows(features){
     const cities=features.map(f=>({f,name:name(f),key:norm(name(f)),code:code(f),data:{portais:[],fluxus:[],veiculos:[]}})).filter(c=>c.key);
