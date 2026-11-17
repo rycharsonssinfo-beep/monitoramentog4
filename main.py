@@ -12886,6 +12886,43 @@ async function portalGenerateReport(host){
       };
       update();
       if(keyMap.has("caucaia"))select(keyMap.get("caucaia"));
+      let refreshPromise=null;
+      layer.ssMapRefresh=function(){
+        if(refreshPromise)return refreshPromise;
+        refreshPromise=(async()=>{
+          const errors=await loadSystemData(true);
+          if(errors.length===modes.length)throw Error("Nenhuma fonte respondeu; os dados anteriores foram preservados.");
+          if(!layer.isConnected)return {skipped:true};
+          const selectedCity=keyMap.get(selected);
+          const signature=c=>c?modes.map(m=>(c.data[m]||[]).map(r=>r.id+"|"+r.name+"|"+r.url).join(";")).join("#"):"";
+          const before=signature(selectedCity);
+          const oldHistory=layer.querySelector(".ss-map-history");
+          const historyOpen=Boolean(oldHistory?.open);
+          const historyDays=oldHistory?.querySelector("[data-history-days].active")?.dataset.historyDays||"7";
+          const updated=new Map(cityRows(geo.features).map(c=>[c.key,c.data]));
+          for(const city of cities)city.data=updated.get(city.key)||{portais:[],fluxus:[],veiculos:[]};
+          layer.querySelector("[data-sm-covered]").textContent=cities.filter(c=>count(c)).length;
+          for(const m of modes)layer.querySelector("[data-sm-"+m+"]").textContent=cities.filter(c=>c.data[m].length).length;
+          update();
+          layer.dispatchEvent(new CustomEvent("ss-map-data-ready",{detail:{
+            cities:cities.map(c=>({name:c.name,code:c.code,key:c.key,systems:c.data})),
+            errors:[...lastLoadErrors],refreshed:true
+          }}));
+          if(selectedCity && signature(selectedCity)!==before){
+            select(selectedCity,false);
+            const history=layer.querySelector(".ss-map-history");
+            if(history && historyOpen){
+              if(historyDays!=="7")history.querySelector('[data-history-days="'+historyDays+'"]')?.click();
+              history.open=true;
+            }
+          }
+          const result={at:Date.now(),errors:[...errors]};
+          layer.dispatchEvent(new CustomEvent("ss-map-snapshot-updated",{detail:result}));
+          return result;
+        })().finally(()=>{refreshPromise=null});
+        return refreshPromise;
+      };
+      layer.dispatchEvent(new CustomEvent("ss-map-refresh-ready",{detail:{at:Date.now(),errors:[...lastLoadErrors]}}));
     }catch(e){console.error(e);area.textContent="Erro ao carregar o mapa: "+String(e.message||e)}
   }
   window.ssMapOpen=function(host){
@@ -14014,17 +14051,18 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
       if(store.current)renderSmartStatuses(layer,store.current,Date.now());
     }
     layer.addEventListener("ss-map-data-ready",e=>{
+      const currentKey=store.current?.key;
       store.cities=e.detail?.cities||[];
       store.errors=e.detail?.errors||[];
+      store.current=store.cities.find(c=>c.key===currentKey)||null;
       manager.disabled=false;
       repaint();
+      let warn=layer.querySelector(".ss-map-ops-warning");
       if(store.errors.length){
-        const warn=document.createElement("p");
-        warn.className="ss-map-ops-warning";
+        if(!warn){warn=document.createElement("p");warn.className="ss-map-ops-warning";strip.after(warn)}
         warn.textContent="Atenção: falha na atualização de "+store.errors.join(", ")+
-          ". Os indicadores podem estar incompletos ou desatualizados.";
-        strip.after(warn);
-      }
+          ". Dados anteriores preservados para as fontes indisponíveis.";
+      }else if(warn)warn.remove();
     });
     layer.addEventListener("ss-map-city-selected",e=>{
       if(!store.cities)return;
