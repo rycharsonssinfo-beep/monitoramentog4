@@ -14256,7 +14256,7 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
     if(layer)attach(layer);
   };
 })();
-(function(){if(!document.getElementById("ss-map-sync-incidents-css")){const tag=document.createElement("style");tag.id="ss-map-sync-incidents-css";tag.textContent="/* Monitor S&S — atualização automática do Mapa de Sistemas */\n.ss-map-layer .ss-map-syncbar{\n display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;\n gap:12px;margin:12px 0 2px;padding:10px 14px;\n background:linear-gradient(105deg,#113a5e,#0b2945);\n border:1px solid #326d98;border-radius:10px;color:#e2f4ff;\n}\n.ss-map-sync-details{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:center;min-width:0}\n.ss-map-sync-details strong{font-size:12px;line-height:1.3}\n.ss-map-sync-details small{color:#b7d4e6;font-size:10px;flex-basis:100%;padding-left:15px;line-height:1.4}\n.ss-map-sync-period{font-size:10px;color:#a4d8f4}\n.ss-map-sync-dot{height:8px;width:8px;border-radius:50%;background:#2dcdab;box-shadow:0 0 0 3px #2dcdab26}\n.ss-map-syncbar[data-sync-tone=\"warning\"]{border-color:#ba914a}\n.ss-map-syncbar[data-sync-tone=\"warning\"] .ss-map-sync-dot{background:#e4bb65}\n.ss-map-syncbar[data-sync-tone=\"error\"]{border-color:#bd6772}\n.ss-map-syncbar[data-sync-tone=\"error\"] .ss-map-sync-dot{background:#ef7784}\n.ss-map-syncbar.working .ss-map-sync-dot{background:#67bbff;animation:ss-sync-pulse 1s ease infinite alternate}\n@keyframes ss-sync-pulse{to{opacity:.35;transform:scale(.8)}}\n.ss-map-sync-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}\n.ss-map-sync-actions span{color:#b6d3e8;font-size:10px;white-space:normal}\n.ss-map-sync-actions button{\n background:#155887;border:1px solid #65a5d0;border-radius:8px;color:#f0faff;\n padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;\n}\n.ss-map-sync-actions button:hover:not(:disabled){background:#2177ab}\n.ss-map-sync-actions button:disabled{opacity:.65;cursor:wait}\n.ss-map-sync-actions button:focus-visible{outline:2px solid #a6e5ff;outline-offset:2px}\n@media(max-width:800px){\n .ss-map-layer .ss-map-syncbar{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 11px}\n .ss-map-sync-actions{justify-content:space-between;width:100%}\n}\n@media(max-width:480px){\n .ss-map-sync-actions{align-items:stretch}\n .ss-map-sync-actions span{align-self:center}\n}\n/* Painel de ocorrências por município — sem barra de rolagem própria */\n.ss-map-layer .ss-map-incidents{\n margin:11px 0 13px;border:1px solid #467b9e;background:linear-gradient(150deg,#143b5e,#0c2b49);\n border-radius:10px;min-width:0;overflow:visible;color:#eaf6ff;\n}\n.ss-map-layer .ss-map-incidents.has-failures{border-color:#bd6d78}\n.ss-map-incidents>summary{\n list-style:none;display:flex;align-items:center;gap:10px;min-width:0;\n cursor:pointer;padding:11px;border-radius:10px;\n}\n.ss-map-incidents>summary::-webkit-details-marker{display:none}\n.ss-map-incidents>summary strong{display:block;font-size:12px;font-weight:850;color:#f0faff}\n.ss-map-incidents>summary small{display:block;color:#b7d2e5;font-size:10px;line-height:1.4;margin-top:4px}\n.ss-map-incidents-icon{\n flex:0 0 32px;display:grid;place-items:center;\n width:32px;height:32px;background:#215d8b;border:1px solid #6da9d1;\n border-radius:9px;font-weight:900;font-size:18px;color:#f4fbff;\n}\n.ss-map-incidents.has-failures .ss-map-incidents-icon{background:#883746;border-color:#d98a91}\n.ss-map-incidents-arrow{margin-left:auto;color:#abd6f2;font-size:19px;transition:transform .18s}\n.ss-map-incidents[open] .ss-map-incidents-arrow{transform:rotate(180deg)}\n.ss-map-incidents>summary:focus-visible{outline:2px solid #99dfff;outline-offset:2px}\n.ss-map-incidents-body{padding:11px;border-top:1px solid #3d6482}\n.ss-map-incidents-kpis{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}\n.ss-map-incidents-kpis span{display:inline-flex;align-items:center;gap:5px;\n font-size:9px;font-weight:700;background:#0d2b47;border:1px solid #4a6c85;\n border-radius:7px;padding:6px 8px}\n.ss-map-incidents-kpis span b{color:#f2faff;font-size:12px}\n.ss-map-incidents-kpis span.offline{border-color:#ab5b67}\n.ss-map-incidents-kpis span.offline b{color:#ffa8b1}\n.ss-map-incidents-kpis span.attention{border-color:#a88949}\n.ss-map-incidents-kpis span.attention b{color:#ffdc91}\n.ss-map-incidents-kpis span.stale{border-color:#6c8193}\n.ss-map-incidents-list{display:grid;gap:7px;margin:9px 0}\n.ss-map-incident-item{border:1px solid #466885;border-left:3px solid #c9616d;background:#0b2a46;border-radius:8px;padding:10px;overflow-wrap:anywhere}\n.ss-map-incident-item.observacao{border-left-color:#ddb04d}\n.ss-map-incident-title{display:flex;justify-content:space-between;align-items:start;gap:8px}\n.ss-map-incident-title strong{font-size:11px;color:#fff;line-height:1.4}\n.ss-map-incident-title span{font-size:9px;background:#823943;color:#ffe0e3;border-radius:6px;padding:4px 6px;white-space:nowrap}\n.ss-map-incident-item.observacao .ss-map-incident-title span{background:#725527;color:#ffe6b5}\n.ss-map-incident-item>small{display:block;margin:5px 0;color:#adcce1;font-size:9px}\n.ss-map-incident-meta{display:flex;gap:5px 10px;flex-wrap:wrap;margin-top:6px}\n.ss-map-incident-meta span{font-size:9px;color:#c5deed}\n.ss-map-incident-item p{font-size:10px;color:#cbdde9;margin:8px 0 0;line-height:1.45}\n.ss-map-incident-item a{display:inline-block;margin-top:8px;color:#96dfff;text-decoration:underline;font-size:10px;font-weight:750}\n.ss-map-incidents-caution{font-size:10px;color:#ffdfa3;background:#62492242;border:1px solid #967342;border-radius:7px;padding:8px;line-height:1.45;margin:8px 0}\n.ss-map-incidents-empty{font-size:11px;color:#b9d7e8;line-height:1.45;margin:10px 0}\n.ss-map-incidents-events-head{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid #466a86;padding-top:12px;margin:14px 0 8px}\n.ss-map-incidents-events-head strong{font-size:11px;color:#f3fbff}\n.ss-map-incidents-events-head small{font-size:9px;color:#bad2e1}\n.ss-map-incidents-timeline{list-style:none;margin:0;padding:0;display:grid;gap:6px}\n.ss-map-incidents-timeline li{border-left:2px solid #c66b77;background:#0a2944;border-radius:6px;padding:8px 9px}\n.ss-map-incidents-timeline li.recovered{border-left-color:#35be99}\n.ss-map-incidents-timeline li>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}\n.ss-map-incidents-timeline li strong{font-size:10px;color:#fff}\n.ss-map-incidents-timeline time{font-size:9px;color:#bed4e6}\n.ss-map-incidents-timeline li small{display:block;font-size:9px;color:#add3e5;margin-top:6px}\n.ss-map-incidents-timeline li p{font-size:9px;color:#b9ccdc;margin:5px 0 0;line-height:1.45}\n.ss-map-incidents-loading{color:#b8d4e8;font-size:10px;padding:7px 0}\n.ss-map-incidents-reload{\n border:1px solid #4f8caf;background:#14537f;color:#effaff;cursor:pointer;\n border-radius:8px;padding:8px 11px;font-size:10px;font-weight:800;margin-top:12px;\n}\n.ss-map-incidents-reload:hover{background:#1f6798}\n.ss-map-incidents-reload:focus-visible{outline:2px solid #a2e5ff;outline-offset:2px}\n.ss-map-incidents-note{font-size:9px;line-height:1.45;margin:10px 0 0;color:#a8c5d8}\n@media(max-width:550px){\n .ss-map-incident-title{flex-direction:column}\n .ss-map-incidents-kpis span{flex:1 1 auto}\n .ss-map-incident-meta{gap:5px 7px}\n}";document.head.appendChild(tag);}})();
+(function(){if(!document.getElementById("ss-map-sync-incidents-css")){const tag=document.createElement("style");tag.id="ss-map-sync-incidents-css";tag.textContent="/* Monitor S&S — atualização automática do Mapa de Sistemas */\n.ss-map-layer .ss-map-syncbar{\n display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;\n gap:12px;margin:12px 0 2px;padding:10px 14px;\n background:linear-gradient(105deg,#113a5e,#0b2945);\n border:1px solid #326d98;border-radius:10px;color:#e2f4ff;\n}\n.ss-map-sync-details{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:center;min-width:0}\n.ss-map-sync-details strong{font-size:12px;line-height:1.3}\n.ss-map-sync-details small{color:#b7d4e6;font-size:10px;flex-basis:100%;padding-left:15px;line-height:1.4}\n.ss-map-sync-period{font-size:10px;color:#a4d8f4}\n.ss-map-sync-dot{height:8px;width:8px;border-radius:50%;background:#2dcdab;box-shadow:0 0 0 3px #2dcdab26}\n.ss-map-syncbar[data-sync-tone=\"warning\"]{border-color:#ba914a}\n.ss-map-syncbar[data-sync-tone=\"warning\"] .ss-map-sync-dot{background:#e4bb65}\n.ss-map-syncbar[data-sync-tone=\"error\"]{border-color:#bd6772}\n.ss-map-syncbar[data-sync-tone=\"error\"] .ss-map-sync-dot{background:#ef7784}\n.ss-map-syncbar.working .ss-map-sync-dot{background:#67bbff;animation:ss-sync-pulse 1s ease infinite alternate}\n@keyframes ss-sync-pulse{to{opacity:.35;transform:scale(.8)}}\n.ss-map-sync-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}\n.ss-map-sync-actions span{color:#b6d3e8;font-size:10px;white-space:normal}\n.ss-map-sync-actions button{\n background:#155887;border:1px solid #65a5d0;border-radius:8px;color:#f0faff;\n padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;\n}\n.ss-map-sync-actions button:hover:not(:disabled){background:#2177ab}\n.ss-map-sync-actions button:disabled{opacity:.65;cursor:wait}\n.ss-map-sync-actions button:focus-visible{outline:2px solid #a6e5ff;outline-offset:2px}\n@media(max-width:800px){\n .ss-map-layer .ss-map-syncbar{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 11px}\n .ss-map-sync-actions{justify-content:space-between;width:100%}\n}\n@media(max-width:480px){\n .ss-map-sync-actions{align-items:stretch}\n .ss-map-sync-actions span{align-self:center}\n}\n/* Painel de ocorrências por município — sem barra de rolagem própria */\n.ss-map-layer .ss-map-incidents{\n margin:11px 0 13px;border:1px solid #467b9e;background:linear-gradient(150deg,#143b5e,#0c2b49);\n border-radius:10px;min-width:0;overflow:visible;color:#eaf6ff;\n}\n.ss-map-layer .ss-map-incidents.has-failures{border-color:#bd6d78}\n.ss-map-incidents>summary{\n list-style:none;display:flex;align-items:center;gap:10px;min-width:0;\n cursor:pointer;padding:11px;border-radius:10px;\n}\n.ss-map-incidents>summary::-webkit-details-marker{display:none}\n.ss-map-incidents>summary strong{display:block;font-size:12px;font-weight:850;color:#f0faff}\n.ss-map-incidents>summary small{display:block;color:#b7d2e5;font-size:10px;line-height:1.4;margin-top:4px}\n.ss-map-incidents-icon{\n flex:0 0 32px;display:grid;place-items:center;\n width:32px;height:32px;background:#215d8b;border:1px solid #6da9d1;\n border-radius:9px;font-weight:900;font-size:18px;color:#f4fbff;\n}\n.ss-map-incidents.has-failures .ss-map-incidents-icon{background:#883746;border-color:#d98a91}\n.ss-map-incidents-arrow{margin-left:auto;color:#abd6f2;font-size:19px;transition:transform .18s}\n.ss-map-incidents[open] .ss-map-incidents-arrow{transform:rotate(180deg)}\n.ss-map-incidents>summary:focus-visible{outline:2px solid #99dfff;outline-offset:2px}\n.ss-map-incidents-body{padding:11px;border-top:1px solid #3d6482}\n.ss-map-incidents-kpis{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}\n.ss-map-incidents-kpis span{display:inline-flex;align-items:center;gap:5px;\n font-size:9px;font-weight:700;background:#0d2b47;border:1px solid #4a6c85;\n border-radius:7px;padding:6px 8px}\n.ss-map-incidents-kpis span b{color:#f2faff;font-size:12px}\n.ss-map-incidents-kpis span.offline{border-color:#ab5b67}\n.ss-map-incidents-kpis span.offline b{color:#ffa8b1}\n.ss-map-incidents-kpis span.attention{border-color:#a88949}\n.ss-map-incidents-kpis span.attention b{color:#ffdc91}\n.ss-map-incidents-kpis span.stale{border-color:#6c8193}\n.ss-map-incidents-list{display:grid;gap:7px;margin:9px 0}\n.ss-map-incident-item{border:1px solid #466885;border-left:3px solid #c9616d;background:#0b2a46;border-radius:8px;padding:10px;overflow-wrap:anywhere}\n.ss-map-incident-item.observacao{border-left-color:#ddb04d}\n.ss-map-incident-title{display:flex;justify-content:space-between;align-items:start;gap:8px}\n.ss-map-incident-title strong{font-size:11px;color:#fff;line-height:1.4}\n.ss-map-incident-title span{font-size:9px;background:#823943;color:#ffe0e3;border-radius:6px;padding:4px 6px;white-space:nowrap}\n.ss-map-incident-item.observacao .ss-map-incident-title span{background:#725527;color:#ffe6b5}\n.ss-map-incident-item>small{display:block;margin:5px 0;color:#adcce1;font-size:9px}\n.ss-map-incident-meta{display:flex;gap:5px 10px;flex-wrap:wrap;margin-top:6px}\n.ss-map-incident-meta span{font-size:9px;color:#c5deed}\n.ss-map-incident-item p{font-size:10px;color:#cbdde9;margin:8px 0 0;line-height:1.45}\n.ss-map-incident-item a{display:inline-block;margin-top:8px;color:#96dfff;text-decoration:underline;font-size:10px;font-weight:750}\n.ss-map-incidents-caution{font-size:10px;color:#ffdfa3;background:#62492242;border:1px solid #967342;border-radius:7px;padding:8px;line-height:1.45;margin:8px 0}\n.ss-map-incidents-empty{font-size:11px;color:#b9d7e8;line-height:1.45;margin:10px 0}\n.ss-map-incidents-events-head{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid #466a86;padding-top:12px;margin:14px 0 8px}\n.ss-map-incidents-events-head strong{font-size:11px;color:#f3fbff}\n.ss-map-incidents-events-head small{font-size:9px;color:#bad2e1}\n.ss-map-incidents-timeline{list-style:none;margin:0;padding:0;display:grid;gap:6px}\n.ss-map-incidents-timeline li{border-left:2px solid #c66b77;background:#0a2944;border-radius:6px;padding:8px 9px}\n.ss-map-incidents-timeline li.recovered{border-left-color:#35be99}\n.ss-map-incidents-timeline li>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}\n.ss-map-incidents-timeline li strong{font-size:10px;color:#fff}\n.ss-map-incidents-timeline time{font-size:9px;color:#bed4e6}\n.ss-map-incidents-timeline li small{display:block;font-size:9px;color:#add3e5;margin-top:6px}\n.ss-map-incidents-timeline li p{font-size:9px;color:#b9ccdc;margin:5px 0 0;line-height:1.45}\n.ss-map-incidents-loading{color:#b8d4e8;font-size:10px;padding:7px 0}\n.ss-map-incidents-reload{\n border:1px solid #4f8caf;background:#14537f;color:#effaff;cursor:pointer;\n border-radius:8px;padding:8px 11px;font-size:10px;font-weight:800;margin-top:12px;\n}\n.ss-map-incidents-reload:hover{background:#1f6798}\n.ss-map-incidents-reload:focus-visible{outline:2px solid #a2e5ff;outline-offset:2px}\n.ss-map-incidents-note{font-size:9px;line-height:1.45;margin:10px 0 0;color:#a8c5d8}\n@media(max-width:550px){\n .ss-map-incident-title{flex-direction:column}\n .ss-map-incidents-kpis span{flex:1 1 auto}\n .ss-map-incident-meta{gap:5px 7px}\n}\n\n\n/* Seção unificada — Monitoramento do Município */\n.ss-map-layer .ss-map-detail>.ss-map-monitor{grid-column:1/-1;min-width:0}\n.ss-map-layer .ss-map-monitor{\n  background:linear-gradient(145deg,#153f61,#0b2b49);\n  border-color:#4a85a9;\n  margin:11px 0 14px;\n  box-shadow:inset 0 1px rgba(255,255,255,.07);\n}\n.ss-map-layer .ss-map-monitor>summary{padding:12px 11px}\n.ss-map-layer .ss-map-monitor-body{padding:11px}\n.ss-map-layer .ss-map-monitor-tabs{\n  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));\n  gap:7px;padding:4px;border:1px solid #325e80;border-radius:11px;\n  background:#0a2844;margin:0 0 12px;\n}\n.ss-map-layer .ss-map-monitor-tabs>button{\n  min-width:0;border-radius:8px;border:1px solid transparent;\n  padding:10px 8px;font-size:11px;font-weight:850;line-height:1.25;\n  cursor:pointer;color:#bcd9eb;background:transparent;\n  transition:background .15s,border-color .15s,color .15s;\n}\n.ss-map-layer .ss-map-monitor-tabs>button:hover{\n  background:#1c4e74;color:#effaff;\n}\n.ss-map-layer .ss-map-monitor-tabs>button.active{\n  background:linear-gradient(135deg,#216ca1,#155286);\n  border-color:#69b9e8;color:#fff;\n  box-shadow:inset 0 1px rgba(255,255,255,.12),0 0 14px rgba(56,143,206,.13);\n}\n.ss-map-layer .ss-map-monitor-tabs>button:focus-visible{\n  outline:2px solid #bcf1ff;outline-offset:2px;\n}\n.ss-map-layer .ss-map-monitor-view{min-width:0}\n.ss-map-layer .ss-map-monitor-view[hidden]{display:none!important}\n.ss-map-layer .ss-map-monitor .ss-map-history{\n  margin:0!important;border:none!important;\n  background:transparent!important;border-radius:0!important;\n  padding:0;overflow:visible;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history>summary{display:none!important}\n.ss-map-layer .ss-map-monitor .ss-map-history-body{\n  border-top:none;padding:0;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history-toolbar{\n  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));\n  gap:7px;margin-bottom:12px;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history-toolbar>button{\n  min-width:0;padding:10px 5px;\n  border:1px solid #4d86b1;background:#0e314f;\n  border-radius:8px;font-size:11px;color:#cce9fa;font-weight:850;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history-toolbar>button.active{\n  border-color:#77c8ef;background:#216a9a;color:#fff;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history-toolbar>button:focus-visible{\n  outline:2px solid #b5eaff;outline-offset:2px;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history-list li{\n  padding:9px 10px;border-radius:8px;\n}\n.ss-map-layer .ss-map-monitor .ss-map-history-note{\n  line-height:1.55;margin:12px 0 3px;\n}\n.ss-map-layer .ss-map-monitor .ss-map-incidents-reload{\n  margin-top:12px;max-width:100%;\n}\n@media(max-width:500px){\n  .ss-map-layer .ss-map-monitor-tabs>button,\n  .ss-map-layer .ss-map-monitor .ss-map-history-toolbar>button{\n    font-size:10px;padding:10px 3px;\n  }\n  .ss-map-layer .ss-map-monitor-body{padding:9px}\n}";document.head.appendChild(tag);}})();
 /* Atualização automática — Monitor Grupo S&S, Mapa de Sistemas.
  * Consulta somente fontes já autorizadas pelo painel; não executa novas sondagens HTTP.
  * Atualiza os dados sem recriar SVG, zoom ou controles de município.
@@ -14464,83 +14464,152 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
     if(truncated||failures.length>7)html+='<p class="ss-map-incidents-caution">Mostrando eventos recentes; abra Histórico do município para mais detalhes.</p>';
     return html;
   }
+  /* Uma seção, duas finalidades:
+     - Situação atual: estado operacional e diagnóstico dos ambientes.
+     - Histórico: todos os eventos do período, consultados pelo componente original.
+     O histórico não é duplicado na aba de situação atual. */
   function attach(layer){
     if(layer.dataset.ssMapIncidents)return;
     layer.dataset.ssMapIncidents="1";
-    let cities=[],key="",loadToken=0,loadTime=0,loadedKey="",events=null;
+    let cities=[],key="";
+    const tabByCity=new Map();
+    const periodByCity=new Map();
+    const expandedByCity=new Map();
     const current=()=>cities.find(c=>c.key===key)||null;
+
+    function renderCurrent(panel,city){
+      const result=currentMarkup(city);
+      const slot=panel.querySelector("[data-incidents-current]");
+      if(slot)slot.innerHTML=result.html;
+      const subtitle=panel.querySelector("[data-incidents-summary]");
+      if(subtitle)subtitle.textContent=
+        result.active?result.active+" ambiente(s) em ocorrência":
+          result.stale?result.stale+" ambiente(s) sem leitura recente":
+          "Situação atual e histórico de eventos";
+      panel.classList.toggle("has-failures",result.offline>0);
+    }
+
+    function activateTab(panel,tab,remember=true){
+      if(tab!=="current"&&tab!=="history")tab="current";
+      if(remember&&key)tabByCity.set(key,tab);
+      for(const button of panel.querySelectorAll("[data-monitor-tab]")){
+        const selected=button.dataset.monitorTab===tab;
+        button.classList.toggle("active",selected);
+        button.setAttribute("aria-selected",String(selected));
+        button.tabIndex=selected?0:-1;
+      }
+      for(const view of panel.querySelectorAll("[data-monitor-view]")){
+        view.hidden=view.dataset.monitorView!==tab;
+      }
+      // Abre o histórico somente quando sua aba estiver visível:
+      // mantém 24h/7d/30d e evita requisições duplicadas ao Supabase.
+      const historical=panel.querySelector(".ss-map-history");
+      if(historical)historical.open=panel.open&&tab==="history";
+      if(tab==="current")renderCurrent(panel,current());
+    }
+
     function insert(city){
       const detail=layer.querySelector("[data-sm-detail]");
       if(!detail||!city)return;
-      const history=detail.querySelector(".ss-map-history");
+      const oldHistory=detail.querySelector(".ss-map-history");
       const heading=detail.querySelector("h3");
       if(!heading)return;
       const panel=document.createElement("details");
-      panel.className="ss-map-incidents";
-      panel.innerHTML='<summary><span class="ss-map-incidents-icon" aria-hidden="true">!</span>'+
-        '<span><strong>Ocorrências do município</strong>'+
-        '<small data-incidents-summary>Diagnóstico das últimas verificações</small></span>'+
+      panel.className="ss-map-incidents ss-map-monitor";
+      panel.innerHTML=
+        '<summary><span class="ss-map-incidents-icon" aria-hidden="true">◷</span>'+
+        '<span><strong>Monitoramento do Município</strong>'+
+        '<small data-incidents-summary>Situação atual e histórico de eventos</small></span>'+
         '<span class="ss-map-incidents-arrow" aria-hidden="true">⌄</span></summary>'+
-        '<div class="ss-map-incidents-body"><div data-incidents-current></div>'+
-        '<div data-incidents-events></div>'+
-        '<button type="button" class="ss-map-incidents-reload" data-incidents-reload>↻ Atualizar ocorrências</button>'+
-        '<p class="ss-map-incidents-note">Fonte: cadastros e eventos do Monitor S&S. Duração somente quando a data de início da falha está registrada.</p></div>';
-      if(history)history.before(panel);else heading.before(panel);
-      const refresh=()=>update(false);
-      panel.querySelector("[data-incidents-reload]").addEventListener("click",()=>update(true));
-      panel.addEventListener("toggle",()=>{if(panel.open)refresh()});
-      const summary=currentMarkup(city);
-      panel.open=summary.active>0;
+        '<div class="ss-map-incidents-body ss-map-monitor-body">'+
+          '<div class="ss-map-monitor-tabs" role="tablist" aria-label="Informações do município">'+
+            '<button type="button" role="tab" id="ss-map-monitor-current-tab" aria-controls="ss-map-monitor-current-panel" aria-selected="true" tabindex="0" class="active" data-monitor-tab="current">Situação atual</button>'+
+            '<button type="button" role="tab" id="ss-map-monitor-history-tab" aria-controls="ss-map-monitor-history-panel" aria-selected="false" tabindex="-1" data-monitor-tab="history">Histórico</button>'+
+          '</div>'+
+          '<section role="tabpanel" id="ss-map-monitor-current-panel" aria-labelledby="ss-map-monitor-current-tab" data-monitor-view="current" class="ss-map-monitor-view">'+
+            '<div data-incidents-current></div>'+
+            '<button type="button" class="ss-map-incidents-reload" data-incidents-reload>↻ Atualizar situação</button>'+
+            '<p class="ss-map-incidents-note">Informações da última verificação. A duração depende da data de início da falha registrada.</p>'+
+          '</section>'+
+          '<section role="tabpanel" id="ss-map-monitor-history-panel" aria-labelledby="ss-map-monitor-history-tab" data-monitor-view="history" class="ss-map-monitor-view" hidden>'+
+            '<div data-monitor-history></div>'+
+            '<button type="button" class="ss-map-incidents-reload" data-monitor-history-reload>↻ Atualizar histórico</button>'+
+          '</section>'+
+        '</div>';
+      heading.before(panel);
+      const historyContainer=panel.querySelector("[data-monitor-history]");
+      if(oldHistory){
+        historyContainer.appendChild(oldHistory);
+        // O seletor e a consulta do histórico antigo são preservados.
+        const savedPeriod=periodByCity.get(city.key)||"7";
+        if(savedPeriod!=="7"){
+          oldHistory.querySelector('[data-history-days="'+savedPeriod+'"]')?.click();
+        }
+        oldHistory.open=false;
+      }else{
+        historyContainer.textContent="Histórico temporariamente indisponível para este município.";
+      }
+      const tabs=panel.querySelectorAll("[data-monitor-tab]");
+      tabs.forEach(button=>{
+        button.addEventListener("click",()=>activateTab(panel,button.dataset.monitorTab));
+        button.addEventListener("keydown",event=>{
+          const index=[...tabs].indexOf(button);
+          let next=-1;
+          if(event.key==="ArrowRight")next=(index+1)%tabs.length;
+          if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;
+          if(event.key==="Home")next=0;
+          if(event.key==="End")next=tabs.length-1;
+          if(next>=0){
+            event.preventDefault();
+            const nextButton=tabs[next];
+            activateTab(panel,nextButton.dataset.monitorTab);
+            nextButton.focus();
+          }
+        });
+      });
+      panel.addEventListener("click",event=>{
+        const days=event.target.closest?.("[data-history-days]");
+        if(days&&panel.contains(days)&&["1","7","30"].includes(days.dataset.historyDays)){
+          periodByCity.set(key,days.dataset.historyDays);
+        }
+      });
+      panel.querySelector("[data-incidents-reload]").addEventListener("click",()=>{
+        if(typeof layer.ssMapRefreshNow==="function")layer.ssMapRefreshNow();
+        else renderCurrent(panel,current());
+      });
+      panel.querySelector("[data-monitor-history-reload]").addEventListener("click",()=>{
+        const history=panel.querySelector(".ss-map-history");
+        const active=history?.querySelector("[data-history-days].active");
+        if(active)active.click();
+      });
+      panel.addEventListener("toggle",()=>{
+        expandedByCity.set(city.key,panel.open);
+        activateTab(panel,tabByCity.get(city.key)||"current",false);
+      });
+      const status=currentMarkup(city);
+      panel.open=expandedByCity.has(city.key)?expandedByCity.get(city.key):status.active>0;
       renderCurrent(panel,city);
-      // A abertura dispara toggle; não duplicar consultas simultâneas.
+      activateTab(panel,tabByCity.get(city.key)||"current",false);
     }
-    function renderCurrent(panel,city){
-      const result=currentMarkup(city);
-      panel.querySelector("[data-incidents-current]").innerHTML=result.html;
-      panel.querySelector("[data-incidents-summary]").textContent=
-        result.active?result.active+" ambiente(s) em ocorrência":
-          result.stale?result.stale+" ambiente(s) sem leitura recente":"Nenhuma indisponibilidade recente";
-      panel.classList.toggle("has-failures",result.offline>0);
-    }
-    async function update(force=false){
+
+    function update(){
+      const panel=layer.querySelector(".ss-map-monitor");
       const city=current();
-      const panel=layer.querySelector(".ss-map-incidents");
-      if(!panel||!city)return;
-      renderCurrent(panel,city);
-      if(!panel.open)return;
-      const now=Date.now();
-      if(!force&&events&&loadedKey===city.key&&now-loadTime<120000){
-        panel.querySelector("[data-incidents-events]").innerHTML=eventsMarkup(events,city);
-        return;
-      }
-      const token=++loadToken;
-      const slot=panel.querySelector("[data-incidents-events]");
-      slot.innerHTML='<p class="ss-map-incidents-loading">Consultando eventos registrados…</p>';
-      try{
-        if(typeof window.ssMapLoadCityEvents!=="function")throw Error("Consulta de eventos não disponível.");
-        const result=await window.ssMapLoadCityEvents(city,7);
-        if(token!==loadToken||!panel.isConnected||city.key!==key)return;
-        events=result;loadedKey=city.key;loadTime=Date.now();
-        slot.innerHTML=eventsMarkup(result,city);
-      }catch(err){
-        if(token!==loadToken||!panel.isConnected)return;
-        console.warn("Ocorrências municipais:",err);
-        slot.innerHTML='<p class="ss-map-incidents-caution">Não foi possível consultar os eventos. Os estados atuais permanecem disponíveis.</p>';
-      }
+      if(panel&&city)renderCurrent(panel,city);
     }
-    layer.addEventListener("ss-map-data-ready",e=>{
-      cities=e.detail?.cities||[];
-      if(key)update(false);
+    layer.addEventListener("ss-map-data-ready",event=>{
+      cities=event.detail?.cities||[];
+      update();
     });
-    layer.addEventListener("ss-map-city-selected",e=>{
-      key=e.detail?.key||"";
-      loadToken++;events=null;loadedKey="";
+    layer.addEventListener("ss-map-city-selected",event=>{
+      key=event.detail?.key||"";
       insert(current());
     });
-    layer.addEventListener("ss-map-snapshot-updated",()=>{
-      if(key)update(false);
-    });
-    layer.ssMapIncidentRefresh=()=>update(true);
+    layer.addEventListener("ss-map-snapshot-updated",update);
+    layer.ssMapIncidentRefresh=()=>{
+      if(typeof layer.ssMapRefreshNow==="function")return layer.ssMapRefreshNow();
+      return update();
+    };
   }
   window.ssMapIncidentsCurrent=currentMarkup;
   window.ssMapIncidentsEvents=eventsMarkup;
