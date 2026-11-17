@@ -133,7 +133,7 @@
       const summary=currentMarkup(city);
       panel.open=summary.active>0;
       renderCurrent(panel,city);
-      if(panel.open)refresh();
+      // A abertura dispara toggle; não duplicar consultas simultâneas.
     }
     function renderCurrent(panel,city){
       const result=currentMarkup(city);
