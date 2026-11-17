@@ -12614,7 +12614,7 @@ async function portalGenerateReport(host){
   const modes=["portais","fluxus","veiculos"];
   const labels={portais:"Portal do Contribuinte",fluxus:"Fluxus",veiculos:"Veículos"};
   const colors=["#8995a8","#f5bf33","#15ad79","#1679d4"];
-  let geo=null;
+  let geo=null, lastDataFetch=0, lastLoadErrors=[];
   const css=String.raw`
   .ss-map-open{border:1px solid #a6c6df;background:#0e5b95;color:white;padding:9px 13px;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
   .ss-map-layer{position:absolute;z-index:32;inset:8px;overflow:auto;background:#081e37;border:1px solid #345d81;border-radius:14px;color:#e8f5ff;padding:17px;font-family:Arial,Segoe UI,sans-serif}
@@ -12720,13 +12720,22 @@ async function portalGenerateReport(host){
     throw Error("Não foi possível carregar a malha municipal do Ceará.");
   }
   async function loadSystemData(){
+    if(lastDataFetch && Date.now()-lastDataFetch<30000)return;
+    const errors=[];
     await Promise.all(modes.map(async m=>{
-      if(portalDatas[m]?.length)return;
       try{
         const select="id,municipio,uf,url,estado,ultima_verificacao"+(m==="veiculos"?",cidade,entidade,categoria":"");
-        portalDatas[m]=await portalFetchTable(portalServices[m].current,select,"order=municipio.asc&limit=500");
-      }catch(e){console.warn("Mapa: erro ao consultar "+m,e)}
+        const fetched=await portalFetchTable(portalServices[m].current,select,"order=municipio.asc&limit=500");
+        if(!Array.isArray(fetched))throw Error("Consulta retornou um formato inesperado.");
+        portalDatas[m]=fetched;
+      }catch(e){
+        errors.push(m);
+        console.warn("Mapa: falha na consulta de "+m,e);
+        // Não descartar a última coleta válida; os status vencidos serão sinalizados.
+      }
     }));
+    lastDataFetch=Date.now();
+    lastLoadErrors=errors;
   }
   function cityRows(features){
     const cities=features.map(f=>({f,name:name(f),key:norm(name(f)),code:code(f),data:{portais:[],fluxus:[],veiculos:[]}})).filter(c=>c.key);
@@ -12739,7 +12748,7 @@ async function portalGenerateReport(host){
       if(!city)continue;
       const url=portalSafeUrl(r.url)||"";
       if(!city.data[mode].some(x=>x.url===url&&x.name===String(r.entidade||raw)))
-        city.data[mode].push({name:String(r.entidade||raw),url,estado:portalState(r),ultima_verificacao:String(r.ultima_verificacao||"")});
+        city.data[mode].push({id:String(r.id||""),municipio:String(r.municipio||""),name:String(r.entidade||raw),url,estado:portalState(r),ultima_verificacao:String(r.ultima_verificacao||"")});
     }
     return cities;
   }
@@ -12758,7 +12767,7 @@ async function portalGenerateReport(host){
       await Promise.all([loadGeo(),loadSystemData()]);
       if(!layer.isConnected)return;
       const cities=cityRows(geo.features),keyMap=new Map(cities.map(c=>[c.key,c]));
-      layer.dispatchEvent(new CustomEvent("ss-map-data-ready",{detail:{cities:cities.map(c=>({name:c.name,code:c.code,key:c.key,systems:c.data}))}}));
+      layer.dispatchEvent(new CustomEvent("ss-map-data-ready",{detail:{cities:cities.map(c=>({name:c.name,code:c.code,key:c.key,systems:c.data})),errors:[...lastLoadErrors]}}));
       const count=c=>statusCity(c);
       layer.querySelector("[data-sm-total]").textContent=cities.length;
       layer.querySelector("[data-sm-covered]").textContent=cities.filter(c=>count(c)).length;
