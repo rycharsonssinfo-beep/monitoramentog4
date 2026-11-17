@@ -107,6 +107,7 @@
 
 
 /* Seção unificada — Monitoramento do Município */
+.ss-map-layer .ss-map-detail>.ss-map-monitor{grid-column:1/-1;min-width:0}
 .ss-map-layer .ss-map-monitor{
   background:linear-gradient(145deg,#153f61,#0b2b49);
   border-color:#4a85a9;
