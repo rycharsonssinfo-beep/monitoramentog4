@@ -306,17 +306,18 @@
       if(store.current)renderSmartStatuses(layer,store.current,Date.now());
     }
     layer.addEventListener("ss-map-data-ready",e=>{
+      const currentKey=store.current?.key;
       store.cities=e.detail?.cities||[];
       store.errors=e.detail?.errors||[];
+      store.current=store.cities.find(c=>c.key===currentKey)||null;
       manager.disabled=false;
       repaint();
+      let warn=layer.querySelector(".ss-map-ops-warning");
       if(store.errors.length){
-        const warn=document.createElement("p");
-        warn.className="ss-map-ops-warning";
+        if(!warn){warn=document.createElement("p");warn.className="ss-map-ops-warning";strip.after(warn)}
         warn.textContent="Atenção: falha na atualização de "+store.errors.join(", ")+
-          ". Os indicadores podem estar incompletos ou desatualizados.";
-        strip.after(warn);
-      }
+          ". Dados anteriores preservados para as fontes indisponíveis.";
+      }else if(warn)warn.remove();
     });
     layer.addEventListener("ss-map-city-selected",e=>{
       if(!store.cities)return;
