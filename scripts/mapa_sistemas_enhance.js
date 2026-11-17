@@ -245,7 +245,42 @@ function labels(layer,svg){
  });
 
 }
+function responsiveFilters(layer){
+ const panel=layer.querySelector(".ss-map-grid>aside:first-child");
+ if(!panel||panel.querySelector("[data-sm-filter-toggle]"))return;
+ const title=panel.querySelector("h3");
+ if(!title)return;
+ const toggle=document.createElement("button");
+ toggle.type="button";
+ toggle.className="ss-map-filter-toggle";
+ toggle.dataset.smFilterToggle="1";
+ title.insertAdjacentElement("afterend",toggle);
+ const media=window.matchMedia("(max-width:1000px)");
+ let userChanged=false;
+ function refresh(){
+   if(!media.matches){
+     panel.classList.remove("ss-map-filter-collapsed");
+   }else if(!userChanged){
+     panel.classList.add("ss-map-filter-collapsed");
+   }
+   const folded=media.matches && panel.classList.contains("ss-map-filter-collapsed");
+   const active=panel.querySelectorAll("[data-sm-mode]:checked").length;
+   toggle.textContent=(folded?"Mostrar filtros e legenda":"Ocultar filtros e legenda")+
+      (active?" · "+active+" selecionado"+(active>1?"s":""):"")+" "+(folded?"⌄":"⌃");
+   toggle.setAttribute("aria-expanded",String(!folded));
+   toggle.setAttribute("aria-label",(folded?"Mostrar":"Ocultar")+" filtros e legenda");
+ }
+ toggle.addEventListener("click",()=>{
+   panel.classList.toggle("ss-map-filter-collapsed");
+   userChanged=true;refresh();
+ });
+ if(media.addEventListener)media.addEventListener("change",()=>{userChanged=false;refresh()});
+ else if(media.addListener)media.addListener(()=>{userChanged=false;refresh()});
+ layer.addEventListener("ss-map-filter-change",refresh);
+ refresh();
+}
 function begin(layer){
+ responsiveFilters(layer);
  const watcher=new MutationObserver(()=>{
   const svg=layer.querySelector(".ss-map-svg");if(svg){watcher.disconnect();labels(layer,svg)}
  });
