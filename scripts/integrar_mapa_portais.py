@@ -9,6 +9,7 @@ main = root / "main.py"
 js = (root / "scripts" / "mapa_sistemas_embed.js").read_text(encoding="utf-8").strip()
 extra_js = (root / "scripts" / "mapa_sistemas_enhance.js").read_text(encoding="utf-8").strip()
 extra_css = (root / "scripts" / "mapa_sistemas_enhance.css").read_text(encoding="utf-8").strip()
+logo_js = (root / "scripts" / "logo_grupo_ss_oficial.js").read_text(encoding="utf-8").strip()
 report_js = (root / "scripts" / "mapa_sistemas_report.js").read_text(encoding="utf-8").strip()
 report_css = (root / "scripts" / "mapa_sistemas_report.css").read_text(encoding="utf-8").strip()
 css_js = (
@@ -25,7 +26,7 @@ report_css_js = (
     'tag.textContent=' + json.dumps(report_css, ensure_ascii=False) + ';'
     'document.head.appendChild(tag);}})();'
 )
-full = js + "\n" + css_js + "\n" + extra_js + "\n" + report_css_js + "\n" + report_js
+full = js + "\n" + css_js + "\n" + extra_js + "\n" + logo_js + "\n" + report_css_js + "\n" + report_js
 source = main.read_text(encoding="utf-8")
 
 start_marker = "(function ssMapInstall(){"
