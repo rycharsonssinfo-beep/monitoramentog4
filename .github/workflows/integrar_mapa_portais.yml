@@ -6,6 +6,7 @@ on:
       - "scripts/mapa_sistemas_embed.js"
       - "scripts/mapa_sistemas_enhance.js"
       - "scripts/mapa_sistemas_enhance.css"
+      - "scripts/logo_grupo_ss_oficial.js"
       - "scripts/mapa_sistemas_report.js"
       - "scripts/mapa_sistemas_report.css"
       - "scripts/test_mapa_sistemas_report.cjs"
@@ -26,6 +27,7 @@ jobs:
         run: |
           node --check scripts/mapa_sistemas_embed.js
           node --check scripts/mapa_sistemas_enhance.js
+          node --check scripts/logo_grupo_ss_oficial.js
           node --check scripts/mapa_sistemas_report.js
       - name: Testar exportação XLSX, dados e prévia PDF
         run: node scripts/test_mapa_sistemas_report.cjs
