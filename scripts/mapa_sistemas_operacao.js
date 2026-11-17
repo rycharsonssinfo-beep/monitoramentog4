@@ -246,6 +246,18 @@
     const layer=host.querySelector("[data-ss-map]");
     if(!layer||layer.dataset.ssMapOperations)return;
     layer.dataset.ssMapOperations="1";
+    // Responsividade baseada na largura do módulo dentro do Streamlit.
+    const syncWidth=()=>{
+      const width=layer.getBoundingClientRect().width;
+      layer.classList.toggle("ss-map-ops-compact",width>0&&width<=1050);
+      layer.classList.toggle("ss-map-ops-narrow",width>0&&width<=690);
+    };
+    syncWidth();
+    window.addEventListener("resize",syncWidth);
+    if(typeof ResizeObserver!=="undefined"){
+      const resizeObserver=new ResizeObserver(syncWidth);
+      resizeObserver.observe(layer);
+    }
     const store={cities:null,errors:[],current:null};
     const actions=layer.querySelector(".ss-map-report-actions")||layer.querySelector(".ss-map-head");
     const manager=document.createElement("button");
