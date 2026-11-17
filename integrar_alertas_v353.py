@@ -1,45 +1,70 @@
 #!/usr/bin/env python3
-"""Aplica integração dos alertas v3.53.0 ao main.py, sem mudar o coletor/Supabase.
-Execute na raiz do repositório: python integrar_alertas_v353.py
-Após aplicar, reinicie o Streamlit e teste pelo botão 'Testar alerta'.
+"""Integra alertas dos Portais do Contribuinte ao main.py da raiz (v3.53.0).
+
+Execução: python integrar_alertas_v353.py
+Não exige novas tabelas; utiliza dados existentes do monitoramento no Supabase.
 """
 from pathlib import Path
 import sys
 
-main = Path(__file__).with_name("main.py")
-script = Path(__file__).with_name("portal_alerts_v353.js")
-if not main.is_file() or not script.is_file():
-    sys.exit("main.py e portal_alerts_v353.js devem estar no mesmo diretório.")
+root = Path(__file__).resolve().parent
+main = root / "main.py"
+javascript = root / "portal_alerts_v353.js"
+
+if not main.is_file() or not javascript.is_file():
+    sys.exit("Arquivos main.py e portal_alerts_v353.js não encontrados na raiz.")
+
 source = main.read_text(encoding="utf-8")
-if "ssPortalAlerts353.mount(host" in source:
-    print("Integração já aplicada.")
+if 'window.ssPortalAlerts353.start({' in source:
+    print("Integração v3.53.0 já aplicada.")
     sys.exit(0)
-marker = "  host.querySelectorAll('[data-portal-mode]').forEach(btn=>btn.onclick=()=>portalChooseService(btn.dataset.portalMode));"
-poll = "  finally{portalBusy=false;portalDrawAll();}\n}\nfunction portalChooseService(mode)"
-js_tag = "    html_painel = html_painel.replace(\"__PAYLOAD_B64__\", payload_b64)"
-if marker not in source or poll not in source or js_tag not in source:
-    sys.exit("Marcadores não encontrados; o arquivo mudou. Integração cancelada sem alterar main.py.")
+
+anchors = {
+    "mount": "  host.querySelectorAll('[data-portal-mode]').forEach(btn=>btn.onclick=()=>portalChooseService(btn.dataset.portalMode));",
+    "receive": "    portalDatas[mode]=data;",
+    "start": "function portalStart(host){",
+    "html": '    html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)',
+}
+for name, value in anchors.items():
+    if source.count(value) != 1:
+        sys.exit(f"Marcador {name} ausente ou ambíguo. main.py mantido inalterado.")
+
+# Usa a própria coleta do painel, sem requisições extras.
 source = source.replace(
-    marker,
-    "  window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '');\n" + marker,
+    anchors["receive"],
+    anchors["receive"] + "\n    if(mode==='portais')window.ssPortalAlerts353?.receive(data);",
     1,
 )
+
+# Insere controles visuais no cabeçalho apenas depois da construção do DOM.
 source = source.replace(
-    poll,
-    "  finally{portalBusy=false;portalDrawAll();window.ssPortalAlerts353?.check(portalDatas.portais, settings.mascotAlert || '');}\n}\nfunction portalChooseService(mode)",
+    anchors["mount"],
+    "  window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '');\n" + anchors["mount"],
     1,
 )
-# Insere o JS ao criar o HTML Streamlit, sem rede externa e com código local versionado.
-insertion = (
-    "    html_painel = html_painel.replace("
-    '"function portalStart(host){", '
-    'Path(__file__).with_name("portal_alerts_v353.js").read_text(encoding="utf-8") + "\\nfunction portalStart(host){")\n'
+
+# Adiciona o controlador imediatamente antes do módulo de abertura dos portais.
+# A consulta de 60 s é independente da aba selecionada (SIM/Fluxus/Veículos).
+boot = (
+    "window.ssPortalAlerts353.start({"
+    "mascot:settings.mascotAlert||'',"
+    "state:portalState,"
+    "fetch:()=>portalFetchTable('portais_monitor_atual',"
+    "'id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em',"
+    "'order=municipio.asc&limit=500')"
+    "});"
 )
-source = source.replace(js_tag, insertion + js_tag, 1)
-# Preserva a estrutura original: se houver mais de uma instância HTML, só o painel é alterado.
+inject = (
+    '    html_painel = html_painel.replace(\n'
+    '        "function portalStart(host){",\n'
+    '        Path(__file__).with_name("portal_alerts_v353.js").read_text(encoding="utf-8")\n'
+    '        + "\\n' + boot + '\\nfunction portalStart(host){",\n'
+    '        1,\n'
+    '    )\n'
+)
+source = source.replace(anchors["html"], inject + anchors["html"], 1)
+
+# Evita sintaxe Python inválida e mudanças parciais.
 compile(source, str(main), "exec")
-backup = main.with_suffix(".py.pre_alert_v353.bak")
-if not backup.exists():
-    backup.write_text(main.read_text(encoding="utf-8"), encoding="utf-8")
 main.write_text(source, encoding="utf-8")
-print("Integração v3.53.0 aplicada. Backup:", backup.name)
+print("Integração v3.53.0 concluída no main.py da raiz.")
