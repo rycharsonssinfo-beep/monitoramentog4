@@ -42,7 +42,7 @@ assert.equal(select("offline",["veiculos"]).length,1);
 assert.equal(select("offline",["veiculos"])[0].name,"Caucaia");
 assert.equal(select("offline",["fluxus"])[0].name,"Sobral");
 assert.equal(select("offline",["portais"]).length,0);
-assert.equal(select("offline",["portais","veiculos"]).length,0,"Combinação requer os dois sistemas");
+assert.equal(select("offline",["portais","veiculos"]).length,1,"A combinação exige ambos cadastrados; status corresponde a um ambiente dos sistemas selecionados");
 assert.deepEqual(select("desatualizado").map(x=>x.name),["Crato","Sobral"]);
 assert.equal(select("online").length,2);
 assert.deepEqual(select("sem_leitura"),[]);
