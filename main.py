@@ -13235,16 +13235,26 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
     online:"Online na última consulta",offline:"Indisponível na última consulta",
     stale:"Leitura desatualizada",nao_verificado:"Sem leitura",
     suspeita_falha:"Falha em verificação",recuperando:"Recuperação em verificação",
-    verificacao_bloqueada:"Verificação bloqueada"
+    verificacao_bloqueada:"Verificação bloqueada",
+    observacao:"Em observação · leitura recente",
+    desatualizado:"Leitura desatualizada",
+    sem_leitura:"Sem verificação válida"
   }[s]||"Situação não confirmada");
   function dateDisplay(input){
     if(!input)return"Não informado";
     const d=new Date(input);
     return isNaN(d.getTime())?String(input):d.toLocaleString("pt-BR");
   }
+  function operationalState(row){
+    if(typeof window.ssMapOperationalState==="function")return window.ssMapOperationalState(row);
+    const t=Date.parse(row?.ultima_verificacao||"");
+    if(!Number.isFinite(t)||t>Date.now()+300000)return"sem_leitura";
+    if(Date.now()-t>15*60*1000)return"desatualizado";
+    return row.estado==="online"?"online":row.estado==="offline"?"offline":"observacao";
+  }
   function nSystems(city){return SYS.filter(([key])=>(city.systems[key]||[]).length).length}
   function nEnvs(city){return SYS.reduce((n,[key])=>n+(city.systems[key]||[]).length,0)}
-  function nOnline(city){return SYS.reduce((n,[key])=>n+(city.systems[key]||[]).filter(r=>r.estado==="online").length,0)}
+  function nOnline(city){return SYS.reduce((n,[key])=>n+(city.systems[key]||[]).filter(r=>operationalState(r)==="online").length,0)}
   function rowsFor(data,scope){
     const arr=[...data.cities].sort(sort);
     switch(scope){
@@ -13260,8 +13270,8 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
       out.push({
         municipio:c.name,uf:"CE",ibge:c.code||"",sistema:label,
         entidade:r.name||c.name,url:r.url||"",
-        cadastro:"Cadastrado",situacao:stateName(r.estado),
-        ultima:dateDisplay(r.ultima_verificacao),online:r.estado==="online"
+        cadastro:"Cadastrado",situacao:stateName(operationalState(r)),
+        ultima:dateDisplay(r.ultima_verificacao),online:operationalState(r)==="online"
       });
     }
     return out;
@@ -13361,7 +13371,7 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
       ["Municípios com Fluxus",totals.fluxus],
       ["Municípios com Veículos",totals.vehicles],
       ["Total de ambientes cadastrados",totals.environments],
-      ["Ambientes online na última consulta",totals.online],
+      ["Ambientes online (leitura até 15 min)",totals.online],
       ["Critério","Sistema cadastrado não significa sistema online."],
       ["Fonte","Cadastros e última leitura disponíveis no Monitor de Portais S&S"]
     ];
@@ -13491,7 +13501,7 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
       '<p class="subtitle">'+esc(caption)+' · Municípios e ambientes presentes no Monitor de Portais S&S</p>'+
       '<div class="stats">'+kpiHTML+'</div>'+
       '<p class="note">Cobertura = municípios atendidos neste recorte / '+esc(statewideTotal)+
-      ' municípios do Ceará. Os valores online refletem a última consulta registrada, não disponibilidade em tempo real.</p>'+
+      ' municípios do Ceará. Online = última verificação há até 15 minutos; estados mais antigos são classificados como desatualizados.</p>'+
       '<h2>Cobertura municipal ('+cities.length+' municípios)</h2>'+
       '<table class="coverage-table"><thead><tr><th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th>'+
       '<th>Veículos</th><th>Ambientes</th><th>Online</th></tr></thead><tbody>'+coverage+'</tbody></table>'+
@@ -13693,6 +13703,338 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
     previous(host);
     attach(host);
   };
+})();
+(function(){if(!document.getElementById("ss-map-operations-css")){const tag=document.createElement("style");tag.id="ss-map-operations-css";tag.textContent="/* Mapa S&S — gestão, confiabilidade e histórico (sem alterar cores de cadastro do território) */\n.ss-map-mgmt-open{\n  display:inline-flex;align-items:center;justify-content:center;\n  min-height:41px;padding:10px 15px;border:1px solid #579cc8;border-radius:10px;\n  color:#edf8ff;background:linear-gradient(135deg,#185586,#12385e);\n  cursor:pointer;font-size:12px;font-weight:850;white-space:nowrap;\n}\n.ss-map-mgmt-open:hover:not(:disabled){background:#246a99;border-color:#9dddfb}\n.ss-map-mgmt-open:disabled{opacity:.55;cursor:wait}\n.ss-map-ops-strip{\n  display:flex;align-items:center;justify-content:space-between;gap:15px;\n  margin:0 0 16px;padding:10px 14px;border:1px solid #39678c;border-radius:12px;\n  background:linear-gradient(120deg,rgba(12,51,83,.92),rgba(8,36,63,.96));\n  color:#d9edfb;min-width:0;\n}\n.ss-map-ops-strip.ss-map-ops-alert{border-color:#b88c4b;background:#3d301c99}\n.ss-map-ops-strip-head{display:flex;flex-direction:column;gap:3px;min-width:138px}\n.ss-map-ops-strip-head strong{font-size:12px;display:flex;align-items:center;gap:8px}\n.ss-map-ops-strip-head small{font-size:10px;color:#b6ccdc;line-height:1.4;max-width:240px}\n.ss-map-ops-dot{width:8px;height:8px;border-radius:100%;background:#37d2a6;box-shadow:0 0 0 3px #27d1a72e}\n.ss-map-ops-values{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:7px;min-width:0}\n.ss-map-ops-chip{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;\n padding:7px 9px;border:1px solid #3f6a8a;background:#122f4d;border-radius:8px;font-size:10px;color:#d9ebf9}\n.ss-map-ops-chip b{font-size:14px;color:#fff;font-variant-numeric:tabular-nums}\n.ss-map-ops-chip.online{border-color:#1e8f76}.ss-map-ops-chip.online b{color:#60e6b6}\n.ss-map-ops-chip.offline{border-color:#a64d60}.ss-map-ops-chip.offline b{color:#ff9ba4}\n.ss-map-ops-chip.observacao{border-color:#b28635}.ss-map-ops-chip.observacao b{color:#ffd47b}\n.ss-map-ops-chip.desatualizado{border-color:#b28b46}.ss-map-ops-chip.desatualizado b{color:#ecc680}\n.ss-map-ops-chip.sem_leitura{border-color:#678099}.ss-map-ops-chip.sem_leitura b{color:#c4d2dd}\n.ss-map-ops-last{font-size:9px;color:#b6cadb;text-align:right}\n.ss-map-ops-warning{color:#ffe1a5;border:1px solid #916537;border-radius:8px;\n  background:#69481c30;margin:-7px 0 15px;padding:10px 13px;font-size:11px}\n.ss-map-service-entry .ss-map-read-status{display:block}\n.ss-map-service-entry .ss-map-read-status.ss-map-ops-online::before{color:#35e2a8}\n.ss-map-service-entry .ss-map-read-status.ss-map-ops-offline::before{color:#ff7474}\n.ss-map-service-entry .ss-map-read-status.ss-map-ops-observacao::before{color:#ffd079}\n.ss-map-service-entry .ss-map-read-status.ss-map-ops-desatualizado::before{color:#e4ba71}\n.ss-map-service-entry .ss-map-read-status.ss-map-ops-sem_leitura::before{color:#9baec5}\n.ss-map-ops-lastcheck{display:block;color:#9bbbd3;margin-top:1px;font-size:9px;line-height:1.45}\n/* Histórico dobrável no topo do município, sem criar outra barra vertical. */\n.ss-map-history{margin:12px 11px 17px;border:1px solid #4b86ad;border-radius:11px;\n background:linear-gradient(120deg,#143e62,#0a2c4a);overflow:visible}\n.ss-map-history>summary{list-style:none;display:flex;align-items:center;gap:10px;\n cursor:pointer;padding:12px;color:#eafbff;outline-offset:2px}\n.ss-map-history>summary::-webkit-details-marker{display:none}\n.ss-map-history>summary strong{display:block;font-size:12px}\n.ss-map-history>summary small{display:block;font-size:10px;color:#a9cce2;margin-top:4px}\n.ss-map-history-icon{background:#165e91;border:1px solid #5dafe4;display:grid;place-items:center;\n width:33px;height:33px;border-radius:9px;flex:none;font-size:20px}\n.ss-map-history-chevron{margin-left:auto;font-size:20px;color:#97d9fa;transition:transform .2s}\n.ss-map-history[open] .ss-map-history-chevron{transform:rotate(180deg)}\n.ss-map-history-body{border-top:1px solid #365f82;padding:12px 11px}\n.ss-map-history-toolbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 11px}\n.ss-map-history-toolbar button{flex:1;min-width:65px;border:1px solid #467ba3;background:#0a2a46;\n color:#d5edfe;padding:8px 7px;border-radius:8px;cursor:pointer;font-weight:700;font-size:10px}\n.ss-map-history-toolbar button.active{background:#1d669b;border-color:#73c5f5;color:white}\n.ss-map-history-content{font-size:11px;line-height:1.45}\n.ss-map-history-total{margin-bottom:10px;color:#cce8fa;font-weight:650}\n.ss-map-history-total b{font-size:15px;color:white}\n.ss-map-history-loading,.ss-map-history-empty{color:#adcadf;padding:9px 4px}\n.ss-map-history-error{color:#ffe1a5;background:#553f2680;border:1px solid #9b7a4e;\n padding:9px;border-radius:8px;font-size:10px}\n.ss-map-history-list{list-style:none;margin:0;padding:0;display:grid;gap:7px}\n.ss-map-history-list li{padding:9px 10px;background:#0a2944;border:1px solid #3b6485;border-radius:8px}\n.ss-map-history-list li>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px;margin-bottom:5px}\n.ss-map-history-list li strong{display:block;color:#f5fbff;font-size:10px;overflow-wrap:anywhere}\n.ss-map-history-list li p{font-size:10px;margin:4px 0 0;color:#a7cbe1;overflow-wrap:anywhere}\n.ss-map-history-list li small{font-size:9px;color:#b1d9f3}\n.ss-map-history-list time{color:#a7c8de;font-size:9px}\n.ss-map-history-system{font-weight:800;color:#a1e3fa;font-size:10px}\n.ss-map-history-note{margin:12px 1px 0;color:#a9c8de;font-size:9px;line-height:1.45}\n/* Painel Gerencial com layout de relatório e gráficos CSS sem dependências externas */\n.ss-map-mgmt-backdrop{position:fixed;inset:0;z-index:540;display:flex;align-items:center;\n justify-content:center;background:#020c20d9;backdrop-filter:blur(8px);padding:16px}\n.ss-map-mgmt-window{width:min(1230px,100%);max-height:92dvh;display:flex;flex-direction:column;\n background:linear-gradient(145deg,#0d2a49,#061a31);color:#eaf7ff;\n border:1px solid #5791bd;border-radius:17px;box-shadow:0 28px 95px #010811df;overflow:hidden}\n.ss-map-mgmt-top{display:flex;align-items:center;justify-content:space-between;\n padding:14px 20px;border-bottom:1px solid #3c6284;background:#0c3558}\n.ss-map-mgmt-top strong{font-size:13px}\n.ss-map-mgmt-close{width:36px;height:35px;border:1px solid #6398be;background:#174c78;color:white;\n border-radius:8px;font-size:16px;cursor:pointer}\n.ss-map-mgmt-close:hover{background:#256995}\n.ss-map-mgmt-body{padding:21px;overflow-y:auto;overscroll-behavior:contain;\n scrollbar-width:thin;scrollbar-color:#538ab2 #102a43}\n.ss-map-mgmt-intro>span{font-size:10px;color:#65cdf5;font-weight:900;letter-spacing:1.3px}\n.ss-map-mgmt-intro h2{font-size:25px;color:#fff;letter-spacing:-.7px;margin:7px 0}\n.ss-map-mgmt-intro p{color:#b3d0e3;font-size:12px;margin:0}\n.ss-map-mgmt-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:20px 0}\n.ss-map-mgmt-kpi{background:#173c60;border:1px solid #3f698d;border-radius:11px;padding:13px 11px;min-width:0}\n.ss-map-mgmt-kpi b{display:block;font-size:clamp(17px,2vw,27px);color:#fff;white-space:nowrap;font-variant-numeric:tabular-nums}\n.ss-map-mgmt-kpi small{display:block;margin-top:6px;color:#bad5e7;font-size:10px;line-height:1.3}\n.ss-map-mgmt-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}\n.ss-map-mgmt-box{background:linear-gradient(120deg,#133554,#0c2947);border:1px solid #375e80;border-radius:13px;padding:18px;min-width:0}\n.ss-map-mgmt-box h3{color:#f8fcff;margin:0;font-size:15px}\n.ss-map-mgmt-box>p{color:#aacce0;font-size:11px;margin:6px 0 17px}\n.ss-map-mgmt-progress{width:100%;height:10px;border-radius:99px;background:#071e33;overflow:hidden;border:1px solid #3f6985}\n.ss-map-mgmt-progress>div{height:100%;min-width:0;background:linear-gradient(90deg,#138dcb,#36c9d6);border-radius:99px}\n.ss-map-mgmt-line{margin:12px 0}\n.ss-map-mgmt-line-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:7px;font-size:11px}\n.ss-map-mgmt-line-title span{color:#b4cfe4;text-align:right}\n.ss-map-mgmt-line>small{color:#94bad7;font-size:10px;display:block;margin-top:4px}\n.ss-map-mgmt-distribution-row{display:grid;grid-template-columns:76px 1fr 30px;align-items:center;gap:9px;margin:15px 0;font-size:11px}\n.ss-map-mgmt-distribution-row strong{text-align:right}\n.ss-map-mgmt-quality{display:flex;justify-content:space-between;gap:10px;align-items:center;\n padding:9px 11px;border:1px solid #365f7d;border-radius:8px;background:#0b2d4a;margin:7px 0;font-size:11px}\n.ss-map-mgmt-quality b{font-size:15px;color:#fff}\n.ss-map-mgmt-quality.online b{color:#54e7b1}.ss-map-mgmt-quality.offline b{color:#ff999d}\n.ss-map-mgmt-quality.observacao b,.ss-map-mgmt-quality.desatualizado b{color:#ffce7c}\n.ss-map-mgmt-quality.sem_leitura b{color:#bfd0e4}\n.ss-map-mgmt-town-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}\n.ss-map-mgmt-town-list span{padding:6px 8px;border:1px solid #3c7299;border-radius:7px;font-size:10px;color:#e9f9ff;background:#19486d}\n.ss-map-mgmt-note{font-size:10px;line-height:1.5;color:#accce0;border-top:1px solid #365b7a;margin:19px 2px 0;padding-top:11px}\n.ss-map-mgmt-warn{color:#f8d3a5;background:#66452280;border:1px solid #9f8053;padding:10px;border-radius:8px;font-size:11px}\n/* Responsividade real: usa a largura do componente, não apenas do monitor físico. */\n.ss-map-layer.ss-map-ops-compact .ss-map-head>.ss-map-report-actions{flex-wrap:wrap;gap:7px}\n.ss-map-layer.ss-map-ops-compact .ss-map-report-actions>button{min-height:40px;white-space:normal;line-height:1.3;font-size:11px}\n.ss-map-layer.ss-map-ops-compact .ss-map-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important}\n.ss-map-layer.ss-map-ops-compact .ss-map-grid>aside:first-child,\n.ss-map-layer.ss-map-ops-compact .ss-map-grid>.ss-map-panel:nth-child(2),\n.ss-map-layer.ss-map-ops-compact .ss-map-grid>.ss-map-detail{grid-column:1!important}\n.ss-map-layer.ss-map-ops-compact .ss-map-grid>.ss-map-detail{min-width:0}\n.ss-map-layer.ss-map-ops-compact .ss-map-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}\n.ss-map-layer.ss-map-ops-compact .ss-map-ops-strip{flex-direction:column;align-items:stretch}\n.ss-map-layer.ss-map-ops-compact .ss-map-ops-values{justify-content:flex-start}\n.ss-map-layer.ss-map-ops-compact .ss-map-grid>aside.ss-map-filter-collapsed>*:not(:first-child):not(.ss-map-filter-toggle){display:none!important}\n.ss-map-layer.ss-map-ops-compact .ss-map-filter-toggle{display:flex}\n.ss-map-layer.ss-map-ops-narrow .ss-map-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}\n.ss-map-layer.ss-map-ops-narrow .ss-map-grid>.ss-map-detail{display:block!important;overflow:visible!important}\n.ss-map-layer.ss-map-ops-narrow .ss-map-grid>.ss-map-detail>.ss-map-info{margin:9px 0}\n.ss-map-layer.ss-map-ops-narrow .ss-map-grid>.ss-map-detail>.ss-map-city-banner{height:155px}\n.ss-map-layer.ss-map-ops-narrow .ss-map-grid .ss-map-panel{min-width:0}\n.ss-map-layer.ss-map-ops-narrow .ss-map-svg{height:clamp(340px,60dvh,510px)!important}\n.ss-map-layer.ss-map-ops-narrow .ss-map-history{margin:12px 0}\n.ss-map-layer.ss-map-ops-narrow .ss-map-stats .ss-map-stat{overflow-wrap:anywhere}\n.ss-map-layer.ss-map-ops-narrow .ss-map-ops-chip{white-space:normal}\n@media(max-width:850px){\n  .ss-map-mgmt-window{max-height:calc(100dvh - 15px)}\n  .ss-map-mgmt-body{padding:12px}\n  .ss-map-mgmt-kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}\n  .ss-map-mgmt-sections{grid-template-columns:minmax(0,1fr)}\n  .ss-map-mgmt-kpi{padding:10px}\n  .ss-map-mgmt-intro h2{font-size:20px}\n}\n@media(max-width:450px){\n .ss-map-mgmt-backdrop{padding:5px}\n .ss-map-mgmt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}\n .ss-map-ops-strip-head{min-width:0}\n .ss-map-mgmt-line-title{font-size:10px}\n .ss-map-mgmt-top{padding:9px 13px}\n}";document.head.appendChild(tag);}})();
+/* Grupo S&S — Operação do Mapa: inteligência de disponibilidade, histórico e gestão.
+   Dados da sessão autenticada do Monitor. Não cria históricos nem percentuais de uptime fictícios. */
+(function installSsMapOperations(){
+  if(window.__ssMapOpsInstalled)return;
+  const previous=window.ssMapOpen;
+  if(typeof previous!=="function")return;
+  window.__ssMapOpsInstalled=true;
+  const FRESH_MS=15*60*1000;
+  const FUTURE_MS=5*60*1000;
+  const MODES=[
+    {key:"portais",label:"Portal do Contribuinte",table:"portais_monitor_eventos"},
+    {key:"fluxus",label:"Fluxus",table:"fluxus_monitor_eventos"},
+    {key:"veiculos",label:"Veículos",table:"veiculos_monitor_eventos"}
+  ];
+  const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmtDate=value=>{
+    const n=Date.parse(String(value||""));
+    return Number.isFinite(n)?new Date(n).toLocaleString("pt-BR"):"Não informada";
+  };
+  const num=n=>Number(n||0).toLocaleString("pt-BR");
+  const pct=(numerator,denominator)=>denominator?(100*numerator/denominator).toLocaleString("pt-BR",{maximumFractionDigits:1})+"%":"—";
+  function liveState(row, now=Date.now()){
+    if(!row||!row.ultima_verificacao)return"sem_leitura";
+    const at=Date.parse(row.ultima_verificacao);
+    if(!Number.isFinite(at)||at>now+FUTURE_MS)return"sem_leitura";
+    if(now-at>FRESH_MS)return"desatualizado";
+    const status=String(row.estado||"").toLowerCase();
+    if(status==="online")return"online";
+    if(status==="offline")return"offline";
+    if(["suspeita_falha","recuperando","verificacao_bloqueada"].includes(status))return"observacao";
+    return"sem_leitura";
+  }
+  const statusText={
+    online:"Online · verificação recente",
+    offline:"Indisponível · verificação recente",
+    observacao:"Em observação · verificação recente",
+    desatualizado:"Leitura desatualizada",
+    sem_leitura:"Sem verificação válida"
+  };
+  function analyze(cities,now=Date.now()){
+    const out={
+      municipalities:cities.length,covered:0,systems:{},distribution:[0,0,0,0],
+      envs:0,online:0,offline:0,observacao:0,desatualizado:0,sem_leitura:0,
+      currentCities:0, latestCheck:0
+    };
+    MODES.forEach(m=>out.systems[m.key]={municipalities:0,envs:0,online:0,offline:0,observacao:0,desatualizado:0,sem_leitura:0,onlineMunicipalities:0});
+    for(const city of cities){
+      let registered=0, hasFresh=false;
+      for(const m of MODES){
+        const rows=city.systems?.[m.key]||[];
+        if(rows.length){registered++;out.systems[m.key].municipalities++}
+        let hasOnline=false;
+        for(const row of rows){
+          const state=liveState(row,now);
+          out[state]++;out.envs++;
+          out.systems[m.key][state]++;
+          out.systems[m.key].envs++;
+          if(state==="online")hasOnline=true;
+          if(["online","offline","observacao"].includes(state))hasFresh=true;
+          const dt=Date.parse(row.ultima_verificacao||"");
+          if(Number.isFinite(dt)&&dt<=now+FUTURE_MS)out.latestCheck=Math.max(out.latestCheck,dt);
+        }
+        if(hasOnline)out.systems[m.key].onlineMunicipalities++;
+      }
+      out.distribution[registered]++;
+      if(registered>0)out.covered++;
+      if(hasFresh)out.currentCities++;
+    }
+    return out;
+  }
+  function safeId(raw){
+    const id=String(raw||"");
+    return /^[a-zA-Z0-9_:-]{2,150}$/.test(id)?id:"";
+  }
+  async function loadCityEvents(city,days){
+    const since=new Date(Date.now()-days*86400000).toISOString();
+    const batches=await Promise.all(MODES.map(async mode=>{
+      const ids=[...new Set((city.systems?.[mode.key]||[]).map(r=>safeId(r.id)).filter(Boolean))];
+      if(!ids.length)return {mode:mode.key,rows:[],missing:true};
+      if(typeof portalFetchTable!=="function")return {mode:mode.key,rows:[],error:"Consulta de eventos indisponível."};
+      // IDs do coletor são alfanuméricos: nenhum valor livre entra na expressão PostgREST.
+      const query="portal_id=in.("+ids.join(",")+")&ocorrido_em=gte."+
+        encodeURIComponent(since)+"&order=ocorrido_em.desc&limit=100";
+      try{
+        const rows=await portalFetchTable(mode.table,
+          "evento_id,portal_id,municipio,ocorrido_em,estado_anterior,estado_atual,codigo_http,detalhe",query);
+        if(!Array.isArray(rows))throw Error("Retorno inválido.");
+        return {mode:mode.key,rows:rows.slice(0,100),truncated:rows.length===100};
+      }catch(err){
+        console.warn("Histórico do Mapa: "+mode.key,err);
+        return {mode:mode.key,rows:[],error:"Falha na consulta ou permissão de leitura."};
+      }
+    }));
+    return batches;
+  }
+  function renderSmartStatuses(layer,city,now){
+    if(!city)return;
+    for(const mode of MODES){
+      const rows=city.systems?.[mode.key]||[];
+      const entries=layer.querySelectorAll(".ss-map-detail .ss-map-service-"+mode.key+" .ss-map-service-entry");
+      entries.forEach((node,i)=>{
+        const record=rows[i];if(!record)return;
+        const state=liveState(record,now);
+        const label=node.querySelector(".ss-map-read-status");
+        if(!label)return;
+        label.className="ss-map-read-status ss-map-ops-"+state;
+        label.textContent=statusText[state];
+        label.title="Última verificação: "+fmtDate(record.ultima_verificacao);
+        let age=node.querySelector(".ss-map-ops-lastcheck");
+        if(!age){age=document.createElement("small");age.className="ss-map-ops-lastcheck";label.after(age)}
+        age.textContent="Última verificação: "+fmtDate(record.ultima_verificacao);
+      });
+    }
+  }
+  function createHistory(layer,city){
+    const detail=layer.querySelector("[data-sm-detail]");
+    if(!detail)return;
+    const h3=detail.querySelector("h3");
+    if(!h3)return;
+    const section=document.createElement("details");
+    section.className="ss-map-history";
+    section.innerHTML=
+      '<summary><span class="ss-map-history-icon" aria-hidden="true">◷</span>'+
+      '<span><strong>Histórico do município</strong><small>Ocorrências registradas por sistema</small></span>'+
+      '<span class="ss-map-history-chevron" aria-hidden="true">⌄</span></summary>'+
+      '<div class="ss-map-history-body">'+
+      '<div class="ss-map-history-toolbar" role="group" aria-label="Período do histórico">'+
+      '<button type="button" data-history-days="1">24 horas</button>'+
+      '<button type="button" data-history-days="7" class="active">7 dias</button>'+
+      '<button type="button" data-history-days="30">30 dias</button></div>'+
+      '<div class="ss-map-history-content" aria-live="polite">Selecione um período para consultar os eventos.</div>'+
+      '</div>';
+    h3.insertAdjacentElement("beforebegin",section);
+    const content=section.querySelector(".ss-map-history-content");
+    let request=0,days=7;
+    async function reload(){
+      const thisRequest=++request;
+      content.innerHTML='<p class="ss-map-history-loading">Consultando os eventos registrados…</p>';
+      const groups=await loadCityEvents(city,days);
+      if(thisRequest!==request||!section.isConnected||!section.open)return;
+      const all=[];
+      const errors=[],limitations=[];
+      groups.forEach(group=>{
+        const mode=MODES.find(m=>m.key===group.mode);
+        if(group.error)errors.push(mode.label);
+        if(group.missing&&(city.systems?.[group.mode]||[]).length)limitations.push(mode.label);
+        if(group.truncated)limitations.push(mode.label+" (limite de 100 eventos por sistema)");
+        for(const e of group.rows)all.push({...e,mode:group.mode,label:mode.label});
+      });
+      all.sort((a,b)=>Date.parse(b.ocorrido_em||"")-Date.parse(a.ocorrido_em||""));
+      const shown=all.slice(0,45);
+      let html='<div class="ss-map-history-total"><b>'+num(all.length)+'</b> evento(s) encontrado(s)'+
+        (all.length>45?' · exibindo os 45 mais recentes':'')+'</div>';
+      if(errors.length)html+='<p class="ss-map-history-error">Não foi possível consultar: '+esc(errors.join(", "))+
+        '. Confira a rede e as permissões de leitura.</p>';
+      if(limitations.length)html+='<p class="ss-map-history-error">Cobertura parcial: '+esc(limitations.join("; "))+'.</p>';
+      if(!shown.length)html+='<p class="ss-map-history-empty">Nenhuma mudança de estado registrada neste período para os ambientes identificados.</p>';
+      else html+='<ol class="ss-map-history-list">'+shown.map(e=>{
+        const at=fmtDate(e.ocorrido_em);
+        const before=String(e.estado_anterior||"sem informação").replaceAll("_"," ");
+        const after=String(e.estado_atual||"sem informação").replaceAll("_"," ");
+        const detail=String(e.detalhe||"").trim().slice(0,140);
+        return '<li><div><span class="ss-map-history-system">'+esc(e.label)+'</span>'+
+          '<time>'+esc(at)+'</time></div>'+
+          '<strong>'+esc(before)+' → '+esc(after)+'</strong>'+
+          (e.codigo_http?'<small>HTTP '+esc(e.codigo_http)+'</small>':'')+
+          (detail?'<p>'+esc(detail)+'</p>':'')+'</li>';
+      }).join("")+'</ol>';
+      html+='<p class="ss-map-history-note">Fonte: eventos gravados pelos coletores. Não representa o total de verificações nem calcula percentual de uptime.</p>';
+      content.innerHTML=html;
+    }
+    section.addEventListener("toggle",()=>{if(section.open)reload();else request++});
+    section.querySelectorAll("[data-history-days]").forEach(btn=>
+      btn.addEventListener("click",()=>{
+        days=Number(btn.dataset.historyDays);
+        section.querySelectorAll("[data-history-days]").forEach(b=>b.classList.toggle("active",b===btn));
+        if(section.open)reload();
+      }));
+  }
+  function managerialMarkup(cities,stats,errors){
+    const dist=stats.distribution;
+    const bars=MODES.map(mode=>{
+      const v=stats.systems[mode.key],share=stats.municipalities?100*v.municipalities/stats.municipalities:0;
+      return '<div class="ss-map-mgmt-line">'+
+        '<div class="ss-map-mgmt-line-title"><strong>'+esc(mode.label)+'</strong><span>'+
+        num(v.municipalities)+' municípios · '+num(v.envs)+' ambientes</span></div>'+
+        '<div class="ss-map-mgmt-progress"><div style="width:'+Math.max(0,Math.min(100,share))+'%"></div></div>'+
+        '<small>'+pct(v.municipalities,stats.municipalities)+' de municípios do CE</small></div>';
+    }).join("");
+    const distRows=dist.map((v,n)=>{
+      const size=stats.municipalities?100*v/stats.municipalities:0;
+      return '<div class="ss-map-mgmt-distribution-row"><span>'+n+' sistema'+(n!==1?'s':'')+'</span>'+
+        '<div class="ss-map-mgmt-progress"><div style="width:'+Math.max(0,Math.min(100,size))+'%"></div></div>'+
+        '<strong>'+num(v)+'</strong></div>';
+    }).join("");
+    const quality=[
+      ["Online recente",stats.online,"online"],
+      ["Indisponível recente",stats.offline,"offline"],
+      ["Em observação",stats.observacao,"observacao"],
+      ["Leitura desatualizada",stats.desatualizado,"desatualizado"],
+      ["Sem leitura válida",stats.sem_leitura,"sem_leitura"]
+    ].map(([label,value,color])=>'<div class="ss-map-mgmt-quality '+color+'"><span>'+esc(label)+'</span><b>'+num(value)+'</b></div>').join("");
+    const best=[...cities].filter(c=>MODES.every(m=>(c.systems?.[m.key]||[]).length))
+      .sort((a,b)=>a.name.localeCompare(b.name,"pt-BR")).slice(0,16);
+    return '<div class="ss-map-mgmt-intro"><span>VISÃO GERENCIAL · CEARÁ</span>'+
+      '<h2>Painel Gerencial de Cobertura</h2>'+
+      '<p>Distribuição territorial e qualidade das últimas verificações dos sistemas cadastrados.</p></div>'+
+      (errors?.length?'<p class="ss-map-mgmt-warn">Fonte(s) não consultada(s): '+esc(errors.join(", "))+'. Indicadores cadastrais podem estar incompletos.</p>':'')+
+      '<div class="ss-map-mgmt-kpis">'+
+      [['Municípios do CE',stats.municipalities],['Municípios atendidos',stats.covered],
+        ['Cobertura territorial',pct(stats.covered,stats.municipalities)],
+        ['Ambientes cadastrados',stats.envs],
+        ['Online recente',stats.online],
+        ['Leitura desatualizada',stats.desatualizado]].map(([label,n])=>
+          '<div class="ss-map-mgmt-kpi"><b>'+esc(n)+'</b><small>'+esc(label)+'</small></div>').join("")+
+      '</div>'+
+      '<div class="ss-map-mgmt-sections">'+
+      '<section class="ss-map-mgmt-box"><h3>Cobertura por sistema</h3>'+
+        '<p>Municípios com pelo menos um ambiente de cada sistema.</p>'+bars+'</section>'+
+      '<section class="ss-map-mgmt-box"><h3>Quantidade de sistemas por município</h3>'+
+        '<p>Cada município é contado uma única vez.</p>'+distRows+'</section>'+
+      '<section class="ss-map-mgmt-box"><h3>Confiabilidade da última leitura</h3>'+
+        '<p>Quantidade de ambientes por situação operacional.</p>'+quality+'</section>'+
+      '<section class="ss-map-mgmt-box"><h3>Municípios com os 3 sistemas</h3>'+
+        '<p>'+num(dist[3])+' municípios com Portal, Fluxus e Veículos.</p>'+
+        '<div class="ss-map-mgmt-town-list">'+(best.length?best.map(c=>'<span>'+esc(c.name)+'</span>').join(""):'Nenhum município identificado.')+'</div>'+
+        (dist[3]>best.length?'<small>Exibindo os 16 primeiros por ordem alfabética.</small>':'')+'</section></div>'+
+      '<p class="ss-map-mgmt-note">Critério: leitura recente = última verificação há no máximo 15 minutos. Estes indicadores não equivalem a disponibilidade contínua; mudanças históricas de contrato não são inferidas a partir dos eventos.</p>';
+  }
+  function renderManager(layer,cities,errors){
+    layer.querySelector(".ss-map-mgmt-backdrop")?.remove();
+    const overlay=document.createElement("div");
+    overlay.className="ss-map-mgmt-backdrop";
+    overlay.innerHTML='<section role="dialog" aria-modal="true" aria-label="Painel Gerencial de Cobertura" class="ss-map-mgmt-window">'+
+      '<div class="ss-map-mgmt-top"><strong>Painel Gerencial</strong>'+
+      '<button type="button" class="ss-map-mgmt-close" aria-label="Fechar painel">✕</button></div>'+
+      '<div class="ss-map-mgmt-body">'+managerialMarkup(cities,analyze(cities),errors)+'</div></section>';
+    layer.append(overlay);
+    const close=()=>overlay.remove();
+    overlay.querySelector(".ss-map-mgmt-close").onclick=close;
+    overlay.addEventListener("click",e=>{if(e.target===overlay)close()});
+    overlay.addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();close()}});
+    overlay.querySelector(".ss-map-mgmt-close").focus();
+  }
+  function attach(host){
+    const layer=host.querySelector("[data-ss-map]");
+    if(!layer||layer.dataset.ssMapOperations)return;
+    layer.dataset.ssMapOperations="1";
+    // Responsividade baseada na largura do módulo dentro do Streamlit.
+    const syncWidth=()=>{
+      const width=layer.getBoundingClientRect().width;
+      layer.classList.toggle("ss-map-ops-compact",width>0&&width<=1050);
+      layer.classList.toggle("ss-map-ops-narrow",width>0&&width<=690);
+    };
+    syncWidth();
+    window.addEventListener("resize",syncWidth);
+    if(typeof ResizeObserver!=="undefined"){
+      const resizeObserver=new ResizeObserver(syncWidth);
+      resizeObserver.observe(layer);
+    }
+    const store={cities:null,errors:[],current:null};
+    const actions=layer.querySelector(".ss-map-report-actions")||layer.querySelector(".ss-map-head");
+    const manager=document.createElement("button");
+    manager.type="button";manager.className="ss-map-mgmt-open";manager.textContent="▥ Painel Gerencial";
+    manager.disabled=true;manager.title="Indicadores e gráficos da cobertura municipal";
+    actions.prepend(manager);
+    manager.onclick=()=>{
+      if(store.cities)renderManager(layer,store.cities,store.errors);
+    };
+    const stats=layer.querySelector(".ss-map-stats");
+    const strip=document.createElement("section");
+    strip.className="ss-map-ops-strip";
+    strip.setAttribute("role","status");
+    strip.setAttribute("aria-live","polite");
+    strip.innerHTML='<div class="ss-map-ops-strip-head"><strong><span class="ss-map-ops-dot"></span>Disponibilidade recente</strong>'+
+      '<small>Considera a última verificação de até 15 min</small></div>'+
+      '<div class="ss-map-ops-values" data-map-ops-values>Carregando verificações…</div>';
+    stats.after(strip);
+    function repaint(){
+      if(!store.cities)return;
+      const q=analyze(store.cities);
+      const chips=[
+        ["Online",q.online,"online"],["Indisponíveis",q.offline,"offline"],
+        ["Observação",q.observacao,"observacao"],["Desatualizados",q.desatualizado,"desatualizado"],
+        ["Sem leitura",q.sem_leitura,"sem_leitura"]
+      ];
+      strip.querySelector("[data-map-ops-values]").innerHTML=chips.map(([label,value,key])=>
+        '<span class="ss-map-ops-chip '+key+'"><b>'+num(value)+'</b> '+label+'</span>').join("")+
+        '<small class="ss-map-ops-last">Última verificação registrada: '+
+          esc(q.latestCheck?new Date(q.latestCheck).toLocaleString("pt-BR"):"não informada")+'</small>';
+      if(q.envs && !q.online && !q.offline && !q.observacao){
+        strip.classList.add("ss-map-ops-alert");
+        strip.querySelector(".ss-map-ops-strip-head small").textContent=
+          "Nenhuma verificação recente. Os estados anteriores não são confirmados como atuais.";
+      }else{
+        strip.classList.remove("ss-map-ops-alert");
+        strip.querySelector(".ss-map-ops-strip-head small").textContent=
+          "Considera a última verificação de até 15 min";
+      }
+      MODES.forEach(mode=>{
+        const elem=layer.querySelector("[data-sm-online-"+mode.key+"]");
+        if(elem)elem.textContent=q.systems[mode.key].onlineMunicipalities+
+          " municípios online com leitura recente";
+      });
+      if(store.current)renderSmartStatuses(layer,store.current,Date.now());
+    }
+    layer.addEventListener("ss-map-data-ready",e=>{
+      store.cities=e.detail?.cities||[];
+      store.errors=e.detail?.errors||[];
+      manager.disabled=false;
+      repaint();
+      if(store.errors.length){
+        const warn=document.createElement("p");
+        warn.className="ss-map-ops-warning";
+        warn.textContent="Atenção: falha na atualização de "+store.errors.join(", ")+
+          ". Os indicadores podem estar incompletos ou desatualizados.";
+        strip.after(warn);
+      }
+    });
+    layer.addEventListener("ss-map-city-selected",e=>{
+      if(!store.cities)return;
+      store.current=store.cities.find(c=>c.key===e.detail?.key)||null;
+      renderSmartStatuses(layer,store.current,Date.now());
+      if(store.current)createHistory(layer,store.current);
+    });
+    const timer=setInterval(()=>{if(!layer.isConnected){clearInterval(timer);return}repaint()},60000);
+  }
+  window.ssMapOperationalState=liveState;
+  window.ssMapAnalyzeCoverage=analyze;
+  window.ssMapOpen=function(host){previous(host);attach(host)};
 })();
 function portalStart(host){
   portalHosts.add(host);
