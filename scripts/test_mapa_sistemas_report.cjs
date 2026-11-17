@@ -26,11 +26,11 @@ assert(t,"Funções de relatório não disponíveis");
 const cities=[
  {name:"Caucaia",key:"caucaia",code:"2303709",systems:{
   portais:[],
-  fluxus:[{name:"Prefeitura de Caucaia",url:"https://caucaia.ssinformatica.net/",estado:"online",ultima_verificacao:"2026-11-16T16:00:00-03:00"}],
-  veiculos:[{name:"IPM Caucaia",url:"https://ssveiculos.ssinformatica.net/IPMCaucaia",estado:"offline",ultima_verificacao:"2026-11-16T16:05:00-03:00"}]
+  fluxus:[{name:"Prefeitura de Caucaia",url:"https://caucaia.ssinformatica.net/",estado:"online",ultima_verificacao:new Date().toISOString()}],
+  veiculos:[{name:"IPM Caucaia",url:"https://ssveiculos.ssinformatica.net/IPMCaucaia",estado:"offline",ultima_verificacao:new Date().toISOString()}]
  }},
  {name:"Sobral",key:"sobral",code:"2312908",systems:{
-   portais:[{name:"Sobral",url:"https://exemplo.com/portal",estado:"online",ultima_verificacao:"2026-11-16"}],fluxus:[],veiculos:[]
+   portais:[{name:"Sobral",url:"https://exemplo.com/portal",estado:"online",ultima_verificacao:new Date().toISOString()}],fluxus:[],veiculos:[]
  }},
  {name:"Município sem cadastro",key:"semcadastro",code:"0000000",systems:{portais:[],fluxus:[],veiculos:[]}}
 ];
