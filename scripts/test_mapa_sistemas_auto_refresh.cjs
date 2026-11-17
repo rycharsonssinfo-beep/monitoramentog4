@@ -5,6 +5,22 @@ const auto=fs.readFileSync("scripts/mapa_sistemas_auto_refresh.js","utf8");
 const styling=fs.readFileSync("scripts/mapa_sistemas_sync_ocorrencias.css","utf8");
 new vm.Script(core,{filename:"mapa_sistemas_embed.js"});
 new vm.Script(auto,{filename:"mapa_sistemas_auto_refresh.js"});
+// O botão precisa estar estilizado ANTES da primeira abertura do mapa.
+const installedStyles=new Map();
+const fakeDocument={
+  getElementById:id=>installedStyles.get(id)||null,
+  createElement:tag=>({tagName:tag.toUpperCase(),id:"",textContent:""}),
+  head:{appendChild:node=>{installedStyles.set(node.id,node);return node;}}
+};
+const fakeWindow={};
+vm.runInNewContext(core,{document:fakeDocument,window:fakeWindow,console});
+const buttonStyle=installedStyles.get("ss-map-portal-trigger-styles");
+assert.ok(buttonStyle,"CSS do botão deve ser carregado sem abrir o mapa");
+assert.match(buttonStyle.textContent,/\.portal-board button\.ss-map-open/);
+assert.match(buttonStyle.textContent,/background:linear-gradient/);
+assert.match(buttonStyle.textContent,/appearance:none/);
+assert.equal(typeof fakeWindow.ssMapOpen,"function");
+assert.equal(installedStyles.has("ss-map-styles"),false,"CSS pesado do mapa só deve carregar na abertura");
 assert.match(core,/async function loadSystemData\(force=false\)/);
 assert.match(core,/loadSystemData\(true\)/);
 assert.match(core,/layer\.ssMapRefresh=function\(\)/);
