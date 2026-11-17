@@ -1,0 +1,71 @@
+/* Identidade visual oficial por sistema — fonte: três imagens enviadas pelo usuário.
+   As URLs são incorporadas em data URI durante a geração de main.py.
+   Não depende de CDN ou caminhos públicos durante o uso do Monitor. */
+.ss-map-layer {
+  --ss-map-icon-portais: url("__SS_MAP_ICON_PORTAIS__");
+  --ss-map-icon-fluxus: url("__SS_MAP_ICON_FLUXUS__");
+  --ss-map-icon-veiculos: url("__SS_MAP_ICON_VEICULOS__");
+}
+/* Indicadores superiores: preserva o alinhamento e troca apenas a iconografia. */
+.ss-map-layer .ss-map-stats .ss-map-stat:nth-child(3)::before,
+.ss-map-layer .ss-map-stats .ss-map-stat:nth-child(4)::before,
+.ss-map-layer .ss-map-stats .ss-map-stat:nth-child(5)::before {
+  content:"" !important;
+  font-size:0 !important;
+  color:transparent !important;
+  background-color:transparent !important;
+  background-repeat:no-repeat !important;
+  background-position:center !important;
+  background-size:contain !important;
+  box-shadow:none !important;
+  border:0 !important;
+  width:42px;
+  height:42px;
+  top:calc(50% - 21px);
+  left:10px;
+  border-radius:0;
+}
+.ss-map-layer .ss-map-stats .ss-map-stat:nth-child(3)::before {background-image:var(--ss-map-icon-portais) !important;}
+.ss-map-layer .ss-map-stats .ss-map-stat:nth-child(4)::before {background-image:var(--ss-map-icon-fluxus) !important;}
+.ss-map-layer .ss-map-stats .ss-map-stat:nth-child(5)::before {background-image:var(--ss-map-icon-veiculos) !important;}
+/* Cartões municipais: remove os símbolos Unicode sem afetar texto, status e links. */
+.ss-map-layer .ss-map-service-portais .ss-map-service-icon,
+.ss-map-layer .ss-map-service-fluxus .ss-map-service-icon,
+.ss-map-layer .ss-map-service-veiculos .ss-map-service-icon {
+  display:block;
+  flex:0 0 39px;
+  width:39px;
+  height:39px;
+  min-width:39px;
+  font-size:0 !important;
+  line-height:0;
+  color:transparent !important;
+  background-color:transparent !important;
+  background-position:center !important;
+  background-size:contain !important;
+  background-repeat:no-repeat !important;
+  border:0;
+  border-radius:0;
+  box-shadow:none !important;
+}
+.ss-map-layer .ss-map-service-portais .ss-map-service-icon {background-image:var(--ss-map-icon-portais) !important;}
+.ss-map-layer .ss-map-service-fluxus .ss-map-service-icon {background-image:var(--ss-map-icon-fluxus) !important;}
+.ss-map-layer .ss-map-service-veiculos .ss-map-service-icon {background-image:var(--ss-map-icon-veiculos) !important;}
+@media(max-width:720px){
+  .ss-map-layer .ss-map-stats .ss-map-stat:nth-child(3)::before,
+  .ss-map-layer .ss-map-stats .ss-map-stat:nth-child(4)::before,
+  .ss-map-layer .ss-map-stats .ss-map-stat:nth-child(5)::before {
+    width:35px;
+    height:35px;
+    top:calc(50% - 17.5px);
+    left:8px;
+  }
+  .ss-map-layer .ss-map-service-portais .ss-map-service-icon,
+  .ss-map-layer .ss-map-service-fluxus .ss-map-service-icon,
+  .ss-map-layer .ss-map-service-veiculos .ss-map-service-icon {
+    flex-basis:35px;
+    min-width:35px;
+    width:35px;
+    height:35px;
+  }
+}
