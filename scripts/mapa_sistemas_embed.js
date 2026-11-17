@@ -111,8 +111,8 @@
     }
     throw Error("Não foi possível carregar a malha municipal do Ceará.");
   }
-  async function loadSystemData(){
-    if(lastDataFetch && Date.now()-lastDataFetch<30000)return;
+  async function loadSystemData(force=false){
+    if(!force && lastDataFetch && Date.now()-lastDataFetch<30000)return [...lastLoadErrors];
     const errors=[];
     await Promise.all(modes.map(async m=>{
       try{
