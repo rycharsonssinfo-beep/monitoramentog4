@@ -116,7 +116,7 @@
     const errors=[];
     await Promise.all(modes.map(async m=>{
       try{
-        const select="id,municipio,uf,url,estado,ultima_verificacao"+(m==="veiculos"?",cidade,entidade,categoria":"");
+        const select="id,municipio,uf,url,estado,ultima_verificacao,inicio_falha,http_status,latencia_ms,detalhe,mudou_em"+(m==="veiculos"?",cidade,entidade,categoria":"");
         const fetched=await portalFetchTable(portalServices[m].current,select,"order=municipio.asc&limit=500");
         if(!Array.isArray(fetched))throw Error("Consulta retornou um formato inesperado.");
         portalDatas[m]=fetched;
