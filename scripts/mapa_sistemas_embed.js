@@ -35,8 +35,7 @@
 /* S&S MAPA PREMIUM v2 — acabamento visual sem alterar os dados ou regras */
 .ss-map-layer{inset:5px;padding:22px 24px 24px;background:radial-gradient(ellipse at 45% -22%,rgba(21,110,185,.23),transparent 60%),linear-gradient(140deg,#06172d 0%,#071d36 48%,#06162d 100%);border:1px solid #2a5278;border-radius:18px;box-shadow:0 28px 80px rgba(0,9,25,.48);color:#eef7ff}
 .ss-map-head{padding:2px 0 20px;border-bottom:1px solid rgba(134,185,229,.15)}
-.ss-map-head>div{padding-left:60px;position:relative;min-width:0}
-.ss-map-head>div:before{content:"";position:absolute;left:0;top:1px;width:45px;height:45px;border-radius:13px;background:linear-gradient(140deg,#103b64,#12568b);border:1px solid rgba(112,206,255,.36);box-shadow:inset 0 1px rgba(255,255,255,.12),0 8px 22px #04102466}
+/* O cabeçalho já utiliza um SVG real: sem pseudoelementos nos contêineres de ações. */
 .ss-map-head>div.ss-map-head-title{display:flex;align-items:center;gap:14px;padding-left:0;position:relative;min-width:0}
 .ss-map-head>div.ss-map-head-title:before,.ss-map-head>div.ss-map-head-title:after{content:none;display:none}
 .ss-map-head-icon{display:grid;place-items:center;flex:0 0 49px;width:49px;height:49px;border-radius:13px;color:#8bd9ff;background:linear-gradient(145deg,#123f69,#095b96);border:1px solid rgba(141,211,255,.46);box-shadow:inset 0 1px rgba(255,255,255,.16),0 10px 24px rgba(0,15,38,.32)}
