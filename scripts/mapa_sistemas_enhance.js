@@ -256,14 +256,16 @@ function responsiveFilters(layer){
  toggle.dataset.smFilterToggle="1";
  title.insertAdjacentElement("afterend",toggle);
  const media=window.matchMedia("(max-width:1000px)");
- let userChanged=false;
+ const isCompact=()=>media.matches||layer.getBoundingClientRect().width<=1000;
+ let previousCompact=isCompact(),userChanged=false;
  function refresh(){
-   if(!media.matches){
+   const compact=isCompact();
+   if(!compact){
      panel.classList.remove("ss-map-filter-collapsed");
    }else if(!userChanged){
      panel.classList.add("ss-map-filter-collapsed");
    }
-   const folded=media.matches && panel.classList.contains("ss-map-filter-collapsed");
+   const folded=compact && panel.classList.contains("ss-map-filter-collapsed");
    const active=panel.querySelectorAll("[data-sm-mode]:checked").length;
    toggle.textContent=(folded?"Mostrar filtros e legenda":"Ocultar filtros e legenda")+
       (active?" · "+active+" selecionado"+(active>1?"s":""):"")+" "+(folded?"⌄":"⌃");
@@ -276,6 +278,14 @@ function responsiveFilters(layer){
  });
  if(media.addEventListener)media.addEventListener("change",()=>{userChanged=false;refresh()});
  else if(media.addListener)media.addListener(()=>{userChanged=false;refresh()});
+ if(typeof ResizeObserver!=="undefined"){
+   const observer=new ResizeObserver(()=>{
+     const currentCompact=isCompact();
+     if(currentCompact!==previousCompact){userChanged=false;previousCompact=currentCompact}
+     refresh();
+   });
+   observer.observe(layer);
+ }
  layer.addEventListener("ss-map-filter-change",refresh);
  refresh();
 }
