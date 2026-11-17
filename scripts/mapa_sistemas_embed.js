@@ -128,6 +128,7 @@
     }));
     lastDataFetch=Date.now();
     lastLoadErrors=errors;
+    return [...errors];
   }
   function cityRows(features){
     const cities=features.map(f=>({f,name:name(f),key:norm(name(f)),code:code(f),data:{portais:[],fluxus:[],veiculos:[]}})).filter(c=>c.key);
