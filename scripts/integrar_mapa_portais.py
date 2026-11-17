@@ -3,6 +3,7 @@
 from pathlib import Path
 import ast
 import json
+import base64
 
 root = Path(__file__).resolve().parents[1]
 main = root / "main.py"
@@ -12,11 +13,39 @@ extra_css = (root / "scripts" / "mapa_sistemas_enhance.css").read_text(encoding=
 logo_js = (root / "scripts" / "logo_grupo_ss_oficial.js").read_text(encoding="utf-8").strip()
 report_js = (root / "scripts" / "mapa_sistemas_report.js").read_text(encoding="utf-8").strip()
 report_css = (root / "scripts" / "mapa_sistemas_report.css").read_text(encoding="utf-8").strip()
+icons_css = (root / "scripts" / "mapa_sistemas_icones.css").read_text(encoding="utf-8").strip()
+# Usa somente os arquivos oficiais do repositório, embutidos na página.
+# Em falha de integridade, interrompe a atualização em vez de exibir ícones genéricos.
+image_files = {
+    "__SS_MAP_ICON_PORTAIS__": "mapa_portal_contribuinte.webp",
+    "__SS_MAP_ICON_FLUXUS__": "mapa_fluxus.webp",
+    "__SS_MAP_ICON_VEICULOS__": "mapa_veiculos.webp",
+}
+for placeholder, filename in image_files.items():
+    asset = (root / "scripts" / "assets" / filename).read_bytes()
+    if not (asset.startswith(b"RIFF") and asset[8:12] == b"WEBP"):
+        raise SystemExit(f"Arquivo de ícone oficial inválido: {filename}")
+    if len(asset) < 100 or len(asset) > 200_000:
+        raise SystemExit(f"Tamanho inesperado do ícone: {filename}")
+    if icons_css.count(placeholder) != 1:
+        raise SystemExit(f"Referência do ícone ausente ou duplicada: {placeholder}")
+    data_uri = "data:image/webp;base64," + base64.b64encode(asset).decode("ascii")
+    icons_css = icons_css.replace(placeholder, data_uri)
+if "__SS_MAP_ICON_" in icons_css:
+    raise SystemExit("Há ícones oficiais não resolvidos no CSS.")
+
 css_js = (
     '(function(){if(!document.getElementById("ss-map-enhance-v21")){'
     'const tag=document.createElement("style");'
     'tag.id="ss-map-enhance-v21";'
     'tag.textContent=' + json.dumps(extra_css, ensure_ascii=False) + ';'
+    'document.head.appendChild(tag);}})();'
+)
+icons_css_js = (
+    '(function(){if(!document.getElementById("ss-map-official-icons")){'
+    'const tag=document.createElement("style");'
+    'tag.id="ss-map-official-icons";'
+    'tag.textContent=' + json.dumps(icons_css, ensure_ascii=False) + ';'
     'document.head.appendChild(tag);}})();'
 )
 report_css_js = (
@@ -26,7 +55,7 @@ report_css_js = (
     'tag.textContent=' + json.dumps(report_css, ensure_ascii=False) + ';'
     'document.head.appendChild(tag);}})();'
 )
-full = js + "\n" + css_js + "\n" + extra_js + "\n" + logo_js + "\n" + report_css_js + "\n" + report_js
+full = js + "\n" + css_js + "\n" + extra_js + "\n" + icons_css_js + "\n" + logo_js + "\n" + report_css_js + "\n" + report_js
 source = main.read_text(encoding="utf-8")
 
 start_marker = "(function ssMapInstall(){"
