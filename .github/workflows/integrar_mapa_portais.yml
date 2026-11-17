@@ -17,6 +17,11 @@ on:
       - "scripts/mapa_sistemas_operacao.css"
       - "scripts/mapa_sistemas_status.js"
       - "scripts/mapa_sistemas_status.css"
+      - "scripts/mapa_sistemas_auto_refresh.js"
+      - "scripts/mapa_sistemas_ocorrencias.js"
+      - "scripts/mapa_sistemas_sync_ocorrencias.css"
+      - "scripts/test_mapa_sistemas_auto_refresh.cjs"
+      - "scripts/test_mapa_sistemas_ocorrencias.cjs"
       - "scripts/test_mapa_sistemas_status.cjs"
       - "scripts/test_mapa_sistemas_operacao.cjs"
       - "scripts/test_mapa_sistemas_report.cjs"
@@ -41,6 +46,10 @@ jobs:
           node --check scripts/mapa_sistemas_report.js
           node --check scripts/mapa_sistemas_operacao.js
           node --check scripts/mapa_sistemas_status.js
+          node --check scripts/mapa_sistemas_auto_refresh.js
+          node --check scripts/mapa_sistemas_ocorrencias.js
+          node --check scripts/test_mapa_sistemas_auto_refresh.cjs
+          node --check scripts/test_mapa_sistemas_ocorrencias.cjs
           node --check scripts/test_mapa_sistemas_status.cjs
           node --check scripts/test_mapa_sistemas_operacao.cjs
       - name: Testar exportação XLSX, dados e prévia PDF
@@ -49,6 +58,10 @@ jobs:
         run: node scripts/test_mapa_sistemas_operacao.cjs
       - name: Testar filtros clicáveis de status no mapa
         run: node scripts/test_mapa_sistemas_status.cjs
+      - name: Testar atualização automática de 60 segundos
+        run: node scripts/test_mapa_sistemas_auto_refresh.cjs
+      - name: Testar painel municipal de ocorrências
+        run: node scripts/test_mapa_sistemas_ocorrencias.cjs
       - name: Validar integrador de ícones Python
         run: python -m py_compile scripts/integrar_mapa_portais.py
       - name: Aplicar mapa no painel e validar Python
