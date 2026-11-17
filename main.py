@@ -12607,6 +12607,31 @@ async function portalGenerateReport(host){
   }catch(e){result.textContent='Não foi possível gerar o relatório: '+String(e?.message||e).slice(0,180);}
 }
 (function ssMapInstall(){
+  // O botão pertence ao cabeçalho dos Portais, que é exibido ANTES da abertura do mapa.
+  // Instalar o CSS no carregamento do painel evita o estilo cinza padrão do navegador.
+  const mapTriggerStyleId="ss-map-portal-trigger-styles";
+  if(!document.getElementById(mapTriggerStyleId)){
+    const buttonStyle=document.createElement("style");
+    buttonStyle.id=mapTriggerStyleId;
+    buttonStyle.textContent=`
+      .portal-board button.ss-map-open{
+        -webkit-appearance:none;appearance:none;
+        display:inline-flex;align-items:center;justify-content:center;
+        box-sizing:border-box;
+        min-height:35px;padding:9px 14px;
+        border:1px solid #87bbdf;border-radius:9px;
+        background:linear-gradient(135deg,#11598f,#073e74);
+        box-shadow:0 3px 11px rgba(0,33,78,.24);
+        color:#fff;font:800 12px/1.2 Inter,"Segoe UI",Arial,sans-serif;
+        white-space:nowrap;cursor:pointer;
+        transition:filter .15s ease,border-color .15s ease;
+      }
+      .portal-board button.ss-map-open:hover{filter:brightness(1.12);border-color:#b7e2ff}
+      .portal-board button.ss-map-open:focus-visible{outline:2px solid #2b9ae2;outline-offset:2px}
+      .portal-board button.ss-map-open:active{filter:brightness(.94)}
+    `;
+    document.head.appendChild(buttonStyle);
+  }
   const urls=["https://cdn.jsdelivr.net/gh/henriquemalvar/br-geojson@main/dist/municipios/CE.geojson","https://raw.githubusercontent.com/henriquemalvar/br-geojson/main/dist/municipios/CE.geojson","https://raw.githubusercontent.com/tbrugz/geodata-br/master/geojson/geojs-23-mun.json"];
   const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
   const name=f=>String((f.properties||{}).nome||(f.properties||{}).name||(f.properties||{}).NM_MUN||(f.properties||{}).NM_MUNICIP||"");
