@@ -23,16 +23,26 @@
     online:"Online na última consulta",offline:"Indisponível na última consulta",
     stale:"Leitura desatualizada",nao_verificado:"Sem leitura",
     suspeita_falha:"Falha em verificação",recuperando:"Recuperação em verificação",
-    verificacao_bloqueada:"Verificação bloqueada"
+    verificacao_bloqueada:"Verificação bloqueada",
+    observacao:"Em observação · leitura recente",
+    desatualizado:"Leitura desatualizada",
+    sem_leitura:"Sem verificação válida"
   }[s]||"Situação não confirmada");
   function dateDisplay(input){
     if(!input)return"Não informado";
     const d=new Date(input);
     return isNaN(d.getTime())?String(input):d.toLocaleString("pt-BR");
   }
+  function operationalState(row){
+    if(typeof window.ssMapOperationalState==="function")return window.ssMapOperationalState(row);
+    const t=Date.parse(row?.ultima_verificacao||"");
+    if(!Number.isFinite(t)||t>Date.now()+300000)return"sem_leitura";
+    if(Date.now()-t>15*60*1000)return"desatualizado";
+    return row.estado==="online"?"online":row.estado==="offline"?"offline":"observacao";
+  }
   function nSystems(city){return SYS.filter(([key])=>(city.systems[key]||[]).length).length}
   function nEnvs(city){return SYS.reduce((n,[key])=>n+(city.systems[key]||[]).length,0)}
-  function nOnline(city){return SYS.reduce((n,[key])=>n+(city.systems[key]||[]).filter(r=>r.estado==="online").length,0)}
+  function nOnline(city){return SYS.reduce((n,[key])=>n+(city.systems[key]||[]).filter(r=>operationalState(r)==="online").length,0)}
   function rowsFor(data,scope){
     const arr=[...data.cities].sort(sort);
     switch(scope){
@@ -48,8 +58,8 @@
       out.push({
         municipio:c.name,uf:"CE",ibge:c.code||"",sistema:label,
         entidade:r.name||c.name,url:r.url||"",
-        cadastro:"Cadastrado",situacao:stateName(r.estado),
-        ultima:dateDisplay(r.ultima_verificacao),online:r.estado==="online"
+        cadastro:"Cadastrado",situacao:stateName(operationalState(r)),
+        ultima:dateDisplay(r.ultima_verificacao),online:operationalState(r)==="online"
       });
     }
     return out;
@@ -149,7 +159,7 @@
       ["Municípios com Fluxus",totals.fluxus],
       ["Municípios com Veículos",totals.vehicles],
       ["Total de ambientes cadastrados",totals.environments],
-      ["Ambientes online na última consulta",totals.online],
+      ["Ambientes online (leitura até 15 min)",totals.online],
       ["Critério","Sistema cadastrado não significa sistema online."],
       ["Fonte","Cadastros e última leitura disponíveis no Monitor de Portais S&S"]
     ];
@@ -279,7 +289,7 @@
       '<p class="subtitle">'+esc(caption)+' · Municípios e ambientes presentes no Monitor de Portais S&S</p>'+
       '<div class="stats">'+kpiHTML+'</div>'+
       '<p class="note">Cobertura = municípios atendidos neste recorte / '+esc(statewideTotal)+
-      ' municípios do Ceará. Os valores online refletem a última consulta registrada, não disponibilidade em tempo real.</p>'+
+      ' municípios do Ceará. Online = última verificação há até 15 minutos; estados mais antigos são classificados como desatualizados.</p>'+
       '<h2>Cobertura municipal ('+cities.length+' municípios)</h2>'+
       '<table class="coverage-table"><thead><tr><th>Município</th><th>IBGE</th><th>Portal</th><th>Fluxus</th>'+
       '<th>Veículos</th><th>Ambientes</th><th>Online</th></tr></thead><tbody>'+coverage+'</tbody></table>'+
