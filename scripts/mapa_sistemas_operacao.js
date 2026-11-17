@@ -254,8 +254,9 @@
     };
     syncWidth();
     window.addEventListener("resize",syncWidth);
+    let resizeObserver=null;
     if(typeof ResizeObserver!=="undefined"){
-      const resizeObserver=new ResizeObserver(syncWidth);
+      resizeObserver=new ResizeObserver(syncWidth);
       resizeObserver.observe(layer);
     }
     const store={cities:null,errors:[],current:null};
@@ -323,7 +324,15 @@
       renderSmartStatuses(layer,store.current,Date.now());
       if(store.current)createHistory(layer,store.current);
     });
-    const timer=setInterval(()=>{if(!layer.isConnected){clearInterval(timer);return}repaint()},60000);
+    const timer=setInterval(()=>{
+      if(!layer.isConnected){
+        clearInterval(timer);
+        window.removeEventListener("resize",syncWidth);
+        resizeObserver?.disconnect();
+        return;
+      }
+      repaint();
+    },60000);
   }
   window.ssMapOperationalState=liveState;
   window.ssMapAnalyzeCoverage=analyze;
