@@ -14045,6 +14045,177 @@ window.__SS_OFICIAL_LOGO__="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAA
   window.ssMapAnalyzeCoverage=analyze;
   window.ssMapOpen=function(host){previous(host);attach(host)};
 })();
+(function(){if(!document.getElementById("ss-map-status-css")){const tag=document.createElement("style");tag.id="ss-map-status-css";tag.textContent="/* Mapa de Sistemas — filtros operacionais interativos. As cores do cadastro\n   são preservadas quando nenhum indicador de status está selecionado. */\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button{\n  appearance:none;\n  font-family:inherit;\n  cursor:pointer;\n  transition:background-color .16s,border-color .16s,box-shadow .16s,transform .16s;\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button:hover{\n  background:#1c4a72;\n  border-color:#8bbfe1;\n  transform:translateY(-1px);\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button:focus-visible{\n  outline:2px solid #b4e7ff;outline-offset:2px;\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button.active{\n  box-shadow:0 0 0 2px rgba(228,244,255,.6),0 0 18px rgba(77,177,236,.15);\n  background:#214f70;\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button.offline.active{\n  border-color:#ff7c89;\n  background:#602835;\n  box-shadow:0 0 0 2px rgba(255,117,133,.38),0 0 16px rgba(230,72,88,.18);\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button.online.active{\n  border-color:#3ce0ac;background:#104a43;\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button.observacao.active{\n  border-color:#f3c35a;background:#5a481a;\n}\n.ss-map-layer .ss-map-ops-chip.ss-map-status-button.desatualizado.active{\n  border-color:#e6b567;background:#584022;\n}\n.ss-map-layer .ss-map-ops-strip{flex-wrap:wrap}\n.ss-map-layer .ss-map-status-results{\n  width:100%;\n  flex:1 0 100%;\n  min-width:0;\n  border-top:1px solid #37617f;\n  padding:11px 2px 3px;\n}\n.ss-map-layer .ss-map-status-results[hidden]{display:none!important}\n.ss-map-layer .ss-map-status-result-head{\n  display:flex;align-items:center;justify-content:space-between;\n  gap:9px;flex-wrap:wrap;margin:0 0 9px;\n}\n.ss-map-layer .ss-map-status-result-head strong{\n  font-size:12px;color:#f2f9ff;font-weight:850;\n}\n.ss-map-layer .ss-map-status-result-head small{\n  font-size:10px;color:#bfd6e8;\n}\n.ss-map-layer .ss-map-status-towns{\n  display:flex;flex-wrap:wrap;gap:7px;\n  padding:0 0 5px;\n}\n.ss-map-layer .ss-map-status-towns button{\n  display:inline-flex;align-items:center;gap:9px;\n  border:1px solid #5685ac;background:#174a70;color:#f3faff;\n  border-radius:8px;padding:7px 9px;font-size:11px;\n  font-weight:700;cursor:pointer;max-width:100%;white-space:normal;\n}\n.ss-map-layer .ss-map-status-towns button:hover{\n  border-color:#97d9ff;background:#236a99;\n}\n.ss-map-layer .ss-map-status-towns button:focus-visible,\n.ss-map-layer .ss-map-status-clear:focus-visible{\n  outline:2px solid #b1e5ff;outline-offset:2px;\n}\n.ss-map-layer .ss-map-status-towns button b{\n  border-radius:7px;padding:2px 5px;\n  background:#103553;color:#c9e9fc;\n  font-variant-numeric:tabular-nums;\n}\n.ss-map-layer .ss-map-status-empty{\n  font-size:11px;color:#b9d2e4;line-height:1.4;margin:4px 0 10px;\n}\n.ss-map-layer .ss-map-status-more{\n  font-size:10px;color:#b7d2e5;display:block;margin:5px 0;\n}\n.ss-map-layer .ss-map-status-clear{\n  display:inline-block;cursor:pointer;margin-top:6px;\n  background:transparent;color:#bbe5ff;border:1px solid #537fa3;\n  padding:7px 10px;border-radius:7px;font-weight:750;font-size:10px;\n}\n.ss-map-layer .ss-map-status-clear:hover{background:#245776}\n.ss-map-layer .ss-map-svg path.ss-map-status-match{\n  stroke:#f6fbff!important;\n  stroke-width:1.4!important;\n  vector-effect:non-scaling-stroke;\n  filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));\n}\n.ss-map-layer .ss-map-svg path.ss-map-status-match:hover,\n.ss-map-layer .ss-map-svg path.ss-map-status-match.picked{\n  stroke-width:3!important;\n  filter:drop-shadow(0 0 4px rgba(255,255,255,.55));\n}\n.ss-map-layer .ss-map-svg path.ss-map-status-dim{\n  stroke:#9fb2c1!important;stroke-width:.55!important;\n}\n.ss-map-layer .ss-map-svg path.ss-map-status-dim.picked{\n  stroke:#f2f8ff!important;stroke-width:2.2!important;\n}\n@media(max-width:860px){\n  .ss-map-layer .ss-map-ops-chip.ss-map-status-button{\n    min-height:34px;padding:7px 9px;white-space:normal;\n  }\n  .ss-map-layer .ss-map-status-result-head{align-items:flex-start}\n  .ss-map-layer .ss-map-status-towns{gap:6px}\n}\n@media(max-width:480px){\n  .ss-map-layer .ss-map-status-towns button{font-size:10px;padding:7px 8px}\n  .ss-map-layer .ss-map-status-result-head{flex-direction:column}\n}";document.head.appendChild(tag);}})();
+/* Mapa de Sistemas — filtros operacionais clicáveis por município.
+   Um indicador mede ambientes; o mapa destaca municípios com pelo menos um ambiente correspondente. */
+(function installMapStatusFilters(){
+  if(window.__ssMapStatusFiltersInstalled)return;
+  const previous=window.ssMapOpen;
+  if(typeof previous!=="function")return;
+  window.__ssMapStatusFiltersInstalled=true;
+  const MODES=["portais","fluxus","veiculos"];
+  const STATES={
+    online:{title:"online",color:"#0fa778"},
+    offline:{title:"indisponíveis",color:"#e64858"},
+    observacao:{title:"em observação",color:"#e4b143"},
+    desatualizado:{title:"desatualizados",color:"#ce902c"},
+    sem_leitura:{title:"sem leitura",color:"#8c9cae"}
+  };
+  const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const stateFor=(row,now=Date.now())=>{
+    if(typeof window.ssMapOperationalState==="function")return window.ssMapOperationalState(row,now);
+    const time=Date.parse(row?.ultima_verificacao||"");
+    if(!Number.isFinite(time)||time>now+300000)return"sem_leitura";
+    if(now-time>900000)return"desatualizado";
+    if(row.estado==="online")return"online";
+    if(row.estado==="offline")return"offline";
+    return ["suspeita_falha","recuperando","verificacao_bloqueada"].includes(row.estado)?"observacao":"sem_leitura";
+  };
+  function matchingCities(cities,status,modes=[],now=Date.now()){
+    if(!Object.prototype.hasOwnProperty.call(STATES,status))return[];
+    const considered=modes.length?modes:MODES;
+    return (cities||[]).filter(c=>modes.every(m=>(c.systems?.[m]||[]).length>0))
+      .map(c=>{
+        let count=0;
+        for(const mode of considered)for(const row of c.systems?.[mode]||[]){
+          if(stateFor(row,now)===status)count++;
+        }
+        return {name:c.name,key:c.key,count};
+      }).filter(c=>c.count>0)
+      .sort((a,b)=>String(a.name).localeCompare(String(b.name),"pt-BR"));
+  }
+  function attach(layer){
+    if(layer.dataset.ssStatusFilter)return;
+    layer.dataset.ssStatusFilter="1";
+    const strip=layer.querySelector(".ss-map-ops-strip");
+    const container=strip?.querySelector("[data-map-ops-values]");
+    if(!strip||!container)return;
+    let cities=null,selected="",observer=null,timer=null;
+    const info=document.createElement("div");
+    info.className="ss-map-status-results";
+    info.hidden=true;
+    strip.appendChild(info);
+    strip.querySelector(".ss-map-ops-strip-head small").textContent=
+      "Clique em um status para destacar os municípios · verificação recente até 15 min";
+    const selectedModes=()=>[...layer.querySelectorAll("[data-sm-mode]:checked")]
+      .map(e=>e.dataset.smMode).filter(m=>MODES.includes(m));
+    function restoreCount(){
+      if(!cities)return;
+      const modes=selectedModes();
+      const qualified=cities.filter(c=>modes.every(m=>(c.systems?.[m]||[]).length>0));
+      const count=modes.length?qualified.length:cities.filter(c=>MODES.some(m=>(c.systems?.[m]||[]).length)).length;
+      const elem=layer.querySelector("[data-sm-filter-count]");
+      if(elem)elem.textContent=count+(modes.length?" municípios com a combinação selecionada":" municípios atendidos");
+    }
+    function paint(){
+      if(!cities)return;
+      const paths=layer.querySelectorAll("svg.ss-map-svg path[data-ss-city]");
+      const buttons=container.querySelectorAll("button[data-map-status]");
+      buttons.forEach(b=>{
+        const active=selected===b.dataset.mapStatus;
+        b.classList.toggle("active",active);
+        b.setAttribute("aria-pressed",String(active));
+      });
+      if(!selected){
+        paths.forEach(p=>{
+          p.style.removeProperty("fill");
+          p.style.opacity=p.dataset.ssFiltermatch==="0"?".53":"1";
+          p.classList.remove("ss-map-status-match","ss-map-status-dim");
+        });
+        info.hidden=true;
+        restoreCount();
+        return;
+      }
+      const modes=selectedModes();
+      const found=matchingCities(cities,selected,modes);
+      const keys=new Set(found.map(c=>c.key));
+      for(const path of paths){
+        const match=keys.has(path.dataset.ssCity);
+        path.style.setProperty("fill",match?STATES[selected].color:"#718398");
+        path.style.setProperty("opacity",match?"1":".38");
+        path.classList.toggle("ss-map-status-match",match);
+        path.classList.toggle("ss-map-status-dim",!match);
+      }
+      const count=found.reduce((n,c)=>n+c.count,0);
+      const limit=14;
+      info.hidden=false;
+      info.innerHTML='<div class="ss-map-status-result-head">'+
+        '<strong>'+found.length+' município'+(found.length===1?"":"s")+
+        ' com ambientes '+STATES[selected].title+'</strong>'+
+        '<small>'+count+' ambiente'+(count===1?"":"s")+
+          (modes.length?" nos sistemas selecionados":"")+'</small></div>'+
+        (found.length?'<div class="ss-map-status-towns">'+found.slice(0,limit).map(c=>
+          '<button type="button" data-map-city="'+esc(c.key)+'" title="Selecionar '+esc(c.name)+'">'+
+          esc(c.name)+' <b>'+c.count+'</b></button>').join("")+'</div>':
+          '<p class="ss-map-status-empty">Nenhum município com este status'+
+            (modes.length?" na combinação de sistemas selecionada":"")+'.</p>')+
+        (found.length>limit?'<small class="ss-map-status-more">Mostrando os primeiros '+
+          limit+' municípios; os demais permanecem destacados no mapa.</small>':'')+
+        '<button type="button" class="ss-map-status-clear" data-map-status-clear="1">Limpar destaque</button>';
+      const counter=layer.querySelector("[data-sm-filter-count]");
+      if(counter)counter.textContent=found.length+" município"+(found.length===1?"":"s")+
+        " com ambientes "+STATES[selected].title;
+    }
+    function convertIndicators(){
+      // O módulo operacional redesenha os contadores periodicamente.
+      // Convertemos os elementos originais em botões sem interferir no cálculo.
+      const spans=container.querySelectorAll("span.ss-map-ops-chip");
+      for(const span of spans){
+        const state=Object.keys(STATES).find(s=>span.classList.contains(s));
+        if(!state)continue;
+        const btn=document.createElement("button");
+        btn.type="button";
+        btn.className=span.className+" ss-map-status-button";
+        btn.dataset.mapStatus=state;
+        btn.innerHTML=span.innerHTML;
+        btn.title="Destacar no mapa municípios com ambientes "+STATES[state].title;
+        btn.setAttribute("aria-label",btn.title+"; número exibido representa ambientes.");
+        span.replaceWith(btn);
+      }
+      if(cities)paint();
+    }
+    container.addEventListener("click",e=>{
+      const button=e.target.closest("button[data-map-status]");
+      if(!button||!container.contains(button))return;
+      selected=selected===button.dataset.mapStatus?"":button.dataset.mapStatus;
+      paint();
+    });
+    info.addEventListener("click",e=>{
+      if(e.target.closest("[data-map-status-clear]")){
+        selected="";paint();return;
+      }
+      const b=e.target.closest("button[data-map-city]");
+      if(!b)return;
+      const city=cities?.find(c=>c.key===b.dataset.mapCity);
+      const search=layer.querySelector("[data-sm-search]");
+      if(city&&search){
+        search.value=city.name;
+        search.dispatchEvent(new Event("change",{bubbles:true}));
+      }
+    });
+    layer.addEventListener("ss-map-data-ready",e=>{
+      cities=e.detail?.cities||[];
+      convertIndicators();
+    });
+    layer.addEventListener("ss-map-filter-change",()=>{if(selected)paint()});
+    observer=new MutationObserver(()=>{
+      if(!layer.isConnected){observer.disconnect();clearInterval(timer);return}
+      if(container.querySelector("span.ss-map-ops-chip"))convertIndicators();
+    });
+    observer.observe(container,{childList:true});
+    convertIndicators();
+    timer=setInterval(()=>{
+      if(!layer.isConnected){observer.disconnect();clearInterval(timer);return}
+      if(selected)paint();
+    },60000);
+  }
+  window.ssMapMatchedStatusCities=matchingCities;
+  window.ssMapOpen=function(host){
+    previous(host);
+    const layer=host.querySelector("[data-ss-map]");
+    if(layer)attach(layer);
+  };
+})();
 function portalStart(host){
   portalHosts.add(host);
   const img=portalEscape(portalConfig.logo||g4fConfig.ss_official_logo||g4fConfig.logo||'');
