@@ -119,3 +119,66 @@
 .ss-map-report-paper h3{font-size:17px}
 .ss-map-paper-stats small{font-size:5.6px}
 }
+
+/* v3.4 — Relatório responsivo: rolagem vertical única na janela em telas médias/pequenas.
+   A tabela permite rolagem horizontal somente quando as colunas não cabem. */
+@media(max-width:1190px){
+  .ss-map-report-backdrop{padding:10px}
+  .ss-map-report-window{
+    height:auto;
+    max-height:calc(100dvh - 20px);
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:#5a93bb #082540;
+  }
+  .ss-map-report-layout{
+    display:flex;
+    flex-direction:column;
+    overflow:visible;
+    min-height:0;
+    flex:none;
+    gap:14px;
+  }
+  .ss-map-report-left{overflow:visible;flex:none;min-height:0}
+  .ss-map-report-preview{flex:none;min-height:0;margin-top:0}
+  .ss-map-report-paper-wrap{flex:none;overflow:visible;min-height:0}
+  .ss-map-report-table-wrap{
+    flex:none;
+    max-height:none;
+    min-height:0;
+    overflow-x:auto;
+    overflow-y:visible;
+    scrollbar-width:thin;
+  }
+  .ss-map-report-table{min-width:520px}
+  .ss-map-report-preview-foot{padding-bottom:5px}
+}
+@media(max-width:740px){
+  .ss-map-report-backdrop{padding:5px}
+  .ss-map-report-window{
+    height:auto;
+    max-height:calc(100dvh - 10px);
+    overflow-y:auto;
+    overflow-x:hidden;
+    border-radius:12px;
+  }
+  .ss-map-report-head{gap:8px}
+  .ss-map-report-title-group{gap:9px}
+  .ss-map-report-toolbar{gap:8px}
+  .ss-map-report-actions2 button{line-height:1.2;white-space:normal}
+  .ss-map-report-layout{padding:11px;gap:12px}
+  .ss-map-report-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .ss-map-report-metric{padding:10px 4px;min-height:72px}
+  .ss-map-report-metric span:last-child{overflow-wrap:anywhere}
+  .ss-map-report-controls select{max-width:100%}
+  .ss-map-report-table-wrap{max-height:none}
+  .ss-map-report-cards{grid-template-columns:1fr}
+  .ss-map-report-paper-wrap{padding:6px}
+}
+@media(max-width:390px){
+  .ss-map-report-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ss-map-report-paper{padding:12px 8px 47px}
+  .ss-map-report-paper h3{font-size:16px}
+}
