@@ -1,0 +1,27 @@
+/* Regressão — renovação incremental do mapa, sem reconstruir SVG nem perder seleção. */
+const assert=require("node:assert/strict"),fs=require("node:fs"),vm=require("node:vm");
+const core=fs.readFileSync("scripts/mapa_sistemas_embed.js","utf8");
+const auto=fs.readFileSync("scripts/mapa_sistemas_auto_refresh.js","utf8");
+const styling=fs.readFileSync("scripts/mapa_sistemas_sync_ocorrencias.css","utf8");
+new vm.Script(core,{filename:"mapa_sistemas_embed.js"});
+new vm.Script(auto,{filename:"mapa_sistemas_auto_refresh.js"});
+assert.match(core,/async function loadSystemData\(force=false\)/);
+assert.match(core,/loadSystemData\(true\)/);
+assert.match(core,/layer\.ssMapRefresh=function\(\)/);
+assert.match(core,/if\(refreshPromise\)return refreshPromise/);
+assert.match(core,/update\(\);[\s\S]*ss-map-data-ready/);
+assert.match(core,/ss-map-refresh-ready/);
+assert.match(core,/ss-map-snapshot-updated/);
+assert.match(core,/inicio_falha,http_status,latencia_ms,detalhe,mudou_em/);
+assert.doesNotMatch(core.slice(core.indexOf("layer.ssMapRefresh=function()"),core.indexOf("layer.dispatchEvent(new CustomEvent(\"ss-map-refresh-ready\"")),/loadGeo\(/);
+assert.doesNotMatch(core.slice(core.indexOf("layer.ssMapRefresh=function()"),core.indexOf("layer.dispatchEvent(new CustomEvent(\"ss-map-refresh-ready\"")),/createElementNS/);
+assert.match(auto,/const PERIOD=60000/);
+assert.match(auto,/document\.hidden/);
+assert.match(auto,/if\(!ready\|\|busy/);
+assert.match(auto,/layer\.ssMapRefresh\(\)/);
+assert.match(auto,/ss-map-refresh-ready/);
+assert.match(auto,/visibilitychange/);
+assert.match(auto,/clearInterval\(timer\)/);
+assert.match(auto,/Atualizar agora/);
+assert.match(styling,/ss-map-syncbar/);
+console.log("OK: atualização 60s incremental, manual, sem sobreposição e sem reconstruir o SVG");
