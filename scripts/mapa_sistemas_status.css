@@ -1,0 +1,115 @@
+/* Mapa de Sistemas — filtros operacionais interativos. As cores do cadastro
+   são preservadas quando nenhum indicador de status está selecionado. */
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button{
+  appearance:none;
+  font-family:inherit;
+  cursor:pointer;
+  transition:background-color .16s,border-color .16s,box-shadow .16s,transform .16s;
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button:hover{
+  background:#1c4a72;
+  border-color:#8bbfe1;
+  transform:translateY(-1px);
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button:focus-visible{
+  outline:2px solid #b4e7ff;outline-offset:2px;
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button.active{
+  box-shadow:0 0 0 2px rgba(228,244,255,.6),0 0 18px rgba(77,177,236,.15);
+  background:#214f70;
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button.offline.active{
+  border-color:#ff7c89;
+  background:#602835;
+  box-shadow:0 0 0 2px rgba(255,117,133,.38),0 0 16px rgba(230,72,88,.18);
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button.online.active{
+  border-color:#3ce0ac;background:#104a43;
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button.observacao.active{
+  border-color:#f3c35a;background:#5a481a;
+}
+.ss-map-layer .ss-map-ops-chip.ss-map-status-button.desatualizado.active{
+  border-color:#e6b567;background:#584022;
+}
+.ss-map-layer .ss-map-ops-strip{flex-wrap:wrap}
+.ss-map-layer .ss-map-status-results{
+  width:100%;
+  flex:1 0 100%;
+  min-width:0;
+  border-top:1px solid #37617f;
+  padding:11px 2px 3px;
+}
+.ss-map-layer .ss-map-status-results[hidden]{display:none!important}
+.ss-map-layer .ss-map-status-result-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:9px;flex-wrap:wrap;margin:0 0 9px;
+}
+.ss-map-layer .ss-map-status-result-head strong{
+  font-size:12px;color:#f2f9ff;font-weight:850;
+}
+.ss-map-layer .ss-map-status-result-head small{
+  font-size:10px;color:#bfd6e8;
+}
+.ss-map-layer .ss-map-status-towns{
+  display:flex;flex-wrap:wrap;gap:7px;
+  padding:0 0 5px;
+}
+.ss-map-layer .ss-map-status-towns button{
+  display:inline-flex;align-items:center;gap:9px;
+  border:1px solid #5685ac;background:#174a70;color:#f3faff;
+  border-radius:8px;padding:7px 9px;font-size:11px;
+  font-weight:700;cursor:pointer;max-width:100%;white-space:normal;
+}
+.ss-map-layer .ss-map-status-towns button:hover{
+  border-color:#97d9ff;background:#236a99;
+}
+.ss-map-layer .ss-map-status-towns button:focus-visible,
+.ss-map-layer .ss-map-status-clear:focus-visible{
+  outline:2px solid #b1e5ff;outline-offset:2px;
+}
+.ss-map-layer .ss-map-status-towns button b{
+  border-radius:7px;padding:2px 5px;
+  background:#103553;color:#c9e9fc;
+  font-variant-numeric:tabular-nums;
+}
+.ss-map-layer .ss-map-status-empty{
+  font-size:11px;color:#b9d2e4;line-height:1.4;margin:4px 0 10px;
+}
+.ss-map-layer .ss-map-status-more{
+  font-size:10px;color:#b7d2e5;display:block;margin:5px 0;
+}
+.ss-map-layer .ss-map-status-clear{
+  display:inline-block;cursor:pointer;margin-top:6px;
+  background:transparent;color:#bbe5ff;border:1px solid #537fa3;
+  padding:7px 10px;border-radius:7px;font-weight:750;font-size:10px;
+}
+.ss-map-layer .ss-map-status-clear:hover{background:#245776}
+.ss-map-layer .ss-map-svg path.ss-map-status-match{
+  stroke:#f6fbff!important;
+  stroke-width:1.4!important;
+  vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));
+}
+.ss-map-layer .ss-map-svg path.ss-map-status-match:hover,
+.ss-map-layer .ss-map-svg path.ss-map-status-match.picked{
+  stroke-width:3!important;
+  filter:drop-shadow(0 0 4px rgba(255,255,255,.55));
+}
+.ss-map-layer .ss-map-svg path.ss-map-status-dim{
+  stroke:#9fb2c1!important;stroke-width:.55!important;
+}
+.ss-map-layer .ss-map-svg path.ss-map-status-dim.picked{
+  stroke:#f2f8ff!important;stroke-width:2.2!important;
+}
+@media(max-width:860px){
+  .ss-map-layer .ss-map-ops-chip.ss-map-status-button{
+    min-height:34px;padding:7px 9px;white-space:normal;
+  }
+  .ss-map-layer .ss-map-status-result-head{align-items:flex-start}
+  .ss-map-layer .ss-map-status-towns{gap:6px}
+}
+@media(max-width:480px){
+  .ss-map-layer .ss-map-status-towns button{font-size:10px;padding:7px 8px}
+  .ss-map-layer .ss-map-status-result-head{flex-direction:column}
+}
