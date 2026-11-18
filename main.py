@@ -14771,7 +14771,7 @@ function portalStart(host){
     <div class="portal-footer"><span>Fonte: robô Monitor S&S · Quedas confirmadas após verificações consecutivas.</span><span>Consulta automática prevista a cada 60 segundos</span></div>
     <section class="portal-report-layer" data-portal="report-layer" aria-label="Relatório de disponibilidade"><div class="portal-report-head"><div><h2>Relatório de indisponibilidades</h2><small data-portal="report-service">Portal do Contribuinte</small></div><button type="button" data-portal="report-close">Fechar</button></div>
     <div class="portal-report-options"><label>Data inicial<input type="date" data-portal="report-from"></label><label>Data final<input type="date" data-portal="report-to"></label><button type="button" data-portal="report-generate">Gerar relatório</button><button type="button" class="secondary" data-portal="report-csv">Resumo CSV</button><button type="button" class="secondary" data-portal="report-incidents-csv">Ocorrências CSV</button><button type="button" class="secondary" data-portal="report-pdf" title="Abre um documento exclusivo para imprimir ou salvar como PDF">Gerar PDF</button></div><div data-portal="report-results">Selecione o período e clique em Gerar relatório.</div></section>`;
-  window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '');
+  window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '__MASCOTE_COMUNICADO_DATA_URI__');
   host.querySelectorAll('[data-portal-mode]').forEach(btn=>btn.onclick=()=>portalChooseService(btn.dataset.portalMode));
   host.querySelector('[data-portal="report-button"]').onclick=()=>portalOpenReport(host);
   host.querySelector('[data-portal="map-button"]').onclick=()=>window.ssMapOpen(host);
@@ -15385,7 +15385,7 @@ function portalStart(host){
     html_painel = html_painel.replace(
         "function portalStart(host){",
         Path(__file__).with_name("portal_alerts_v353.js").read_text(encoding="utf-8")
-        + "\nwindow.ssPortalAlerts353.start({mascot:settings.mascotAlert||'',state:portalState,fetch:()=>portalFetchTable('portais_monitor_atual','id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em','order=municipio.asc&limit=500')});\nfunction portalStart(host){",
+        + "\nwindow.ssPortalAlerts353.start({mascot:settings.mascotAlert||'__MASCOTE_COMUNICADO_DATA_URI__',state:portalState,fetch:()=>portalFetchTable('portais_monitor_atual','id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em','order=municipio.asc&limit=500')});\nfunction portalStart(host){",
         1,
     )
     html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)
