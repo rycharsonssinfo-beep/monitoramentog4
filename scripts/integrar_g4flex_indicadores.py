@@ -15,6 +15,14 @@ def insert_once(marker,piece,where,tag):
         if source.count(tag)!=1:
             raise SystemExit(f"{tag} duplicado.")
         return
+    if source.count(marker)!=1 and marker.startswith(" "):
+        stripped=marker.lstrip(" ")
+        if source.count(stripped)==1:
+            ix=source.index(stripped)
+            line_start=source.rfind("\n",0,ix)+1
+            prefix=source[line_start:ix]
+            if not prefix.strip():
+                marker=prefix+stripped
     if source.count(marker)!=1:
         raise SystemExit(f"Marcador {tag} encontrado {source.count(marker)} vezes.")
     if where=="before":
