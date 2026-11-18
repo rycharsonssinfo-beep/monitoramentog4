@@ -7,11 +7,14 @@ p=Path(__file__).resolve().parents[1]/"main.py"
 s=p.read_text(encoding="utf-8")
 def one(old,new,label):
     global s
-    if new in s:
-        if s.count(new)!=1:raise SystemExit("Marcador novo repetido: "+label)
+    # Dois modos compartilham a mesma estrutura final <strong>.
+    # Substituir primeiro os marcadores antigos; só ignorar se não restou nenhum.
+    if s.count(old)==1:
+        s=s.replace(old,new,1)
         return
-    if s.count(old)!=1:raise SystemExit("Marcador de "+label+" não encontrado de forma única: "+str(s.count(old)))
-    s=s.replace(old,new,1)
+    if s.count(old)==0 and new in s:
+        return
+    raise SystemExit("Marcador de "+label+" inesperado: "+str(s.count(old)))
 
 # O texto só exibe filas confirmadas no campo filas_logadas. Nunca considera
 # fila_exibida, setor ou fila_atendimento_atual como substitutos.
