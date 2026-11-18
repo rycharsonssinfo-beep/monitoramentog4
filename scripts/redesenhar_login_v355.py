@@ -217,8 +217,15 @@ def replace_between(text: str, start: str, end: str, replacement: str, label: st
 
 def apply(text: str) -> str:
     if MARKER in text:
+        # Atualizações pontuais do estilo também devem funcionar em uma branch já integrada.
+        radio_marker = 'div:first-child:not([data-testid="stMarkdownContainer"])'
+        if radio_marker not in text:
+            anchor = '        /* O próprio input nativo continua acessível pelo teclado. */'
+            addition_start = '        .stApp:has(.login-v355-layout-marker) div[data-testid="stRadio"] [role="radiogroup"]>label>\n'
+            addition = addition_start + NEW_CSS.split(addition_start, 1)[1].split(anchor, 1)[0]
+            text = replace_single(text, anchor, addition + anchor, "estilo das abas")
         ast.parse(text, filename="main.py")
-        print("Login v3.55 já presente; verificação apenas.")
+        print("Login v3.55 presente e estilos validados.")
         return text
     text=replace_between(text,"def _auth_login_css():","def _render_auth_brand(",
                          NEW_CSS+"\n\n","folha de estilo")
