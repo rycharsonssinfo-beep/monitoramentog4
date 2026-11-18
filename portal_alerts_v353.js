@@ -3,14 +3,14 @@
 "use strict";
 if (window.ssPortalAlerts353) return;
 const CONFIG_KEY="ss_portais_alertas_v353", SEEN_KEY="ss_portais_alertas_emitidos_v353";
-const DEFAULTS={enabled:true,minutes:10,sound:true,volume:65,repeat:0,recovery:true};
+const DEFAULTS={enabled:true,minutes:10,sound:true,volume:65,repeat:0,recovery:true,autoDismissSeconds:20};
 const readJson=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||"null")||fallback;}catch(_){return fallback;}};
 const options=Object.assign({},DEFAULTS,readJson(CONFIG_KEY,{}));
 const seen=readJson(SEEN_KEY,{});
 let mascot="",stateFn=null,fetcher=null,detailsFn=null,latest=[],active=null,lastRead=0,bgStarted=false;
 const outages=new Map(); // Última queda conhecida por município, inclusive durante recuperação
 const pendingRecoveries=[]; // Mantém múltiplos avisos de recuperação até serem exibidos
-let ac=null,audioUnlocked=false,bgBusy=false;
+let ac=null,audioUnlocked=false,bgBusy=false,autoDismissTimer=null;
 const html=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ms=v=>{const d=Date.parse(v||"");return Number.isFinite(d)?d:NaN;};
 const now=()=>Date.now();
@@ -127,7 +127,21 @@ function getModal(){
   document.body.appendChild(el);return el;
 }
 function hide(){const el=getModal();el.classList.remove("visible");el.querySelector(".sspa-slot").innerHTML="";}
+function cancelAutoDismiss(){
+  if(autoDismissTimer!==null)clearTimeout(autoDismissTimer);
+  autoDismissTimer=null;
+}
+function scheduleAutoDismiss(){
+  cancelAutoDismiss();
+  if(!active||active.type==="config")return;
+  const seconds=Math.max(8,Math.min(120,Number(options.autoDismissSeconds)||20));
+  autoDismissTimer=setTimeout(()=>{
+    autoDismissTimer=null;
+    if(active&&active.type!=="config")dismiss();
+  },seconds*1000);
+}
 function dismiss(){
+  cancelAutoDismiss();
   const previous=active;active=null;hide();
   if(previous&&previous.type==="offline"){seen[previous.key]=now();saveSeen();}
   if(previous&&previous.type==="test")return;
@@ -135,9 +149,11 @@ function dismiss(){
   if(previous&&previous.type!=="config")setTimeout(()=>process(latest),300);
 }
 function markActive(row,type){
+  cancelAutoDismiss();
   active={row:row||{},type:type||"offline",key:outageKey(row||{}),lastSound:0,silent:false,expanded:false};
   if(type==="offline"){seen[active.key]=now();saveSeen();}
   render();
+  scheduleAutoDismiss();
   if(type==="offline"||type==="test")playAudio(false);
 }
 function button(el,selector,fn){const node=el.querySelector(selector);if(node)node.onclick=fn;}
@@ -158,7 +174,8 @@ function render(){
     +"<label><input data-opt='sound' type='checkbox'> Sinal sonoro</label>"
     +"<label>Volume <input data-opt='volume' type='range' min='0' max='100' step='5'><span data-volume-label></span></label>"
     +"<label>Repetição <select data-opt='repeat'><option value='0'>Uma vez</option><option value='5'>A cada 5 min</option><option value='10'>A cada 10 min</option></select></label>"
-    +"<label><input data-opt='recovery' type='checkbox'> Avisar recuperação</label></div>"
+    +"<label><input data-opt='recovery' type='checkbox'> Avisar recuperação</label>"
+    +"<label>Duração do aviso <select data-opt='autoDismissSeconds'><option value='10'>10 s</option><option value='15'>15 s</option><option value='20'>20 s</option><option value='30'>30 s</option><option value='45'>45 s</option></select></label></div>"
     +"<p class='sspa-note'>As preferências são salvas neste navegador. Clique em Testar alerta para autorizar o áudio, se necessário.</p>";
   const info="<div class='sspa-body'>"+logo+"<div class='sspa-info'>"
     +"<h2 id='sspa-title'>"+(test?"Simulação visual e sonora":recovery?municipality+" voltou a funcionar":municipality+" está indisponível")+"</h2>"
@@ -230,7 +247,7 @@ function process(rows){
     if(restored){
       const idx=pendingRecoveries.findIndex(row=>rowId(row)===rowId(restored));
       if(idx>=0)pendingRecoveries.splice(idx,1);
-      if(options.recovery){active={row:restored,type:"recovery",key:"",silent:true};render();}
+      if(options.recovery){active={row:restored,type:"recovery",key:"",silent:true};render();scheduleAutoDismiss();}
       else dismiss();
       return;
     }
@@ -248,8 +265,9 @@ function process(rows){
 }
 async function refresh(){
   if(!options.enabled||!fetcher||bgBusy)return;
-  // Usa primeiro as leituras já obtidas pela tela do Portal, evitando consulta duplicada.
-  if(now()-lastRead<45000)return;
+  // Todas as telas consultam Portais mesmo quando outro painel está visível.
+  // Evita apenas duplicação imediatamente após uma leitura nova do próprio painel.
+  if(now()-lastRead<12000)return;
   bgBusy=true;
   try{const rows=await fetcher();if(Array.isArray(rows))process(rows);}catch(_){/* não apresentar queda se apenas o Supabase falhou */}
   finally{bgBusy=false;}
@@ -258,7 +276,13 @@ function start(opts){
   opts=opts||{};
   mascot=opts.mascot||mascot;stateFn=opts.state||stateFn;fetcher=opts.fetch||fetcher;detailsFn=opts.details||detailsFn;
   if(bgStarted)return;bgStarted=true;
-  setTimeout(refresh,12000);setInterval(refresh,60000);
+  // Mesma estratégia do SIM: polling global, independente do painel em exibição.
+  setTimeout(refresh,2500);
+  setInterval(refresh,15000);
+  if(typeof window.addEventListener==="function")window.addEventListener("focus",refresh);
+  if(typeof document.addEventListener==="function")document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden)refresh();
+  });
   setInterval(()=>{refreshDurationDisplay();if(active&&active.type==="offline"&&!active.silent&&Number(options.repeat)>0
     &&now()-active.lastSound>=Number(options.repeat)*60000)playAudio(false);},15000);
 }
