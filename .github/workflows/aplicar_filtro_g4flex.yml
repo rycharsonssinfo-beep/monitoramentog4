@@ -1,0 +1,53 @@
+name: Aplicar filtro de atendentes G4Flex
+on:
+  push:
+    branches: [feature/g4flex-ocultar-nao-suporte]
+    paths:
+      - .github/workflows/aplicar_filtro_g4flex.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  aplicar-e-testar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar filtro temporário e validar sintaxe
+        run: |
+          python scripts/ocultar_atendentes_nao_suporte.py
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          t=Path("main.py").read_text(encoding="utf-8")
+          checks={
+              "lista de exclusão": "const g4fHiddenNames=new Set(['Cislena Cisne','Marla Lima','Emanuela Costa'].map(ssNormalizeName));",
+              "lista da apresentação": "const allAgents=Array.isArray(row?.atendentes)?row.atendentes.filter(g4fVisibleAgent):[];",
+              "contadores S&S": "const all=Array.isArray(row?.atendentes)?row.atendentes.filter(g4fVisibleAgent):[];",
+              "eventos": "if(!g4fVisibleAgent(a))continue;",
+              "total monitorado": "['♧','Total monitorados',all.length,'navy']",
+              "valores G4Flex": "hasOwnProperty.call(scopedKpis,key)",
+          }
+          for key,value in checks.items():
+              assert t.count(value)==1,(key,t.count(value))
+          print("Testes de marcadores OK.")
+          PY
+      - name: Confirmar normalização de nomes
+        run: |
+          node - <<'JS'
+          const normalize=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+          const hidden=new Set(['Cislena Cisne','Marla Lima','Emanuela Costa'].map(normalize));
+          const visible=a=>!hidden.has(normalize(a?.nome));
+          for(const nome of ['Cislena Cisne','Marla Lima','Emanuela Costa','  MARLA   LIMA ','Emanuéla Costa'])if(visible({nome}))throw new Error('Exclusão falhou: '+nome);
+          for(const nome of ['Aline Carioca','Rycharson Xavier','Tafarel Nascimento','Marcela Lima'])if(!visible({nome}))throw new Error('Exclusão indevida: '+nome);
+          console.log('Testes de nomes OK.');
+          JS
+      - name: Gravar alteração em main.py na branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "feat: ocultar atendentes fora do suporte no monitor G4Flex"
+            git push origin HEAD:feature/g4flex-ocultar-nao-suporte
+          fi
