@@ -1,3 +1,14 @@
+
+## Atualização de interface v3.54.0 — Alertas globais e barra segura
+
+- O monitor consulta os Portais do Contribuinte a cada **15 segundos**, inclusive quando outro painel está em exibição; cada monitor aberto faz sua própria consulta ao Supabase e recebe seu aviso local.
+- As notificações **somem automaticamente em 20 segundos** (padrão); em **Alertas → Configurações**, o período pode ser escolhido entre 10, 15, 20, 30 ou 45 segundos.
+- A regra de **queda confirmada há 10 minutos**, a proteção contra dados desatualizados, os avisos de recuperação e o controle de duplicidade foram mantidos.
+- O indicador de duração permanece grande e o mascote original continua presente.
+- A área dos painéis reserva um espaço fixo quando a barra está na parte superior (ou inferior): o cabeçalho não é coberto quando os controles aparecem e o iframe não sofre redimensionamento ao abrir/fechar a barra.
+- Telas em computadores e navegadores distintos precisam abrir a mesma versão do Monitor, estar conectadas e ter as notificações habilitadas; ao implantar, atualize a aplicação **uma vez em cada tela**. O áudio poderá exigir interação local em cada navegador.
+- O teste automatizado simula dois monitores independentes, descarte e fechamento automático de alertas, além dos testes de regressão do Mapa de Sistemas.
+
 # Monitor Grupo S&S — Alertas dos Portais v3.53.0
 
 ## O que foi integrado

@@ -1,0 +1,62 @@
+name: Homologar barra e alertas globais v3.54.0
+on:
+  push:
+    branches:
+      - feature/monitor-barra-alertas-globais-v354
+    paths:
+      - portal_alerts_v353.js
+      - scripts/test_portal_alerts_homologacao_v353.cjs
+      - scripts/test_portal_alerts_v353.cjs
+      - scripts/aplicar_barra_fixa_v354.py
+      - .github/workflows/validar_barra_alertas_globais_v354.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  homologacao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Validar JavaScript e regras de indisponibilidade
+        run: |
+          node --check portal_alerts_v353.js
+          node scripts/test_portal_alerts_v353.cjs
+          node scripts/test_portal_alerts_homologacao_v353.cjs
+      - name: Aplicar área segura da barra e versão no main.py
+        run: |
+          python scripts/aplicar_barra_fixa_v354.py
+          python -m py_compile main.py
+          python scripts/aplicar_barra_fixa_v354.py
+          python - <<'PY'
+          from pathlib import Path
+          text=Path("main.py").read_text(encoding="utf-8")
+          assert text.count("ss-bar-safe-area-v354")==1
+          assert text.count('APP_VERSION = "3.54.0"')==1
+          assert "body.bar-top.controls-hidden #stage" in text
+          assert "body.bar-top.controls-overlay #stage" in text
+          assert "body.bar-bottom.controls-hidden #stage" in text
+          assert text.count("window.ssPortalAlerts353.start({")==1
+          assert "portal_alerts_v353.js" in text
+          print("OK: conteúdo protegido da barra, versão e alerta global preservados")
+          PY
+          git diff --check
+      - name: Regressão dos módulos de monitoramento
+        run: |
+          node scripts/test_mapa_sistemas_auto_refresh.cjs
+          node scripts/test_mapa_sistemas_ocorrencias.cjs
+          node scripts/test_mapa_sistemas_status.cjs
+          node scripts/test_mapa_sistemas_operacao.cjs
+          node scripts/test_mapa_sistemas_report.cjs
+      - name: Publicar ajuste apenas na branch
+        run: |
+          if git diff --quiet -- main.py; then
+            echo "Nenhuma alteração em main.py."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add main.py
+            git commit -m "ui: reservar área fixa para barra do monitor v3.54.0"
+            git push origin HEAD:feature/monitor-barra-alertas-globais-v354
+          fi
