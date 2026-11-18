@@ -73,11 +73,17 @@ function g4fInsightsRender(host,row){
   ['Não atendidas',sum('nao_atendidas'),'Soma das faixas horárias'],
   ['Abandonadas',sum('abandonadas'),'Soma das faixas horárias']
  ]:[];
- screen.querySelector('[data-g4f-report-historical]').innerHTML=reports.length?reports.map(x=>g4fReportKpi(...x)).join('')
-  :'<div class="g4f-report-empty g4f-report-empty-span">Resumo horário pendente de integração com o coletor.</div>';
- screen.querySelector('[data-g4f-report-plot]').innerHTML=g4fReportPlot(hours);
- screen.querySelector('[data-g4f-report-table]').innerHTML=g4fReportTable(hours);
- screen.querySelector('[data-g4f-report-ranking]').innerHTML=g4fReportRanking(reasons);
+ // Evita reconstruir os gráficos a cada polling (3 s) quando os dados não mudaram.
+ // Assim a rolagem da matriz continua no mesmo ponto durante a leitura.
+ const historyKey=JSON.stringify([hours,reasons]);
+ if(screen._g4fReportHistoryKey!==historyKey){
+  screen.querySelector('[data-g4f-report-historical]').innerHTML=reports.length?reports.map(x=>g4fReportKpi(...x)).join('')
+   :'<div class="g4f-report-empty g4f-report-empty-span">Resumo horário pendente de integração com o coletor.</div>';
+  screen.querySelector('[data-g4f-report-plot]').innerHTML=g4fReportPlot(hours);
+  screen.querySelector('[data-g4f-report-table]').innerHTML=g4fReportTable(hours);
+  screen.querySelector('[data-g4f-report-ranking]').innerHTML=g4fReportRanking(reasons);
+  screen._g4fReportHistoryKey=historyKey;
+ }
  const stamp=screen.querySelector('[data-g4f-report-stamp]');
  stamp.textContent=row?'Última leitura do G4Flex: '+g4fTime(row.recebido_em):'Aguardando primeira leitura do G4Flex';
  const status=screen.querySelector('[data-g4f-report-availability]');
