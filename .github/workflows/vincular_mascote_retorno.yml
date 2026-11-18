@@ -1,0 +1,28 @@
+name: Integrar mascote de retorno
+on:
+  push:
+    branches: [feature/vincular-png-recuperacao]
+    paths:
+      - scripts/vincular_mascote_retorno.py
+      - .github/workflows/vincular_mascote_retorno.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python scripts/vincular_mascote_retorno.py
+          python -m py_compile main.py
+          node --check portal_alerts_v353.js
+          git diff --check
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "feat: vincular PNG ao aviso de recuperação"
+            git push origin HEAD:feature/vincular-png-recuperacao
+          fi
