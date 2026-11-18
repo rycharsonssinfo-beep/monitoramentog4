@@ -9,6 +9,7 @@ const options=Object.assign({},DEFAULTS,readJson(CONFIG_KEY,{}));
 const seen=readJson(SEEN_KEY,{});
 let mascot="",stateFn=null,fetcher=null,detailsFn=null,latest=[],active=null,lastRead=0,bgStarted=false;
 const outages=new Map(); // Última queda conhecida por município, inclusive durante recuperação
+const pendingRecoveries=[]; // Mantém múltiplos avisos de recuperação até serem exibidos
 let ac=null,audioUnlocked=false,bgBusy=false;
 const html=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ms=v=>{const d=Date.parse(v||"");return Number.isFinite(d)?d:NaN;};
@@ -167,18 +168,25 @@ function process(rows){
       recovered.push(Object.assign({},row,{__durationMin:duration}));
     }
   }
+  // Não perde avisos quando vários municípios voltam a funcionar juntos.
+  for(const row of recovered){
+    if(!pendingRecoveries.some(queued=>rowId(queued)===rowId(row)))pendingRecoveries.push(row);
+  }
   if(active&&active.type==="offline"){
     const restored=recovered.find(row=>rowId(row)===rowId(active.row));
     if(restored){
+      const idx=pendingRecoveries.findIndex(row=>rowId(row)===rowId(restored));
+      if(idx>=0)pendingRecoveries.splice(idx,1);
       if(options.recovery){active={row:restored,type:"recovery",key:"",silent:true};render();}
       else dismiss();
       return;
     }
   }
   if(active)return;
-  if(options.recovery&&recovered.length){
-    markActive(recovered[0],"recovery");return;
+  if(options.recovery&&pendingRecoveries.length){
+    markActive(pendingRecoveries.shift(),"recovery");return;
   }
+  if(!options.recovery)pendingRecoveries.length=0;
   for(const row of rows){
     if(!eligible(row))continue;
     const key=outageKey(row);if(seen[key])continue;
