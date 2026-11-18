@@ -36,4 +36,12 @@ jobs:
                 if len(t)>500:t=t[:500]+' [truncated]'
                 if any(x in t.lower() for x in ['password =','secret_key','service_role','access_token','refresh_token','supabase_secret','passwd','api_key','authorization:','b64_json','base64.b64encode']):t='[CONFIG PROTEGIDA]'
                 print(f'{k+1}: {t}')
+          print("=== CSS LOGIN DETAIL ===")
+          for a,b in [(2200,2527),(2600,2638),(2690,2720)]:
+            print(f"@@ BLOCK {a}-{b}")
+            for i in range(a-1,min(b,len(lines))):
+              t=lines[i]
+              if len(t)>320:t=t[:320]+" [truncated]"
+              if any(x in t.lower() for x in ["password =","secret_key","service_role","access_token","refresh_token","supabase_secret","passwd","api_key","authorization:","b64_json","base64.b64encode"]):t="[CONFIG PROTEGIDA]"
+              print(f"{i+1}: {t}")
           PY
