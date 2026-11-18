@@ -7,6 +7,7 @@ on:
       - "integrar_alertas_v353.py"
       - "portal_alerts_v353.js"
       - "scripts/test_portal_alerts_v353.cjs"
+      - "scripts/test_portal_alerts_homologacao_v353.cjs"
       - ".github/workflows/integrar_alertas_v353.yml"
   workflow_dispatch:
 permissions:
@@ -24,6 +25,7 @@ jobs:
           python -m py_compile integrar_alertas_v353.py
           node --check portal_alerts_v353.js
           node scripts/test_portal_alerts_v353.cjs
+          node scripts/test_portal_alerts_homologacao_v353.cjs
       - name: Integrar ao main.py da raiz
         run: python integrar_alertas_v353.py
       - name: Verificar sintaxe do aplicativo e integridade da alteração
@@ -35,6 +37,8 @@ jobs:
           assert text.count('window.ssPortalAlerts353.start({')==1
           assert text.count("window.ssPortalAlerts353?.receive(data)") == 1
           assert text.count("window.ssPortalAlerts353?.mount(host") == 1
+          assert "mascot:settings.mascotAlert||\'__MASCOTE_COMUNICADO_DATA_URI__\'" in text
+          assert "mount(host, settings.mascotAlert || \'__MASCOTE_COMUNICADO_DATA_URI__\')" in text
           print("OK: inicialização, coleta e interface integradas uma única vez")
           PY
           git diff --check
