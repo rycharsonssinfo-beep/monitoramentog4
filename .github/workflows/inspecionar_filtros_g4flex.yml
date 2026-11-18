@@ -1,0 +1,20 @@
+name: Inspecionar filtros G4Flex
+on:
+  push:
+    branches: [feature/g4flex-ocultar-nao-suporte]
+    paths:
+      - .github/workflows/inspecionar_filtros_g4flex.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspecionar renderização, resumo e filtros
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ls=Path("main.py").read_text(encoding="utf-8").splitlines()
+          for a,b in [(11722,11827),(11926,11965),(12025,12145),(12145,12300)]:
+              print("SECTION",a,b)
+              for i in range(a-1,b): print(f"{i+1}: {ls[i][:520]}")
+          PY
