@@ -12,10 +12,22 @@ portais_monitor_atual (Supabase), sem criar tabelas ou alterar o coletor.
   para dados sem atualização recente (mais de 3 minutos).
 - Som de aviso e configurações de volume/repetição.
 - Aviso opcional de recuperação, inclusive se o alerta anterior foi silenciado.
+- Fila de avisos de recuperação: quando vários municípios voltam simultaneamente, nenhum dos avisos é descartado.
+- Carregamento do mascote já existente na Central de Comunicados como alternativa ao mascote configurado.
 - Memória local para não reapresentar a mesma queda após fechar a janela.
 - Enquanto o Monitor está aberto, o estado dos portais é consultado em segundo
   plano a cada 60 segundos quando não há coleta recente pela tela de portais.
 - Não afeta as consultas dos módulos Fluxus, Veículos e SIM.
+
+## Testes automatizados disponíveis
+Executar a partir da raiz:
+
+```bash
+node scripts/test_portal_alerts_v353.cjs
+node scripts/test_portal_alerts_homologacao_v353.cjs
+```
+
+A validação automatizada verifica regras de tempo, dados recentes, áudio simulado, avisos repetidos, várias recuperações e consulta em segundo plano. O GitHub Actions também confere a sintaxe Python/JavaScript, a integração única no `main.py` e os testes já existentes do mapa. **Esses testes não substituem a homologação visual e sonora em um navegador real.**
 
 ## Como homologar
 1. Na branch de desenvolvimento, abrir **Iniciar Monitoramento**.
@@ -46,4 +58,5 @@ portais_monitor_atual (Supabase), sem criar tabelas ou alterar o coletor.
 - portal_alerts_v353.js — interface, regras, áudio e persistência local.
 - integrar_alertas_v353.py — patch idempotente, se necessário refazer.
 - scripts/test_portal_alerts_v353.cjs — testes de regras de elegibilidade.
+- scripts/test_portal_alerts_homologacao_v353.cjs — testes de ponta a ponta simulados de interface, áudio e notificações.
 - .github/workflows/integrar_alertas_v353.yml — integração/validação automatizada.
