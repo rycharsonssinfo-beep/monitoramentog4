@@ -15433,7 +15433,7 @@ function portalStart(host){
         + "\nwindow.ssPortalAlerts353.start({mascot:settings.mascotAlert||'__MASCOTE_COMUNICADO_DATA_URI__',recoveryMascot:'__MASCOTE_RETORNO_DATA_URI__',state:portalState,fetch:()=>portalFetchTable('portais_monitor_atual','id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em','order=municipio.asc&limit=500')});\nfunction portalStart(host){",
         1,
     )
-    _retorno_png = Path(__file__).with_name("assets") / "mascote_retorno.png"
+    _retorno_png = Path(__file__).with_name("scripts") / "assets" / "mascote_retorno.png"
     if _retorno_png.is_file():
         import base64 as _retorno_b64
         _retorno_uri = "data:image/png;base64," + _retorno_b64.b64encode(_retorno_png.read_bytes()).decode("ascii")
