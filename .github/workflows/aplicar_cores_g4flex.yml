@@ -1,0 +1,25 @@
+name: Aplicar cores por situação G4Flex
+on:
+  push:
+    branches: [feature/g4flex-cores-linhas-cards]
+    paths: [.github/workflows/aplicar_cores_g4flex.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar estilos e validar
+        run: |
+          python scripts/aplicar_cores_g4flex.py
+          python -m py_compile main.py
+          git diff --check
+          git diff --stat
+      - name: Salvar atualização
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add main.py
+          git commit -m "feat: destacar pausa e atribuições nas listas e cards G4Flex"
+          git push origin HEAD:feature/g4flex-cores-linhas-cards
