@@ -1,0 +1,24 @@
+name: Inspecionar alertas e KPIs G4Flex
+on:
+  push:
+    branches: [feature/g4flex-ocultar-nao-suporte]
+    paths:
+      - .github/workflows/inspecionar_alertas_g4flex.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspecionar fontes dos indicadores e alertas
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ls=Path("main.py").read_text(encoding="utf-8").splitlines()
+          print("ALL REFERENCES")
+          for i,line in enumerate(ls):
+              if i>11750 and i<12375 and any(t in line for t in ('row.atendentes','g4fLastData.atendentes','allAgents','g4fAssignmentRecentlyChanged','resumo','agentes_','conversas_','total_cartoes')):
+                  print(f"{i+1}: {line[:400]}")
+          print("OTHER CONTEXT")
+          for a,b in [(11827,11845),(12290,12344)]:
+              for i in range(a-1,b): print(f"{i+1}: {ls[i][:440]}")
+          PY
