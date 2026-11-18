@@ -42,6 +42,7 @@ jobs:
               for suspicious in ["service_role","apikey","secret_key","password","SUPABASE_SERVICE"]:
                 if suspicious in val.lower():val="[REDACTED CONFIG LINE]"
               print(f'{i+1}: {val}')
+          PY
           echo "===== SIM LIFECYCLE ====="
           python - <<'PY'
           from pathlib import Path
