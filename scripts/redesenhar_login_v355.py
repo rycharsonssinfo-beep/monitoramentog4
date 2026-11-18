@@ -89,6 +89,12 @@ NEW_CSS = '''def _auth_login_css():
           color:#FFF!important;font-weight:800!important}
         .stApp:has(.login-v355-layout-marker) div[data-testid="stRadio"] [role="radiogroup"]>label p{
           font-size:14px!important;font-weight:700!important;color:#1B3C60!important}
+        .stApp:has(.login-v355-layout-marker) div[data-testid="stRadio"] [role="radiogroup"]>label>
+        div:first-child:not([data-testid="stMarkdownContainer"]){
+          position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;
+          pointer-events:none!important;overflow:hidden!important}
+        .stApp:has(.login-v355-layout-marker) div[data-testid="stRadio"] [role="radiogroup"]>label:focus-within{
+          outline:2px solid #1477CB!important;outline-offset:2px!important}
         /* O próprio input nativo continua acessível pelo teclado. */
         .stApp:has(.login-v355-layout-marker) div[data-testid="stRadio"] [role="radiogroup"]>label [data-testid="stMarkdownContainer"]{
           margin:0!important}
