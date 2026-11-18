@@ -10126,7 +10126,7 @@ else:
 .g4f-insights .g4f-insights-close{flex:0 0 auto;white-space:nowrap;padding:11px 16px;background:#fff;color:#124c86;border:1px solid #c8dffa;border-radius:10px;cursor:pointer;font-weight:800;font-size:12px}
 .g4f-insights .g4f-insights-close:hover{background:#eaf5ff}
 .g4f-insights .g4f-insights-close:focus-visible,.g4f-insights-trigger:focus-visible{outline:3px solid #efa81e;outline-offset:3px}
-.g4f-insights-trigger{background:#e8f3ff!important;border:1px solid #a6c9ed!important;color:#0c5599!important;border-radius:8px!important;cursor:pointer;font:800 12px inherit!important;line-height:1.1!important;padding:9px 12px!important;white-space:nowrap;box-shadow:none}
+.g4f-insights-trigger{background:#e8f3ff!important;border:1px solid #a6c9ed!important;color:#0c5599!important;border-radius:8px!important;cursor:pointer;font-family:inherit!important;font-size:12px!important;font-weight:800!important;line-height:1.1!important;padding:9px 12px!important;white-space:nowrap;box-shadow:none}
 .g4f-insights-trigger:hover{background:#d9ebfc!important}
 .g4f-insights .g4f-report-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px clamp(16px,2vw,38px);background:#fff;border-bottom:1px solid #dae5f2;color:#46668a;font-size:11px;font-weight:700}
 .g4f-insights .g4f-report-availability{padding:5px 10px;background:#fff5e2;color:#995d00;border-radius:99px;border:1px solid #f8e0aa}
@@ -12454,11 +12454,17 @@ function g4fInsightsRender(host,row){
   ['Não atendidas',sum('nao_atendidas'),'Soma das faixas horárias'],
   ['Abandonadas',sum('abandonadas'),'Soma das faixas horárias']
  ]:[];
- screen.querySelector('[data-g4f-report-historical]').innerHTML=reports.length?reports.map(x=>g4fReportKpi(...x)).join('')
-  :'<div class="g4f-report-empty g4f-report-empty-span">Resumo horário pendente de integração com o coletor.</div>';
- screen.querySelector('[data-g4f-report-plot]').innerHTML=g4fReportPlot(hours);
- screen.querySelector('[data-g4f-report-table]').innerHTML=g4fReportTable(hours);
- screen.querySelector('[data-g4f-report-ranking]').innerHTML=g4fReportRanking(reasons);
+ // Evita reconstruir os gráficos a cada polling (3 s) quando os dados não mudaram.
+ // Assim a rolagem da matriz continua no mesmo ponto durante a leitura.
+ const historyKey=JSON.stringify([hours,reasons]);
+ if(screen._g4fReportHistoryKey!==historyKey){
+  screen.querySelector('[data-g4f-report-historical]').innerHTML=reports.length?reports.map(x=>g4fReportKpi(...x)).join('')
+   :'<div class="g4f-report-empty g4f-report-empty-span">Resumo horário pendente de integração com o coletor.</div>';
+  screen.querySelector('[data-g4f-report-plot]').innerHTML=g4fReportPlot(hours);
+  screen.querySelector('[data-g4f-report-table]').innerHTML=g4fReportTable(hours);
+  screen.querySelector('[data-g4f-report-ranking]').innerHTML=g4fReportRanking(reasons);
+  screen._g4fReportHistoryKey=historyKey;
+ }
  const stamp=screen.querySelector('[data-g4f-report-stamp]');
  stamp.textContent=row?'Última leitura do G4Flex: '+g4fTime(row.recebido_em):'Aguardando primeira leitura do G4Flex';
  const status=screen.querySelector('[data-g4f-report-availability]');
