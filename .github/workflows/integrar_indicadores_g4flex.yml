@@ -1,0 +1,40 @@
+name: Integrar indicadores G4Flex
+on:
+  push:
+    branches: [feature/g4flex-aba-indicadores]
+    paths:
+      - scripts/integrar_g4flex_indicadores.py
+      - .github/workflows/integrar_indicadores_g4flex.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validar-e-integrar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar JavaScript e integrar tela
+        run: |
+          node --check scripts/g4flex_indicadores.js
+          python scripts/integrar_g4flex_indicadores.py
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('main.py').read_text(encoding='utf-8')
+          for key in ['function g4fInsightsInit(host)','function g4fInsightsRender(host,row)','g4fInsightsInit(host);','g4fInsightsRender(host,row);','g4f-report-ranking','g4f-report-plot','g4f-report-table','filas_logadas']:
+              assert key in s,key
+          assert s.count('setInterval(g4fPoll,3000)')==1
+          assert 'row?.resumo?.matriz_horaria' in s
+          assert 'row?.resumo?.ranking_motivos' in s
+          print('PASS: tela de indicadores, fonte histórica opcional e polling preservado')
+          PY
+      - name: Publicar main.py na branch de revisão
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "feat: tela Indicadores e Desempenho no Monitor G4Flex"
+            git push origin HEAD:feature/g4flex-aba-indicadores
+          fi
