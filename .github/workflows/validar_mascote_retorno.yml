@@ -1,0 +1,27 @@
+name: Validar mascote de recuperação
+on:
+  push:
+    branches: [fix/caminho-mascote-retorno-assets]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corrigir caminho e validar PNG
+        run: |
+          python scripts/corrigir_caminho_mascote_retorno.py
+          python -m py_compile main.py
+          node --check portal_alerts_v353.js
+          git diff --check
+      - name: Gravar correção na branch
+        run: |
+          if ! git diff --quiet -- main.py; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add main.py
+            git commit -m "fix: carregar mascote de recuperação da pasta scripts/assets"
+            git push origin HEAD:fix/caminho-mascote-retorno-assets
+          fi
