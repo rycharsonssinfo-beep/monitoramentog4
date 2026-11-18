@@ -1,0 +1,42 @@
+name: Verificar interface dos alertas - tempo de queda
+on:
+  push:
+    branches:
+      - main
+      - feature/alertas-kpi-tempo-v3531
+    paths:
+      - portal_alerts_v353.js
+      - scripts/test_portal_alerts_v353.cjs
+      - scripts/test_portal_alerts_homologacao_v353.cjs
+      - .github/workflows/verificar_interface_alertas.yml
+  pull_request:
+    paths:
+      - portal_alerts_v353.js
+      - scripts/test_portal_alerts_v353.cjs
+      - scripts/test_portal_alerts_homologacao_v353.cjs
+      - .github/workflows/verificar_interface_alertas.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar-alerta:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v4
+      - name: Conferir sintaxe do JavaScript
+        run: node --check portal_alerts_v353.js
+      - name: Regras de indisponibilidade
+        run: node scripts/test_portal_alerts_v353.cjs
+      - name: Testar notificacoes, som e cronometro
+        run: node scripts/test_portal_alerts_homologacao_v353.cjs
+      - name: Verificar integracao com aplicativo principal
+        run: |
+          python -m py_compile main.py
+          python - <<'PY'
+          from pathlib import Path
+          main=Path("main.py").read_text(encoding="utf-8")
+          assert main.count('window.ssPortalAlerts353.start({')==1
+          assert "portal_alerts_v353.js" in main
+          print("OK: integracao do controlador preservada")
+          PY

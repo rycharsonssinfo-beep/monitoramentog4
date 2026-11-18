@@ -4,7 +4,7 @@ const fs=require("node:fs");
 const vm=require("node:vm");
 const source=fs.readFileSync("portal_alerts_v353.js","utf8");
 
-function app(){
+function app(dateOverride=Date){
   const storage=new Map(),timeouts=[],intervals=[];
   let audioStarts=0;
   const slot={
@@ -46,7 +46,7 @@ function app(){
     getItem:key=>storage.get(key)||null,
     setItem:(key,value)=>storage.set(key,String(value))
   };
-  const context={window,document,localStorage,Date,console,
+  const context={window,document,localStorage,Date:dateOverride,console,
     setTimeout:fn=>{timeouts.push(fn);return timeouts.length;},
     setInterval:fn=>{intervals.push(fn);return intervals.length;}
   };
@@ -120,9 +120,14 @@ const online=id=>({
     const a=app();
     a.api.showTest();
     assert.match(a.slot.innerHTML,/MODO DE TESTE/);
+    assert.match(a.slot.innerHTML,/TEMPO SIMULADO DE QUEDA/);
+    assert.match(a.slot.innerHTML,/data-sspa-duration-value>11<\/strong>/);
+    assert.match(source,/\.sspa-kpi-value\{font-size:clamp\(34px,4\.5vw,46px\)/);
     assert.equal(a.audioStarts(),3);
     a.slot.querySelector("[data-action='primary']").onclick();
     assert.equal(a.audioStarts(),6,"Botão de som deve reproduzir os tons");
+    assert.equal(a.slot.querySelector("[data-sspa-audio]").textContent,
+      "Áudio autorizado neste navegador","Estado do som atualiza sem reabrir a janela");
   }
   // O controlador consulta o monitor em segundo plano independentemente da aba.
   {
@@ -135,5 +140,21 @@ const online=id=>({
     assert.equal(fetches,1);
     assert.match(a.slot.innerHTML,/Município Delta/);
   }
-  console.log("OK: alerta, som, dados recentes, fila, duplicidade, recuperação, teste e monitoramento paralelo.");
+  // Contador avança sem reconstruir o modal nem interromper áudio ou ações.
+  {
+    let fakeNow=Date.now();
+    class Clock extends Date{static now(){return fakeNow;}}
+    const a=app(Clock);
+    a.api.start({state:row=>row.estado,fetch:async()=>[]});
+    a.api.receive([offline("Cronometro",64)]);
+    assert.match(a.slot.innerHTML,/INDISPONÍVEL HÁ/);
+    assert.match(a.slot.innerHTML,/data-sspa-duration-value>1h<\/strong>/);
+    assert.match(a.slot.innerHTML,/data-sspa-duration-unit>04min<\/span>/);
+    fakeNow+=60000;
+    a.intervals[1]();
+    assert.equal(a.slot.querySelector("[data-sspa-duration-value]").textContent,"1h");
+    assert.equal(a.slot.querySelector("[data-sspa-duration-unit]").textContent,"05min");
+    assert.equal(a.visible.has("visible"),true,"A notificação segue aberta");
+  }
+  console.log("OK: alertas, áudio, destaque do tempo, cronômetro, recuperações e monitoramento paralelo.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
