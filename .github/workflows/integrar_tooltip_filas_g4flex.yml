@@ -1,0 +1,35 @@
+name: Integrar tooltip filas G4Flex
+on:
+  push:
+    branches: [feature/g4flex-filas-logadas-tooltip]
+    paths:
+      - .github/workflows/integrar_tooltip_filas_g4flex.yml
+      - scripts/integrar_tooltip_filas_g4flex.py
+permissions:
+  contents: write
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrar tooltip e validar sintaxe
+        run: |
+          python scripts/integrar_tooltip_filas_g4flex.py
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("main.py").read_text(encoding="utf-8")
+          assert s.count("function g4fQueueTitle(agent)")==1
+          assert s.count('title="${g4fText(g4fQueueTitle(agent))}"')==3
+          print("Tooltip disponível nos 3 modos (G4Flex, Lista e Cards S&S).")
+          PY
+      - name: Commit na branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "feat: exibir filas logadas ao passar o mouse no atendente"
+            git push origin HEAD:feature/g4flex-filas-logadas-tooltip
+          fi

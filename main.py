@@ -11877,6 +11877,17 @@ else:
                 }catch(e){}
                 return `<span class="g4f-avatar">${photo?`<img src="${g4fText(photo)}" alt="" loading="lazy">`:g4fText(initials)}</span>`;
             }
+            // 3.56: filas LOGADAS no G4Flex, diferentes da primeira fila exibida.
+            function g4fQueueTitle(agent){
+                const raw=Array.isArray(agent?.filas_logadas)?agent.filas_logadas:[];
+                const seen=new Set(), queues=[];
+                for(const value of raw){
+                    const name=String(value||'').trim();
+                    const key=name.toLocaleLowerCase('pt-BR');
+                    if(name && name.length<=140 && !seen.has(key)){seen.add(key);queues.push(name);}
+                }
+                return queues.length?'Filas em que está logado:\n'+queues.join('\n'):String(agent?.nome||'');
+            }
             function g4fCard(agent){
                 const status=agent.status==='pausado'?'pausado':agent.status==='ativo'?'ativo':'desconhecido';
                 const paused=status==='pausado';
@@ -11898,7 +11909,7 @@ else:
                     </div>`:'';
                 return `<article class="g4f-agent ${paused?'paused':status==='desconhecido'?'unknown':''} ${hasAssignment?'has-assignment':''} ${hasAssignment && (g4fAssignmentRecentlyChanged.get(g4fAgentKey(agent))||0)>Date.now()?'g4f-shake-now':''}">
                     <div class="g4f-agent-head">
-                      ${g4fAvatar(agent)}<div class="g4f-agent-person"><strong title="${g4fText(agent.nome||'')}">${g4fText(agent.nome||'Sem nome')}${phoneIcon}</strong>
+                      ${g4fAvatar(agent)}<div class="g4f-agent-person"><strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}${phoneIcon}</strong>
                       <small title="Fila exibida: ${g4fText(fila)}">Fila exibida · ${g4fText(fila)}</small></div>
                       <span class="g4f-state">${paused?'Em pausa':status==='ativo'?'Ativo':'Sem status'}</span>
                     </div>
@@ -12022,7 +12033,7 @@ else:
                 const voiceTime=calling && String(agent.voz_tempo||'').trim();
                 const status=paused?'Em pausa':agent.status==='ativo'?'Online':'Sem status';
                 return `<article class="ss-agent ${paused?'ss-paused':''} ${calling?'ss-calling':''} ${alert?'ss-assigned':''} ${changing?'ss-shake':''}">
-                    <div class="ss-agent-head">${g4fAvatar(agent)}<strong title="${g4fText(agent.nome)}">${g4fText(agent.nome||'Sem nome')}</strong><span class="ss-status">${g4fText(status)}</span></div>
+                    <div class="ss-agent-head">${g4fAvatar(agent)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong><span class="ss-status">${g4fText(status)}</span></div>
                     ${paused?`<div class="ss-info ss-reason">${ssPauseIcon(agent.motivo_pausa)}<span>Motivo: ${g4fText(agent.motivo_pausa||'Não informado')}</span></div>`:''}
                     ${calling?`<div class="ss-info ss-phone">☎ Em atendimento telefônico${voiceTime?' · '+g4fText(voiceTime):''}</div>`:''}
                     ${alert?`<div class="ss-info ss-assignment"><span class="ss-alert-bell" aria-hidden="true">${ssAlertBell}</span><span class="ss-alert-label">Atenção: ${count===1?'1 atendimento atribuído':count+' atendimentos atribuídos'}!</span></div>`:''}
@@ -12050,7 +12061,7 @@ else:
                 const statusBadge=(!paused&&!calling&&!alert)?`<span class="ss-list-badge ${status==='Online'?'online':'unknown'}">${g4fText(status)}</span>`:'';
                 const assignedBadge=alert?`<span class="ss-list-badge alert" title="Online · ${count} conversa(s) atribuída(s)">${ssAlertBell}<span>${count} atrib.</span></span>`:'';
                 return `<tr class="ss-list-row ${paused?'is-paused':''} ${calling?'is-calling':''} ${alert?'has-assignment':''} ${changing?'ss-list-shake':''}">
-                  <td><div class="ss-list-name">${g4fAvatar(agent)}<strong title="${g4fText(agent.nome||'Sem nome')}">${g4fText(agent.nome||'Sem nome')}</strong></div></td>
+                  <td><div class="ss-list-name">${g4fAvatar(agent)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong></div></td>
                   <td><div class="ss-list-status">${pausedBadge}${voiceBadge}${statusBadge}${assignedBadge}</div></td>
                   <td class="ss-list-value ${alert?'alert-value':''}">${g4fNumber(agent.atribuidas)}</td>
                   <td class="ss-list-value">${g4fNumber(agent.em_atendimento)}</td>
