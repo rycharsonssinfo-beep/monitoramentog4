@@ -7,7 +7,7 @@ const DEFAULTS={enabled:true,minutes:10,sound:true,volume:65,repeat:0,recovery:t
 const readJson=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||"null")||fallback;}catch(_){return fallback;}};
 const options=Object.assign({},DEFAULTS,readJson(CONFIG_KEY,{}));
 const seen=readJson(SEEN_KEY,{});
-let mascot="",stateFn=null,fetcher=null,detailsFn=null,latest=[],active=null,lastRead=0,bgStarted=false;
+let mascot="",recoveryMascot="",stateFn=null,fetcher=null,detailsFn=null,latest=[],active=null,lastRead=0,bgStarted=false;
 const outages=new Map(); // Última queda conhecida por município, inclusive durante recuperação
 const pendingRecoveries=[]; // Mantém múltiplos avisos de recuperação até serem exibidos
 let ac=null,audioUnlocked=false,bgBusy=false,autoDismissTimer=null;
@@ -89,6 +89,9 @@ function playAudio(force){
 const styles=[
 "#ss-portal-alert-v353{position:fixed;inset:0;z-index:2147482000;display:none;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;background:rgba(12,32,55,.53);font-family:Arial,Helvetica,sans-serif}",
 "#ss-portal-alert-v353.visible{display:flex}",
+"#ss-portal-alert-v353.recovery .sspa-card{border-top-color:#15965a;box-shadow:0 19px 60px #0b25464d,0 0 0 1px #bfe8d0}",
+"#ss-portal-alert-v353.recovery .sspa-head>span:first-child{color:#15965a!important}",
+"#ss-portal-alert-v353.recovery .sspa-status{background:#15965a!important}",
 "#ss-portal-alert-v353 .sspa-card{box-sizing:border-box;width:min(890px,96vw);max-height:94vh;overflow-y:auto;border-radius:23px;border-top:5px solid #d83d48;background:white;color:#173c5c;padding:22px 24px 18px;box-shadow:0 19px 60px #0b25464d}",
 "#ss-portal-alert-v353 .sspa-head{display:flex;align-items:center;gap:10px;font-size:clamp(17px,2.3vw,25px);font-weight:800}",
 "#ss-portal-alert-v353 .sspa-x{margin-left:auto;border:0;background:transparent;color:#173c5c;font-size:29px;cursor:pointer}",
@@ -126,7 +129,7 @@ function getModal(){
   el.innerHTML="<style>"+styles+"</style><section class='sspa-card' role='dialog' aria-modal='true' aria-labelledby='sspa-title'><div class='sspa-slot'></div></section>";
   document.body.appendChild(el);return el;
 }
-function hide(){const el=getModal();el.classList.remove("visible");el.querySelector(".sspa-slot").innerHTML="";}
+function hide(){const el=getModal();el.classList.remove("visible","recovery");el.querySelector(".sspa-slot").innerHTML="";}
 function cancelAutoDismiss(){
   if(autoDismissTimer!==null)clearTimeout(autoDismissTimer);
   autoDismissTimer=null;
@@ -161,8 +164,10 @@ function render(){
   if(!active)return;
   const el=getModal(),slot=el.querySelector(".sspa-slot"),r=active.row||{},type=active.type;
   const config=type==="config",test=type==="test",recovery=type==="recovery";
+  el.classList.toggle("recovery",recovery);
   const title=config?"Configurações dos alertas":test?"Teste de alerta — simulação":"Monitoramento dos Portais";
-  const logo=mascot?"<img class='sspa-mascot' src='"+html(mascot)+"' alt='Mascote de alerta S&S'>":"<span class='sspa-mascot' aria-hidden='true' style='font-size:74px;text-align:center'>⚠</span>";
+  const currentMascot=(recovery&&recoveryMascot)?recoveryMascot:mascot;
+  const logo=currentMascot?"<img class='sspa-mascot' src='"+html(currentMascot)+"' alt='"+(recovery?"Mascote de recuperação S&S":"Mascote de alerta S&S")+"'>":"<span class='sspa-mascot' aria-hidden='true' style='font-size:74px;text-align:center'>"+(recovery?"✓":"⚠")+"</span>";
   const municipality=html(r.municipio||"Município de teste")+(r.uf?" · "+html(r.uf):"");
   const duration=durationParts(test?11:recovery?Number(r.__durationMin||0):elapsed(r));
   const kpiLabel=test?"TEMPO SIMULADO DE QUEDA":recovery?"DURAÇÃO DA QUEDA":"INDISPONÍVEL HÁ";
@@ -274,7 +279,7 @@ async function refresh(){
 }
 function start(opts){
   opts=opts||{};
-  mascot=opts.mascot||mascot;stateFn=opts.state||stateFn;fetcher=opts.fetch||fetcher;detailsFn=opts.details||detailsFn;
+  mascot=opts.mascot||mascot;recoveryMascot=opts.recoveryMascot||recoveryMascot;stateFn=opts.state||stateFn;fetcher=opts.fetch||fetcher;detailsFn=opts.details||detailsFn;
   if(bgStarted)return;bgStarted=true;
   // Mesma estratégia do SIM: polling global, independente do painel em exibição.
   setTimeout(refresh,2500);
