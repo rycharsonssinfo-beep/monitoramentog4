@@ -15,8 +15,28 @@ if not main.is_file() or not javascript.is_file():
     sys.exit("Arquivos main.py e portal_alerts_v353.js não encontrados na raiz.")
 
 source = main.read_text(encoding="utf-8")
+# Quando a integração já existe, atualiza somente as referências ao mascote,
+# sem duplicar a inicialização, os controles nem as leituras.
 if 'window.ssPortalAlerts353.start({' in source:
-    print("Integração v3.53.0 já aplicada.")
+    replacements = {
+        "window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '');":
+            "window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '__MASCOTE_COMUNICADO_DATA_URI__');",
+        "mascot:settings.mascotAlert||''":
+            "mascot:settings.mascotAlert||'__MASCOTE_COMUNICADO_DATA_URI__'",
+    }
+    changed = False
+    for old, new in replacements.items():
+        if old in source:
+            if source.count(old) != 1:
+                sys.exit("Marcador de mascote duplicado; main.py não alterado.")
+            source = source.replace(old, new, 1)
+            changed = True
+        elif new not in source:
+            sys.exit("Referência de mascote inesperada; main.py não alterado.")
+    compile(source, str(main), "exec")
+    if changed:
+        main.write_text(source, encoding="utf-8")
+    print("Integração v3.53.0 validada; mascote preservado.", "Atualizada." if changed else "Sem alterações.")
     sys.exit(0)
 
 anchors = {
@@ -39,7 +59,7 @@ source = source.replace(
 # Insere controles visuais no cabeçalho apenas depois da construção do DOM.
 source = source.replace(
     anchors["mount"],
-    "  window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '');\n" + anchors["mount"],
+    "  window.ssPortalAlerts353?.mount(host, settings.mascotAlert || '__MASCOTE_COMUNICADO_DATA_URI__');\n" + anchors["mount"],
     1,
 )
 
@@ -47,7 +67,7 @@ source = source.replace(
 # A consulta de 60 s é independente da aba selecionada (SIM/Fluxus/Veículos).
 boot = (
     "window.ssPortalAlerts353.start({"
-    "mascot:settings.mascotAlert||'',"
+    "mascot:settings.mascotAlert||'__MASCOTE_COMUNICADO_DATA_URI__',"
     "state:portalState,"
     "fetch:()=>portalFetchTable('portais_monitor_atual',"
     "'id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em',"
