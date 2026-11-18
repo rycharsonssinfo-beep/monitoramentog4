@@ -241,7 +241,7 @@ def apply(text: str) -> str:
     text=text[:a]+wrapper+text[b:]
     text=replace_single(text,'APP_VERSION = "3.54.0"','APP_VERSION = "3.55.0"',"versão")
     ast.parse(text, filename="main.py")
-    assert text.count(MARKER)==2, "marcador CSS e markup não encontrados exatamente uma vez"
+    assert text.count('<div class="login-v355-layout-marker"')==1, "Marcador de layout duplicado ou ausente"
     assert text.count('with st.form("monitor_auth_login"') == 1
     assert text.count('with st.form("monitor_request_access_v336"') == 1
     assert text.count('login_hero_col, login_form_col = st.columns(') == 1
