@@ -42,4 +42,29 @@ jobs:
               for suspicious in ["service_role","apikey","secret_key","password","SUPABASE_SERVICE"]:
                 if suspicious in val.lower():val="[REDACTED CONFIG LINE]"
               print(f'{i+1}: {val}')
+          echo "===== SIM LIFECYCLE ====="
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          lines=Path("main.py").read_text(encoding="utf-8").splitlines()
+          selectors=["simDelivery","SimDelivery","simAlert","sim-alert","sim-delivery-alert","startSimDeliveryPolling","sim_alert","simAlerts"]
+          for i,line in enumerate(lines):
+            if i<10600 or i>15380:continue
+            if any(sel in line for sel in selectors):
+              if ('function ' in line or 'setInterval' in line or 'setTimeout' in line or 'Date.now' in line or 'addEventListener' in line or 'simDelivery' in line):
+                if len(line)>250:line=line[:250]+' [truncated]'
+                print(f'{i+1}: {line}')
+          markers=["startSimDeliveryPolling","function showSim","function exibirSim","function simDelivery",
+                   "function portalPoll","function startPortal","function portalStart",
+                   "const portalHosts","const simAlert","function startSim","function showControls"]
+          for marker in markers:
+            hits=[i for i,line in enumerate(lines) if marker in line and i>10600]
+            for h in hits[:2]:
+              print(f'@@@ targeted {marker} : {h+1}')
+              for i in range(max(0,h-16),min(len(lines),h+55)):
+                line=lines[i]
+                if len(line)>460:line=line[:460]+' [truncated]'
+                for suspicious in ["service_role","apikey","secret_key","password"]:
+                  if suspicious in line.lower():line="[CONFIG HIDDEN]"
+                print(f'{i+1}: {line}')
           PY
