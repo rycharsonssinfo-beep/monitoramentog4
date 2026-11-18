@@ -6,7 +6,7 @@ const source=fs.readFileSync("portal_alerts_v353.js","utf8");
 
 function app(dateOverride=Date){
   const storage=new Map(),timeouts=[],intervals=[];
-  let audioStarts=0;
+  let audioStarts=0,nextTimerId=0;
   const slot={
     html:"",buttons:{},
     get innerHTML(){return this.html;},
@@ -47,7 +47,8 @@ function app(dateOverride=Date){
     setItem:(key,value)=>storage.set(key,String(value))
   };
   const context={window,document,localStorage,Date:dateOverride,console,
-    setTimeout:fn=>{timeouts.push(fn);return timeouts.length;},
+    setTimeout:(fn,ms)=>{fn.__timerId=++nextTimerId;fn.delay=ms;timeouts.push(fn);return fn.__timerId;},
+    clearTimeout:id=>{const fn=timeouts.find(t=>t.__timerId===id);if(fn)fn.__cancelled=true;},
     setInterval:fn=>{intervals.push(fn);return intervals.length;}
   };
   vm.runInNewContext(source,context,{filename:"portal_alerts_v353.js"});
@@ -56,7 +57,7 @@ function app(dateOverride=Date){
     close(){const btn=slot.querySelector("[data-action='secondary']");
       assert.equal(typeof btn.onclick,"function");
       btn.onclick();},
-    flush(){const fn=timeouts.shift();if(fn)fn();}
+    flush(){let fn;while((fn=timeouts.shift())){if(!fn.__cancelled){fn();return true;}}return false;}
   };
 }
 const now=Date.now();
@@ -156,5 +157,45 @@ const online=id=>({
     assert.equal(a.slot.querySelector("[data-sspa-duration-unit]").textContent,"05min");
     assert.equal(a.visible.has("visible"),true,"A notificação segue aberta");
   }
-  console.log("OK: alertas, áudio, destaque do tempo, cronômetro, recuperações e monitoramento paralelo.");
+  // Todas as telas abertas usam o polling global, mesmo sem montar a aba Portais.
+  {
+    const a=app(),b=app();
+    const fetch=async()=>[offline("Compartilhado",13)];
+    a.api.start({state:r=>r.estado,fetch});
+    b.api.start({state:r=>r.estado,fetch});
+    assert.equal(a.intervals.length,2);
+    assert.equal(b.intervals.length,2);
+    await a.timeouts.shift()();
+    await b.timeouts.shift()();
+    assert.match(a.slot.innerHTML,/Município Compartilhado/);
+    assert.match(b.slot.innerHTML,/Município Compartilhado/);
+    assert.equal(a.visible.has("visible"),true);
+    assert.equal(b.visible.has("visible"),true);
+    assert.match(source,/setInterval\(refresh,15000\)/);
+  }
+  // A notificação não fica permanente na tela: encerra em 20s.
+  {
+    const a=app();
+    a.api.receive([offline("Expirar")]);
+    assert.equal(a.timeouts.find(fn=>fn.delay===20000)!=null,true);
+    a.flush();
+    assert.equal(a.visible.has("visible"),false,"Alerta deve desaparecer automaticamente");
+    a.flush();
+    assert.equal(a.visible.has("visible"),false,"Não repetir ocorrência expirada");
+  }
+  // Recuperações e testes também têm fechamento automático.
+  {
+    const a=app();
+    a.api.receive([offline("Recuperar")]);
+    a.api.receive([online("Recuperar")]);
+    assert.match(a.slot.innerHTML,/Recuperado/);
+    a.flush();
+    assert.equal(a.visible.has("visible"),false,"Recuperação desaparece após o período definido");
+    const b=app();
+    b.api.showTest();
+    b.flush();
+    assert.equal(b.visible.has("visible"),false,"Simulação não fica fixa");
+  }
+  assert.match(source,/data-opt='autoDismissSeconds'/);
+  console.log("OK: alertas globais em diferentes telas, áudio, encerramento automático, cronômetro e recuperação.");
 })().catch(err=>{console.error(err);process.exitCode=1;});
