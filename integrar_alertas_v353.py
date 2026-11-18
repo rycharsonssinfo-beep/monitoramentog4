@@ -33,10 +33,17 @@ if 'window.ssPortalAlerts353.start({' in source:
             changed = True
         elif new not in source:
             sys.exit("Referência de mascote inesperada; main.py não alterado.")
+    if 'APP_VERSION = "3.52.0"' in source:
+        if source.count('APP_VERSION = "3.52.0"') != 1:
+            sys.exit("Declaração de versão duplicada; main.py não alterado.")
+        source = source.replace('APP_VERSION = "3.52.0"', 'APP_VERSION = "3.53.0"', 1)
+        changed = True
+    elif 'APP_VERSION = "3.53.0"' not in source:
+        sys.exit("Versão de aplicativo inesperada; main.py não alterado.")
     compile(source, str(main), "exec")
     if changed:
         main.write_text(source, encoding="utf-8")
-    print("Integração v3.53.0 validada; mascote preservado.", "Atualizada." if changed else "Sem alterações.")
+    print("Integração v3.53.0 validada; mascote e versão conferidos.", "Atualizada." if changed else "Sem alterações.")
     sys.exit(0)
 
 anchors = {
