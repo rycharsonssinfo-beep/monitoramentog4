@@ -1,0 +1,21 @@
+name: Inspecionar interface G4Flex
+on:
+  push:
+    branches: [feature/g4flex-cores-linhas-cards]
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Localizar renderização de atendentes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("main.py").read_text(encoding="utf-8").splitlines()
+          terms=["Em ligação","Em pausa","g4flex","g4Flex","agent-card","Atrib.","atribuicoes","atribuidas","fila_exibida"]
+          hits=[i for i,line in enumerate(s) if any(t in line for t in terms)]
+          print("LINES",len(s),"HITS",len(hits))
+          for i in hits[-110:]:
+              print(f"{i+1}: {s[i][:280]}")
+          PY
