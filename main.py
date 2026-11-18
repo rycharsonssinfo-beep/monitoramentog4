@@ -11776,6 +11776,9 @@ else:
              let ssOfficeFilter=(()=>{try{const v=localStorage.getItem(ssOfficeKey);return ['todos','fortaleza','varzea','outros'].includes(v)?v:'todos';}catch(_){return 'todos';}})();
              const ssNormalizeName=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                  .toLocaleLowerCase('pt-BR').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+             // Exclusão temporária na interface; não é permissão de acesso ao Supabase.
+             const g4fHiddenNames=new Set(['Cislena Cisne','Marla Lima','Emanuela Costa'].map(ssNormalizeName));
+             const g4fVisibleAgent=agent=>!g4fHiddenNames.has(ssNormalizeName(agent?.nome));
              const ssOffices={
                  fortaleza:new Set(['Abhraao Wniston','Abhraao Winston','Abraao Wniston','Abraao Winston','Aline Carioca','André Bitu','Célio Neto','Cislena Cisne','Carlos Daniel','Neydson Rodrigues','Roberto Magalhães','Rycharson Xavier','Thiago Silva','Armando Rodrigues','João Vyctor','Jorge Batista','Marla Lima','Emanuela Costa','Afonso Barros'].map(ssNormalizeName)),
                  varzea:new Set(['Luis Lima','Luís Lima','Régis Bezerra','Regis Bezerra','Rodrigo Carvalho','Tafarel Nascimento','Vinícius Ferreira','Vinicius Ferreira','Yago Costa'].map(ssNormalizeName))
@@ -11836,6 +11839,7 @@ else:
                 if(!row || g4fState(row)!=='online')return;
                 const current=new Map();
                 for(const a of (Array.isArray(row.atendentes)?row.atendentes:[])){
+                     if(!g4fVisibleAgent(a))continue;
                     const key=g4fAgentKey(a);if(!key)continue;
                     const count=Math.max(0,Number(a.atribuidas)||0);
                     current.set(key,count);
@@ -12059,7 +12063,7 @@ else:
                 root.hidden=g4fCurrentLayout!=='ss';
                 if(g4fCurrentLayout!=='ss')return;
                 const r=row?.resumo||{};
-                const all=Array.isArray(row?.atendentes)?row.atendentes:[];
+                const all=Array.isArray(row?.atendentes)?row.atendentes.filter(g4fVisibleAgent):[];
                 const voiceIsFresh=state==='online' && r.voz_status==='online';
                 const voiceCount=voiceIsFresh?all.filter(a=>a.voz_status==='em_ligacao').length:null;
                 // Os dois indicadores originais de pausa não devem ser somados:
@@ -12069,12 +12073,12 @@ else:
                 const pausedTotal=all.length?individualPaused:Math.max(
                     Number(r.agentes_em_pausa)||0,Number(r.agentes_em_pausa_ativa)||0);
                 const kpis=[
-                    ['◉','Disponíveis',r.agentes_disponiveis,'green'],
+                    ['◉','Disponíveis',all.filter(a=>a.status==='ativo').length,'green'],
                     ['Ⅱ','Em pausa',pausedTotal,'amber'],
-                    ['▣','Em atendimento',r.conversas_em_atendimento,'blue'],
+                    ['▣','Em atendimento',all.reduce((sum,a)=>sum+Math.max(0,Number(a.em_atendimento)||0),0),'blue'],
                     ['☎','Atend. telefônico',voiceCount,'purple'],
                     ['▤','Não atendidas',r.conversas_nao_atendidas,'red'],
-                    ['♧','Total logados',r.usuarios_logados,'navy'],
+                    ['♧','Total monitorados',all.length,'navy'],
                 ];
                 root.querySelector('[data-ss="kpis"]').innerHTML=kpis.map(([icon,title,val,color])=>
                     `<div class="ss-kpi ss-${color}"><div class="ss-kpi-icon">${icon}</div><div><small>${title}</small><strong>${val==null?'—':g4fNumber(val)}</strong></div></div>`).join('');
@@ -12246,13 +12250,19 @@ else:
                     ['Usuários logados','usuarios_logados','#0b5896','Conectados ao G4Flex'],
                     ['Disponíveis','agentes_disponiveis','#0c8978','Indicador original'],
                     ['Em pausa','agentes_em_pausa','#286ae8','Indicador original'],
-                    ['Pausa ativa','agentes_em_pausa_ativa','#496bdf','Indicador original'],
-                    ['Totalmente ocupados','agentes_totalmente_ocupados','#d97706','Indicador original'],
+                    ['Pausa ativa','agentes_em_pausa_ativa','#496bdf','Indicador global do G4Flex'],
+                    ['Totalmente ocupados','agentes_totalmente_ocupados','#d97706','Indicador global do G4Flex'],
                     ['Em atendimento','conversas_em_atendimento','#0a8061','Conversas em andamento'],
-                    ['Não atendidas','conversas_nao_atendidas','#db3943','Conversas aguardando'],
+                    ['Não atendidas','conversas_nao_atendidas','#db3943','Conversas aguardando · indicador global'],
                 ];
-                const allAgents=Array.isArray(row?.atendentes)?row.atendentes:[];
-                const query=g4fSearchText.toLocaleLowerCase('pt-BR');
+                const allAgents=Array.isArray(row?.atendentes)?row.atendentes.filter(g4fVisibleAgent):[];
+                const scopedKpis={
+                     usuarios_logados:allAgents.length,
+                     agentes_disponiveis:allAgents.filter(a=>a.status==='ativo').length,
+                     agentes_em_pausa:allAgents.filter(a=>a.status==='pausado').length,
+                     conversas_em_atendimento:allAgents.reduce((sum,a)=>sum+Math.max(0,Number(a.em_atendimento)||0),0),
+                 };
+                 const query=g4fSearchText.toLocaleLowerCase('pt-BR');
                 const searched=allAgents.filter(a=>!query||(String(a.nome||'')+' '+String(a.motivo_pausa||'')+(g4fCurrentLayout==='g4flex'?' '+String(a.fila_exibida||a.fila||''):'')).toLocaleLowerCase('pt-BR').includes(query));
                 // O filtro da apresentação S&S não modifica o Layout G4Flex original.
                 const agents=searched.filter(a=>g4fFilterStatus==='todos'||a.status===g4fFilterStatus);
@@ -12263,14 +12273,14 @@ else:
                     badge.className='g4f-connection '+(state==='online'?'':state);
                     badge.textContent=state==='online'?'Robô conectado':state==='stale'?`Sem atualização há ${age}s`:'Robô offline';
                     const stamp=host.querySelector('[data-g4f="stamp"]');
-                    stamp.textContent=row?`Última atualização: ${g4fTime(row.recebido_em)} · ${row.total_cartoes??'—'} atendentes`:'Aguardando primeira leitura';
+                    stamp.textContent=row?`Última atualização: ${g4fTime(row.recebido_em)} · ${allAgents.length} atendentes monitorados`:'Aguardando primeira leitura';
                     const summary=host.querySelector('[data-g4f="kpis"]');
-                    summary.innerHTML=kpis.map(([title,key,color,description],i)=>`<div class="g4f-kpi ${i===0?'primary':''}" style="--kpi-color:${color}"><span class="g4f-kpi-title">${g4fText(title)}</span><span class="g4f-kpi-value">${g4fNumber(r[key])}</span><small>${g4fText(description)}</small></div>`).join('');
+                    summary.innerHTML=kpis.map(([title,key,color,description],i)=>`<div class="g4f-kpi ${i===0?'primary':''}" style="--kpi-color:${color}"><span class="g4f-kpi-title">${g4fText(title)}</span><span class="g4f-kpi-value">${g4fNumber(Object.prototype.hasOwnProperty.call(scopedKpis,key)?scopedKpis[key]:r[key])}</span><small>${g4fText(description)}</small></div>`).join('');
                     host._g4fAgents=agents;
                     host._ssAllAgents=searched;
                     ssRender(host,row,searched,state);
                     if(g4fCurrentLayout==='g4flex')g4fLayout(host);
-                    host.querySelector('[data-g4f="count"]').textContent=`Exibindo ${agents.length} de ${Array.isArray(row?.atendentes)?row.atendentes.length:0} atendentes`;
+                    host.querySelector('[data-g4f="count"]').textContent=`Exibindo ${agents.length} de ${allAgents.length} atendentes monitorados`;
                     const error=host.querySelector('[data-g4f="error"]');
                     if(g4fLastError){error.hidden=false;error.textContent=g4fLastError+(row?' · última leitura válida preservada':'');}
                     else error.hidden=true;
