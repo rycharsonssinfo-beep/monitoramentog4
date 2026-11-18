@@ -1,0 +1,45 @@
+name: Diagnosticar controles e alertas do Monitor
+on:
+  push:
+    branches:
+      - feature/monitor-barra-alertas-globais-v354
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspecao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extrair trechos relevantes sem segredos
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          lines=Path("main.py").read_text(encoding="utf-8").splitlines()
+          markers=[
+            "controls-overlay","controls-hidden","controls-shell",
+            "function showControls()","function hideControls()","nearControlEdge(",
+            "window.ssPortalAlerts353.start(","window.ssPortalAlerts353?.mount(",
+            "window.ssPortalAlerts353?.receive(","function updateFocus(",
+            "revealStrip","id=\"stage\"","id='stage'","sim_alert",
+            "simAlert","alerta_sim","alertaSim","ss-sim","sim-alert",
+            "sim-toast","toastSim","SIM_ALERT","alert-banner","alertModal",
+            "function portalStart(","function portalFetchTable(", "controls-top",
+          ]
+          ranges=[]
+          for marker in markers:
+            hits=[i for i, line in enumerate(lines) if marker in line]
+            print(f'@@ MARKER {marker!r}: hits={len(hits)}, lines={[i+1 for i in hits[:8]]}')
+            for index in hits[:2]:
+              low=max(0,index-14);high=min(len(lines),index+22)
+              ranges.append((low,high,marker))
+          for lo,hi,name in ranges:
+            print(f'\n@@ CONTEXT {name} lines {lo+1}-{hi}')
+            for i in range(lo,hi):
+              val=lines[i]
+              if len(val)>520:val=val[:520]+' [truncated]'
+              for suspicious in ["service_role","apikey","secret_key","password","SUPABASE_SERVICE"]:
+                if suspicious in val.lower():val="[REDACTED CONFIG LINE]"
+              print(f'{i+1}: {val}')
+          PY
