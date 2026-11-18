@@ -10115,6 +10115,60 @@ else:
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr:nth-child(odd){background:#fff}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.has-assignment{background:#fff8ee}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-calling:not(.has-assignment){background:#faf5ff}
+/* G4Flex - página informativa de indicadores. Visível apenas sob ação do usuário. */
+.g4f-insights[hidden]{display:none!important}
+.g4f-insights{position:fixed;inset:0;z-index:9000;background:#f2f6fd;color:#14385d;font-family:inherit;overflow:hidden}
+.g4f-insights-content{width:100%;height:100%;display:flex;flex-direction:column;min-height:0}
+.g4f-insights .g4f-report-head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px clamp(16px,2vw,38px);background:linear-gradient(112deg,#0b376f,#10599e);color:#fff}
+.g4f-insights .g4f-report-eyebrow{font-size:10px;letter-spacing:.12em;opacity:.8;font-weight:850;margin-bottom:5px}
+.g4f-insights .g4f-report-head h2{margin:0;font-size:clamp(21px,1.7vw,31px);font-weight:850;letter-spacing:-.018em}
+.g4f-insights .g4f-report-head p{margin:5px 0 0;font-size:12px;color:#d9ebff}
+.g4f-insights .g4f-insights-close{flex:0 0 auto;white-space:nowrap;padding:11px 16px;background:#fff;color:#124c86;border:1px solid #c8dffa;border-radius:10px;cursor:pointer;font-weight:800;font-size:12px}
+.g4f-insights .g4f-insights-close:hover{background:#eaf5ff}
+.g4f-insights .g4f-insights-close:focus-visible,.g4f-insights-trigger:focus-visible{outline:3px solid #efa81e;outline-offset:3px}
+.g4f-insights-trigger{background:#e8f3ff!important;border:1px solid #a6c9ed!important;color:#0c5599!important;border-radius:8px!important;cursor:pointer;font:800 12px inherit!important;line-height:1.1!important;padding:9px 12px!important;white-space:nowrap;box-shadow:none}
+.g4f-insights-trigger:hover{background:#d9ebfc!important}
+.g4f-insights .g4f-report-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px clamp(16px,2vw,38px);background:#fff;border-bottom:1px solid #dae5f2;color:#46668a;font-size:11px;font-weight:700}
+.g4f-insights .g4f-report-availability{padding:5px 10px;background:#fff5e2;color:#995d00;border-radius:99px;border:1px solid #f8e0aa}
+.g4f-insights .g4f-report-availability.ready{background:#e7f8ed;color:#12733f;border-color:#c1e7d1}
+.g4f-insights .g4f-report-scroll{padding:18px clamp(12px,2vw,38px) 35px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;display:flex;flex-direction:column;gap:16px}
+.g4f-insights .g4f-report-block{background:#fff;border:1px solid #d7e5f3;border-radius:14px;padding:18px;box-shadow:0 4px 17px #0b376f0d;min-width:0}
+.g4f-insights .g4f-report-section-head{display:flex;gap:10px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.g4f-insights .g4f-report-section-head h3{margin:0;font-size:16px;color:#133e6a;font-weight:850}
+.g4f-insights .g4f-report-section-head small{font-size:11px;color:#6884a3}
+.g4f-insights .g4f-report-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.g4f-insights .g4f-report-kpi{min-width:0;border:1px solid #dce9f7;background:linear-gradient(#fff,#f7fbff);padding:14px 16px;border-radius:12px;display:flex;flex-direction:column;gap:6px}
+.g4f-insights .g4f-report-kpi small{font-size:11px;color:#507297;font-weight:850}
+.g4f-insights .g4f-report-kpi strong{font-size:clamp(24px,2vw,32px);font-weight:900;line-height:1.1;color:#0f4c86}
+.g4f-insights .g4f-report-kpi span{font-size:10px;color:#7492af}
+.g4f-insights .g4f-report-empty{background:#f8fbff;border:1px dashed #bdd5ee;color:#587a9f;border-radius:9px;padding:25px;text-align:center;font-size:12px;line-height:1.6}
+.g4f-insights .g4f-report-empty-span{grid-column:1/-1}
+.g4f-insights .g4f-report-chart-legend{display:flex;align-items:center;justify-content:center;gap:9px;font-size:11px;color:#527398;font-weight:800}
+.g4f-insights .g4f-report-chart-legend i{width:12px;height:12px;display:inline-block;border-radius:3px;margin-left:8px}
+.g4f-insights .g4f-report-chart-legend .open,.g4f-insights .g4f-report-bars .open{background:#2c78d4}
+.g4f-insights .g4f-report-chart-legend .answered,.g4f-insights .g4f-report-bars .answered{background:#12a68e}
+.g4f-insights .g4f-report-plot{margin-top:13px;display:flex;gap:8px;overflow-x:auto;align-items:flex-end;min-height:190px;padding:7px 4px 12px}
+.g4f-insights .g4f-report-plot-column{flex:1 0 65px;max-width:130px;min-width:65px;height:171px;display:flex;align-items:center;justify-content:flex-end;flex-direction:column;gap:8px}
+.g4f-insights .g4f-report-bars{width:100%;height:142px;display:flex;gap:5px;align-items:flex-end;justify-content:center;border-bottom:1px solid #d4e5f5;background:repeating-linear-gradient(to top,#eff5fc 0px,#eff5fc 1px,transparent 1px,transparent 35px)}
+.g4f-insights .g4f-report-bars>div{width:36%;max-width:23px;border-radius:4px 4px 0 0;transition:height .16s ease-out}
+.g4f-insights .g4f-report-plot-column small{font-size:9px;white-space:nowrap;color:#4a678a;font-weight:700}
+.g4f-insights .g4f-report-table-scroll{overflow-x:auto;width:100%;border-radius:10px;border:1px solid #dce8f5}
+.g4f-insights .g4f-report-table{border-collapse:collapse;width:max-content;min-width:100%;font-size:11px}
+.g4f-insights .g4f-report-table th{position:sticky;top:0;background:#e9f2fc;color:#23537f;text-align:center;padding:12px 10px;white-space:nowrap;font-size:10px;font-weight:850;border-bottom:1px solid #cadaee}
+.g4f-insights .g4f-report-table td{padding:10px 10px;text-align:center;white-space:nowrap;border-bottom:1px solid #edf2fa;color:#355d83}
+.g4f-insights .g4f-report-table td:first-child{text-align:left;font-weight:800;color:#12487c}
+.g4f-insights .g4f-report-table tbody tr:nth-child(even){background:#f8fbff}
+.g4f-insights .g4f-report-ranking{display:flex;flex-direction:column;gap:9px}
+.g4f-insights .g4f-report-reason{display:grid;grid-template-columns:25px minmax(120px,220px) minmax(60px,1fr) 40px;align-items:center;gap:10px;font-size:12px}
+.g4f-insights .g4f-report-rank{color:#7994ad;text-align:center;font-weight:800}
+.g4f-insights .g4f-report-reason-name{font-weight:700;color:#345b82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g4f-insights .g4f-report-reason-track{height:13px;background:#e9f2fc;border-radius:7px;overflow:hidden}
+.g4f-insights .g4f-report-reason-track>div{height:100%;background:linear-gradient(90deg,#176ed2,#28a1d6);border-radius:7px}
+.g4f-insights .g4f-report-reason strong{text-align:right;font-size:13px;color:#114b7f}
+.g4f-insights .g4f-report-disclaimer{font-size:11px;color:#557898;line-height:1.6;margin:0;padding:8px 3px}
+@media(max-width:820px){.g4f-insights .g4f-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.g4f-insights .g4f-report-head{padding:14px 17px}.g4f-insights .g4f-report-block{padding:13px}.g4f-insights .g4f-report-reason{grid-template-columns:21px minmax(90px,145px) minmax(40px,1fr) 28px;gap:6px}}
+@media(max-width:540px){.g4f-insights .g4f-report-kpis{grid-template-columns:1fr 1fr;gap:7px}.g4f-insights .g4f-report-kpi{padding:10px}.g4f-insights .g4f-report-head h2{font-size:17px}.g4f-insights .g4f-insights-close{padding:8px;font-size:10px}.g4f-insights .g4f-report-section-head{display:block}.g4f-insights .g4f-report-section-head small{display:block;margin-top:5px}.g4f-insights .g4f-report-reason-name{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.g4f-insights *{transition:none!important;scroll-behavior:auto!important}}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.has-assignment):not(.is-calling){background:#f4f8ff}
 
 /* G4Flex: estado da linha e do card, com barra lateral junto à foto.
@@ -12296,6 +12350,7 @@ else:
                     if(g4fLastError){error.hidden=false;error.textContent=g4fLastError+(row?' · última leitura válida preservada':'');}
                     else error.hidden=true;
                     host.querySelector('[data-g4f="clock"]').textContent=new Date().toLocaleTimeString('pt-BR');
+                     g4fInsightsRender(host,row);
                     host.querySelectorAll('[data-g4f-filter]').forEach(btn=>btn.classList.toggle('selected',btn.dataset.g4fFilter===g4fFilterStatus));
                 }
             }
@@ -12324,6 +12379,135 @@ else:
                     g4fLastError=String(e?.message||'Erro de conexão').slice(0,200);
                 }finally{g4fRunning=false;g4fRender();}
             }
+/* Painel analítico G4Flex - não faz novas chamadas ao G4Flex ou Supabase.
+   Lê apenas o snapshot já recebido por g4fPoll. */
+const g4fReportCols=[
+ ['horario','Horário'],['abertas','Abertas'],['atendidas','Atendidas'],
+ ['nao_atendidas','Não atendidas'],['encerradas','Encerradas'],
+ ['abandonadas','Abandonadas'],['tme','TME'],['tma','TMA'],
+ ['tmo','TMO'],['tta','TTA'],['primeira_resposta','1ª Resp.'],
+ ['tmr','T.M.R'],['tm_atribuicao','TM atrib.'],['nivel_servico','N. serviço'],
+ ['nivel_atendimento','N. atend.'],['volume_projetado','Vol. projetado'],
+ ['volume_total','Volume total']
+];
+function g4fReportNumber(value){
+ const n=Number(value);return Number.isFinite(n)?Math.max(0,n):0;
+}
+function g4fReportHours(row){
+ const raw=row?.resumo?.matriz_horaria;
+ if(!Array.isArray(raw))return [];
+ return raw.filter(x=>x&&typeof x==='object').slice(0,48);
+}
+function g4fReportReasons(row){
+ const raw=row?.resumo?.ranking_motivos;
+ if(!Array.isArray(raw))return [];
+ return raw.map(x=>({nome:String(x?.motivo||x?.nome||'').trim(),
+   quantidade:g4fReportNumber(x?.quantidade??x?.total)}))
+   .filter(x=>x.nome&&x.quantidade>0).sort((a,b)=>b.quantidade-a.quantidade).slice(0,10);
+}
+function g4fReportKpi(label,value,note,shade){
+ return `<div class="g4f-report-kpi"><small>${g4fText(label)}</small>
+    <strong class="${shade||''}">${g4fText(value)}</strong>
+    <span>${g4fText(note)}</span></div>`;
+}
+function g4fReportPlot(hours){
+ if(!hours.length)return '<div class="g4f-report-empty">A matriz horária ainda não foi enviada pelo robô G4Flex. Os números históricos serão exibidos aqui quando a coleta estiver integrada.</div>';
+ const maximum=Math.max(1,...hours.map(x=>Math.max(g4fReportNumber(x.abertas),g4fReportNumber(x.atendidas))));
+ return `<div class="g4f-report-chart-legend"><i class="open"></i>Abertas <i class="answered"></i>Atendidas</div>
+ <div class="g4f-report-plot" role="img" aria-label="Comparação de conversas abertas e atendidas por horário">
+ ${hours.map(x=>`<div class="g4f-report-plot-column" title="${g4fText(x.horario||'')}">
+    <div class="g4f-report-bars"><div class="open" style="height:${Math.max(2,g4fReportNumber(x.abertas)/maximum*100)}%"></div>
+    <div class="answered" style="height:${Math.max(2,g4fReportNumber(x.atendidas)/maximum*100)}%"></div></div>
+    <small>${g4fText(x.horario||'—')}</small></div>`).join('')}</div>`;
+}
+function g4fReportTable(hours){
+ if(!hours.length)return '<div class="g4f-report-empty">Nenhum indicador por horário disponível nesta coleta.</div>';
+ return `<div class="g4f-report-table-scroll" role="region" aria-label="Matriz horária de indicadores" tabindex="0">
+ <table class="g4f-report-table"><thead><tr>${g4fReportCols.map(([key,name])=>`<th scope="col" title="${g4fText(name)}">${g4fText(name)}</th>`).join('')}</tr></thead>
+ <tbody>${hours.map(row=>`<tr>${g4fReportCols.map(([key])=>`<td>${g4fText(row[key]??'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function g4fReportRanking(reasons){
+ if(!reasons.length)return '<div class="g4f-report-empty">O ranking de motivos ainda não está disponível na coleta do robô.</div>';
+ const max=Math.max(1,reasons[0].quantidade);
+ return `<div class="g4f-report-ranking">${reasons.map((r,i)=>`<div class="g4f-report-reason">
+  <span class="g4f-report-rank">${i+1}</span><span class="g4f-report-reason-name" title="${g4fText(r.nome)}">${g4fText(r.nome)}</span>
+  <div class="g4f-report-reason-track"><div style="width:${Math.max(2,(r.quantidade/max)*100)}%"></div></div>
+  <strong>${g4fText(r.quantidade)}</strong></div>`).join('')}</div>`;
+}
+function g4fInsightsRender(host,row){
+ const screen=host?.querySelector('.g4f-insights');
+ if(!screen||screen.hidden)return;
+ const all=Array.isArray(row?.atendentes)?row.atendentes.filter(g4fVisibleAgent):[];
+ const r=row?.resumo||{};
+ const hours=g4fReportHours(row),reasons=g4fReportReasons(row);
+ const current=[
+  ['Atendentes monitorados',all.length,'Equipe de suporte'],
+  ['Disponíveis',all.filter(a=>a.status==='ativo').length,'Estado atual'],
+  ['Em pausa',all.filter(a=>a.status==='pausado').length,'Estado atual'],
+  ['Em atendimento',all.reduce((sum,a)=>sum+g4fReportNumber(a.em_atendimento),0),'Conversas da equipe']
+ ];
+ screen.querySelector('[data-g4f-report-current]').innerHTML=current.map(x=>g4fReportKpi(...x)).join('');
+ const sum=(k)=>hours.reduce((v,h)=>v+g4fReportNumber(h[k]),0);
+ const reports=hours.length?[
+  ['Abertas',sum('abertas'),'Soma das faixas horárias'],
+  ['Atendidas',sum('atendidas'),'Soma das faixas horárias'],
+  ['Não atendidas',sum('nao_atendidas'),'Soma das faixas horárias'],
+  ['Abandonadas',sum('abandonadas'),'Soma das faixas horárias']
+ ]:[];
+ screen.querySelector('[data-g4f-report-historical]').innerHTML=reports.length?reports.map(x=>g4fReportKpi(...x)).join('')
+  :'<div class="g4f-report-empty g4f-report-empty-span">Resumo horário pendente de integração com o coletor.</div>';
+ screen.querySelector('[data-g4f-report-plot]').innerHTML=g4fReportPlot(hours);
+ screen.querySelector('[data-g4f-report-table]').innerHTML=g4fReportTable(hours);
+ screen.querySelector('[data-g4f-report-ranking]').innerHTML=g4fReportRanking(reasons);
+ const stamp=screen.querySelector('[data-g4f-report-stamp]');
+ stamp.textContent=row?'Última leitura do G4Flex: '+g4fTime(row.recebido_em):'Aguardando primeira leitura do G4Flex';
+ const status=screen.querySelector('[data-g4f-report-availability]');
+ status.textContent=(hours.length||reasons.length)?'Indicadores históricos recebidos':'Aguardando indicadores históricos do robô';
+ status.classList.toggle('ready',Boolean(hours.length||reasons.length));
+}
+function g4fInsightsInit(host){
+ if(!host||host.querySelector('.g4f-insights'))return;
+ const section=document.createElement('section');
+ section.className='g4f-insights';
+ section.hidden=true;
+ section.setAttribute('role','dialog');
+ section.setAttribute('aria-modal','true');
+ section.setAttribute('aria-label','Indicadores e desempenho G4Flex');
+ section.innerHTML=`<div class="g4f-insights-content">
+  <header class="g4f-report-head">
+   <div><div class="g4f-report-eyebrow">GRUPO S&S · G4FLEX</div>
+     <h2>Indicadores e desempenho</h2><p>Matriz horária e motivos de atendimento</p></div>
+   <button type="button" class="g4f-insights-close" data-g4f-insights-close>← Voltar ao atendimento</button>
+  </header>
+  <div class="g4f-report-meta"><span data-g4f-report-stamp>Aguardando coleta</span>
+   <span class="g4f-report-availability" data-g4f-report-availability>Aguardando indicadores históricos do robô</span></div>
+  <div class="g4f-report-scroll">
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Equipe de suporte agora</h3><small>Dados instantâneos · somente atendentes monitorados</small></div>
+     <div class="g4f-report-kpis" data-g4f-report-current></div></section>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Resumo das faixas horárias</h3><small>Indicadores consolidados da matriz do G4Flex, quando disponíveis</small></div>
+     <div class="g4f-report-kpis" data-g4f-report-historical></div></section>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Volume de atendimento por horário</h3><small>Abertas × Atendidas</small></div>
+     <div data-g4f-report-plot></div></section>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Matriz horária detalhada</h3><small>Deslize horizontalmente para consultar todas as métricas</small></div>
+     <div data-g4f-report-table></div></section>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Ranking dos principais motivos</h3><small>Top 10 · gráfico de barras para facilitar comparação</small></div>
+     <div data-g4f-report-ranking></div></section>
+   <p class="g4f-report-disclaimer">A matriz horária e o ranking, quando integrados, podem representar toda a operação do G4Flex. A visão de equipe acima considera somente os atendentes habilitados no Monitor S&S. Não confunda indicadores históricos gerais com resultados individuais da equipe de suporte.</p>
+  </div>
+ </div>`;
+ host.appendChild(section);
+ const close=section.querySelector('[data-g4f-insights-close]');
+ function hide(){section.hidden=true;host._g4fInsightsOpen=false;}
+ close.addEventListener('click',hide);
+ section.addEventListener('keydown',ev=>{if(ev.key==='Escape')hide();});
+ for(const parent of host.querySelectorAll('.g4f-top-actions,.ss-heading-tools')){
+  const btn=document.createElement('button');
+  btn.type='button';btn.className='g4f-insights-trigger';btn.textContent='▤ Indicadores';
+  btn.setAttribute('aria-label','Abrir matriz horária e ranking de motivos G4Flex');
+  btn.addEventListener('click',()=>{host._g4fInsightsOpen=true;section.hidden=false;g4fInsightsRender(host,g4fLastData);close.focus();});
+  parent.prepend(btn);
+ }
+}
             function g4fStart(host){
                 g4fWidgets.add(host);
                 if(g4fAutoFit)host.classList.add('g4f-fit');
@@ -12364,6 +12548,7 @@ else:
                    <span>Fonte: robô G4Flex · Fila exibida não representa necessariamente o atendimento atual.</span></footer></section>`;
                 host.querySelectorAll('[data-g4f-layout]').forEach(btn=>btn.addEventListener('click',()=>g4fChangeLayout(btn.dataset.g4fLayout)));
                 host.classList.toggle('g4f-ss-mode',g4fCurrentLayout==='ss');
+                 g4fInsightsInit(host);
                 host.querySelector('[data-ss="search"]').value=g4fSearchText;
                 host.querySelector('[data-ss="search"]').addEventListener('input',e=>{g4fSearchText=e.target.value;host._ssListPage=0;g4fRender();});
                 host.querySelector('[data-ss-filter-select]').value=ssFocusFilter;
