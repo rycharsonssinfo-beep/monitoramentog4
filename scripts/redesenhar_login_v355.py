@@ -245,7 +245,7 @@ def apply(text: str) -> str:
     assert text.count('with st.form("monitor_auth_login"') == 1
     assert text.count('with st.form("monitor_request_access_v336"') == 1
     assert text.count('login_hero_col, login_form_col = st.columns(') == 1
-    assert text.count('_auth_login(email, password)') == 1
+    assert text[text.index('def _render_login_gate():'):text.index('def _render_account_sidebar():')].count('_auth_login(email, password)') == 1
     assert text.count('st.session_state["_monitor_auth_remember_v342"] = bool(remember_device)') == 1
     assert text.count('_monitor_render_formspree_browser_form()') >= 1
     return text
