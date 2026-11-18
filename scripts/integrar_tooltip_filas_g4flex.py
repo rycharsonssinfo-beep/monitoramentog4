@@ -31,8 +31,8 @@ one("            function g4fCard(agent){",helper+"            function g4fCard(
 
 # O mesmo tooltip no nome de cada apresentação.
 one(
-' <strong title="${g4fText(agent.nome||\'\')}">${g4fText(agent.nome||\'Sem nome\')}${phoneIcon}</strong>',
-' <strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||\'Sem nome\')}${phoneIcon}</strong>',
+'<strong title="${g4fText(agent.nome||\'\')}">${g4fText(agent.nome||\'Sem nome\')}${phoneIcon}</strong>',
+'<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||\'Sem nome\')}${phoneIcon}</strong>',
 "nome do cartão G4Flex")
 one(
 '<strong title="${g4fText(agent.nome)}">${g4fText(agent.nome||\'Sem nome\')}</strong>',
