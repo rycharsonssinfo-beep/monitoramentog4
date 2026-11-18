@@ -86,6 +86,9 @@ const online=id=>({
     a.api.receive([offline("Alfa"),offline("Beta")]);
     assert.match(a.slot.innerHTML,/Município Alfa/);
     assert.match(a.slot.innerHTML,/Queda confirmada/);
+    assert.match(a.slot.innerHTML,/Monitoramento dos Portais/);
+    assert.doesNotMatch(a.slot.innerHTML,/Alerta de indisponibilidade confirmada/);
+    assert.doesNotMatch(a.slot.innerHTML,/Município Alfa está indisponível/);
     assert.equal(a.audioStarts(),3,"O alerta dispara três tons");
     assert.equal(a.visible.has("visible"),true);
     assert.ok(a.storage.get("ss_portais_alertas_emitidos_v353"),"Ocorrência é persistida");
@@ -115,6 +118,15 @@ const online=id=>({
     a.api.receive([online("Gama")]);
     assert.match(a.slot.innerHTML,/Recuperado/);
     assert.match(a.slot.innerHTML,/Município Gama/);
+    assert.doesNotMatch(a.slot.innerHTML,/voltou a funcionar/);
+  }
+  // O nome do município é o foco visual e pode mostrar UF sem repetir a indisponibilidade.
+  {
+    const a=app();
+    a.api.receive([{...offline("Pacoti"),municipio:"Pacoti",uf:"CE"}]);
+    assert.match(a.slot.innerHTML,/Pacoti · CE/);
+    assert.match(a.slot.innerHTML,/INDISPONÍVEL HÁ/);
+    assert.doesNotMatch(a.slot.innerHTML,/Pacoti está indisponível/);
   }
   // O teste manual sempre abre a simulação e permite acionar o som.
   {
