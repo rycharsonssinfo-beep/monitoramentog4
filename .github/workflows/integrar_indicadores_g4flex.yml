@@ -4,6 +4,7 @@ on:
     branches: [feature/g4flex-aba-indicadores]
     paths:
       - scripts/integrar_g4flex_indicadores.py
+      - scripts/test_g4flex_indicadores.cjs
       - .github/workflows/integrar_indicadores_g4flex.yml
   workflow_dispatch:
 permissions:
@@ -16,6 +17,7 @@ jobs:
       - name: Validar JavaScript e integrar tela
         run: |
           node --check scripts/g4flex_indicadores.js
+          node scripts/test_g4flex_indicadores.cjs
           python scripts/integrar_g4flex_indicadores.py
           python -m py_compile main.py
           git diff --check
