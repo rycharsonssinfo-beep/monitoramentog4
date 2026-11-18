@@ -1,0 +1,22 @@
+name: Inspecionar estilos e renderização G4Flex
+on:
+  push:
+    branches: [feature/g4flex-cores-linhas-cards]
+    paths: [.github/workflows/inspecionar_g4flex_detalhes.yml]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("main.py").read_text(encoding="utf-8").splitlines()
+          for start,end in [(11845,11890),(11965,12035)]:
+              print("SECTION",start,end)
+              for i in range(start-1,end):print(f"{i+1}: {s[i][:400]}")
+          print("CSS")
+          for i,line in enumerate(s):
+              if any(t in line for t in (".ss-list-row",".ss-agent-card",".ss-list-panel",".g4f-agent-card",".ss-attendants-table tbody tr",".ss-agent-row",".ss-list-badge.phone")):
+                  print(f"{i+1}: {line[:600]}")
+          PY
