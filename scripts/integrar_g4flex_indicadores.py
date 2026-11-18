@@ -44,6 +44,18 @@ insert_once(init_anchor,'                 g4fInsightsInit(host);',"before","    
 render_anchor="                     host.querySelector('[data-g4f=\"clock\"]').textContent=new Date().toLocaleTimeString('pt-BR');"
 insert_once(render_anchor,"                     g4fInsightsRender(host,row);","after","                     g4fInsightsRender(host,row);")
 
+# Atualização idempotente: sincroniza os módulos CSS/JS incorporados no main.py.
+def sync_embedded(start_tag, next_tag, fresh):
+    global source
+    i=source.find(start_tag)
+    if i<0:raise SystemExit("Módulo já integrado não encontrado: "+start_tag)
+    j=source.find(next_tag,i)
+    if j<0:raise SystemExit("Fim do módulo não encontrado: "+next_tag)
+    source=source[:i]+fresh+"\n"+source[j:]
+
+sync_embedded("/* G4Flex - página informativa de indicadores.",css_anchor,insights_css)
+sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas",js_anchor,insights_js)
+
 ast.parse(source)
 assert source.count("function g4fInsightsRender(host,row)")==1
 assert source.count("function g4fInsightsInit(host)")==1
