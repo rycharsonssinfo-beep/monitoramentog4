@@ -161,11 +161,11 @@ function render(){
   if(!active)return;
   const el=getModal(),slot=el.querySelector(".sspa-slot"),r=active.row||{},type=active.type;
   const config=type==="config",test=type==="test",recovery=type==="recovery";
-  const title=config?"Configurações dos alertas":test?"Teste de alerta — simulação":recovery?"Portal restabelecido":"Alerta de indisponibilidade confirmada";
+  const title=config?"Configurações dos alertas":test?"Teste de alerta — simulação":"Monitoramento dos Portais";
   const logo=mascot?"<img class='sspa-mascot' src='"+html(mascot)+"' alt='Mascote de alerta S&S'>":"<span class='sspa-mascot' aria-hidden='true' style='font-size:74px;text-align:center'>⚠</span>";
-  const municipality=html(r.municipio||"Município de teste");
+  const municipality=html(r.municipio||"Município de teste")+(r.uf?" · "+html(r.uf):"");
   const duration=durationParts(test?11:recovery?Number(r.__durationMin||0):elapsed(r));
-  const kpiLabel=test?"TEMPO SIMULADO DE QUEDA":recovery?"DURAÇÃO DA INDISPONIBILIDADE":"INDISPONÍVEL HÁ";
+  const kpiLabel=test?"TEMPO SIMULADO DE QUEDA":recovery?"DURAÇÃO DA QUEDA":"INDISPONÍVEL HÁ";
   const audioBadge="<span data-sspa-audio class='"+(audioUnlocked?"sspa-audio-ok":"sspa-audio-warn")+"'>"+
     (audioUnlocked?"Áudio autorizado neste navegador":"O som depende da permissão do navegador")+"</span>";
   const cfg="<div class='sspa-form'>"
@@ -178,7 +178,7 @@ function render(){
     +"<label>Duração do aviso <select data-opt='autoDismissSeconds'><option value='10'>10 s</option><option value='15'>15 s</option><option value='20'>20 s</option><option value='30'>30 s</option><option value='45'>45 s</option></select></label></div>"
     +"<p class='sspa-note'>As preferências são salvas neste navegador. Clique em Testar alerta para autorizar o áudio, se necessário.</p>";
   const info="<div class='sspa-body'>"+logo+"<div class='sspa-info'>"
-    +"<h2 id='sspa-title'>"+(test?"Simulação visual e sonora":recovery?municipality+" voltou a funcionar":municipality+" está indisponível")+"</h2>"
+    +"<h2 id='sspa-title'>"+(test?"Simulação visual e sonora":municipality)+"</h2>"
     +"<span class='sspa-status' "+(recovery?"style='background:#179765'":"")+">"+(test?"MODO DE TESTE":recovery?"Recuperado":"Queda confirmada")+"</span>"
     +"<div class='sspa-kpi"+(recovery?" sspa-kpi-recovery":"")+"'>"
     +"<div class='sspa-kpi-label'>"+kpiLabel+"</div>"
