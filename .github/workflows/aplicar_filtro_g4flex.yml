@@ -4,6 +4,7 @@ on:
     branches: [feature/g4flex-ocultar-nao-suporte]
     paths:
       - .github/workflows/aplicar_filtro_g4flex.yml
+      - scripts/ocultar_atendentes_nao_suporte.py
   workflow_dispatch:
 permissions:
   contents: write
