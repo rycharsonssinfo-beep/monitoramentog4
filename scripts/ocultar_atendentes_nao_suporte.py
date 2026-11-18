@@ -11,6 +11,16 @@ def replace_once(old,new,meaning):
     if new in source:
         if source.count(new)!=1:raise SystemExit(f"Novo marcador duplicado: {meaning}")
         return
+    if source.count(old)!=1 and old.startswith(" "):
+        # Preserva a indentação real do JavaScript, que varia entre blocos.
+        stripped=old.lstrip(" ")
+        if source.count(stripped)==1:
+            pos=source.index(stripped)
+            start=source.rfind("\n",0,pos)+1
+            indent=source[start:pos]
+            if not indent.strip():
+                old=indent+stripped
+                new=indent+new.lstrip(" ")
     if source.count(old)!=1:raise SystemExit(f"Marcador {meaning}: encontrado {source.count(old)} vezes")
     source=source.replace(old,new,1)
 
