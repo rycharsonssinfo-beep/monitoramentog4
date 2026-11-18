@@ -10116,6 +10116,35 @@ else:
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.has-assignment{background:#fff8ee}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-calling:not(.has-assignment){background:#faf5ff}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.has-assignment):not(.is-calling){background:#f4f8ff}
+
+/* G4Flex: estado da linha e do card, com barra lateral junto à foto.
+   Prioridade: ligação (roxo) > pausa (amarelo) > atribuição (vermelho). */
+.g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.is-calling){
+    background:#fff5df!important;box-shadow:inset 4px 0 #f5aa1c!important;
+}
+.g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.has-assignment:not(.is-paused):not(.is-calling){
+    background:#fff0f2!important;box-shadow:inset 4px 0 #ef4261!important;
+}
+.g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-calling{
+    background:#fbf5ff!important;box-shadow:inset 4px 0 #9b40e0!important;
+}
+.g4f-board.g4f-ss-mode .ss-agent.ss-paused:not(.ss-calling){
+    background:#fff5df!important;box-shadow:inset 4px 0 #f5aa1c!important;
+}
+.g4f-board.g4f-ss-mode .ss-agent.ss-assigned:not(.ss-paused):not(.ss-calling){
+    background:#fff0f2!important;box-shadow:inset 4px 0 #ef4261!important;
+}
+.g4f-board.g4f-ss-mode .ss-agent.ss-calling{
+    background:#fbf5ff!important;box-shadow:inset 4px 0 #9b40e0!important;
+}
+/* Layout G4Flex original: pausa e atribuição também distinguíveis. */
+.g4f-board:not(.g4f-ss-mode) .g4f-agent.paused{
+    background:#fff5df!important;box-shadow:inset 4px 0 #f5aa1c!important;
+}
+.g4f-board:not(.g4f-ss-mode) .g4f-agent.has-assignment:not(.paused){
+    background:#fff0f2!important;box-shadow:inset 4px 0 #ef4261!important;
+}
+
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table td:first-child{padding-left:9px}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-list-name{gap:clamp(5px,.54vw,10px)}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-list-name .g4f-avatar{width:clamp(28px,calc(var(--ss-row-height,72px) * .49),49px);height:clamp(28px,calc(var(--ss-row-height,72px) * .49),49px);flex:0 0 auto}
