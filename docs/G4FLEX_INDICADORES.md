@@ -6,10 +6,21 @@ O botão **Indicadores**, disponível no Layout S&S e Layout G4Flex, abre uma vi
 
 A tela possui:
 - **Agora:** total de atendentes monitorados, disponíveis, em pausa e conversas em atendimento, derivados do snapshot atual após aplicar a exclusão de atendentes fora do suporte.
-- **Histórico:** totais da matriz horária, gráfico de abertas versus atendidas, tabela horária completa e ranking dos principais motivos.
+- **Histórico:** totais da matriz horária, gráfico de abertas versus atendidas, tabela horária completa e **Ranking de filas** (classificação publicada como `ranking_motivos` na versão atual).
 - **Estado pendente:** se o robô ainda não envia históricos, a tela informa explicitamente a ausência dos dados. NUNCA cria valores fictícios nem tenta calcular resultados históricos a partir do estado instantâneo.
 
-## Contrato de dados para futura atualização do coletor Windows
+## Relatório do dia
+
+O botão **Relatório do dia**, dentro da tela Indicadores, gera uma página independente e imprimível contendo data e horário da última captura, totais por faixa horária, matriz horária completa e ranking de filas. Na nova página, clique **Imprimir / Salvar como PDF** e selecione *Salvar como PDF* no navegador.
+
+- Não faz consultas adicionais ao G4Flex ou Supabase: usa o último snapshot recebido.
+- Não inventa um fechamento definitivo; apresenta **dados parciais até a última coleta**.
+- A referência temporal é `resumo.indicadores_historicos_coletados_em`, em horário de Fortaleza/CE, com fallback para as datas do snapshot quando necessário.
+- O relatório não mistura os indicadores instantâneos individuais do suporte com a matriz histórica geral do G4Flex.
+- Se o navegador bloquear abertura de uma nova aba, o usuário recebe um arquivo HTML imprimível como alternativa.
+- Caso não exista matriz horária nem ranking, o usuário recebe uma mensagem informando a ausência de dados históricos.
+
+## Contrato de dados aceito pelo painel
 
 Sem alteração de banco, o coletor pode adicionar ao campo JSONB `resumo` da mesma linha `g4flex_monitor_atual`:
 
@@ -46,10 +57,10 @@ Sem alteração de banco, o coletor pode adicionar ao campo JSONB `resumo` da me
 
 **Os números acima são apenas exemplos para documentação; não são valores inseridos em produção.** Os nomes das métricas seguem a nomenclatura do relatório G4Flex da captura fornecida pelo usuário. TME, TMA, TMO, TTA etc. são apresentados tal qual a origem, sem definições inferidas.
 
-A matriz e o ranking do G4Flex podem ter **escopo global**, incluindo pessoas ocultas individualmente do monitor. O painel distingue os históricos globais dos indicadores instantâneos do suporte; **não** denominar dados globais como desempenho exclusivo do suporte.
+O ranking exibido como **filas** corresponde atualmente a `ranking_motivos`; a correspondência exata com as filas operacionais do G4Flex ainda precisa ser confirmada. O painel priorizará `ranking_filas` quando o robô passar a fornecer esse campo. A matriz e o ranking do G4Flex podem ter **escopo global**, incluindo pessoas ocultas individualmente do monitor. O painel distingue os históricos globais dos indicadores instantâneos do suporte; **não** denominar dados globais como desempenho exclusivo do suporte.
 
 ## Requisitos da captura
 
-A versão atual `1.6.0-inst` envia somente resumo instantâneo; os históricos não estão disponíveis no Supabase em novembro de 2026. A captura da matriz e do ranking precisa ser integrada ao coletor instalado no Windows e recompilada no `.exe`. Evitar iniciar um segundo robô e evitar requisições adicionais: ler os elementos da página já aberta, respeitar alterações no DOM e confirmar a integridade da tabela/índices antes de publicar. Não expor credenciais, cookies ou dados brutos de outras páginas.
+O robô Python `1.5.1-py-fil-ind`, em operação em 19/11/2026, já publica a matriz horária e o ranking de motivos no Supabase. A versão `1.6.0-inst` foi utilizada anteriormente, mas não deve ser confundida com o coletor atual. Evitar iniciar um segundo robô e evitar requisições adicionais: ler os elementos da página já aberta, respeitar alterações no DOM e confirmar a integridade da tabela/índices antes de publicar. Não expor credenciais, cookies ou dados brutos de outras páginas.
 
-O `main.py` contém uma cópia integrada de `scripts/g4flex_indicadores.js` e `scripts/g4flex_indicadores.css`. Para atualizar CSS ou JS, execute `python scripts/integrar_g4flex_indicadores.py` após alterar os módulos, valide `node scripts/test_g4flex_indicadores.cjs` e `python -m py_compile main.py`.
+O `main.py` contém uma cópia integrada de `scripts/g4flex_indicadores.js`, `scripts/g4flex_relatorio_dia.js`, `scripts/g4flex_tooltip_filas.js` e `scripts/g4flex_indicadores.css`. Para atualizar CSS ou JS, execute `python scripts/integrar_g4flex_indicadores.py` após alterar os módulos, valide `node scripts/test_g4flex_indicadores.cjs` e `node scripts/test_g4flex_relatorio_dia.cjs` e `python -m py_compile main.py`.
