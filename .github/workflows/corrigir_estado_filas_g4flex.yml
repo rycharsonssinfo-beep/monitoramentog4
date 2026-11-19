@@ -1,0 +1,42 @@
+name: Corrigir visualizacao de filas pendentes G4Flex
+on:
+  push:
+    branches: [fix/g4flex-diagnostico-tooltip-sem-filas]
+    paths:
+      - scripts/g4flex_tooltip_filas.js
+      - scripts/g4flex_indicadores.css
+      - scripts/corrigir_estado_filas_g4flex.py
+      - .github/workflows/corrigir_estado_filas_g4flex.yml
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar JS e integrar fallback de filas
+        run: |
+          node --check scripts/g4flex_tooltip_filas.js
+          node --check scripts/g4flex_indicadores.js
+          node scripts/test_g4flex_indicadores.cjs
+          python scripts/corrigir_estado_filas_g4flex.py
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('main.py').read_text(encoding='utf-8')
+          assert "Filas ainda não recebidas pelo robô" in s
+          assert "g4f-queue-tooltip-waiting" in s
+          assert s.count('function g4fQueueTooltipInit(host)')==1
+          assert s.count("setInterval(g4fPoll,3000)")==1
+          print('OK: estado pendente sem filas fictícias; polling original preservado.')
+          PY
+      - name: Gravar main.py
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "fix: sinalizar fila pendente no tooltip G4Flex"
+            git push origin HEAD:fix/g4flex-diagnostico-tooltip-sem-filas
+          fi
