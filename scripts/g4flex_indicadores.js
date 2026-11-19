@@ -71,10 +71,10 @@ function g4fInsightsRender(host,row){
  screen.querySelector('[data-g4f-report-current]').innerHTML=current.map(x=>g4fReportKpi(...x)).join('');
  const sum=(k)=>hours.reduce((v,h)=>v+g4fReportNumber(h[k]),0);
  const reports=hours.length?[
-  ['Abertas',sum('abertas'),'Soma das faixas horárias'],
-  ['Atendidas',sum('atendidas'),'Soma das faixas horárias'],
-  ['Não atendidas',sum('nao_atendidas'),'Soma das faixas horárias'],
-  ['Abandonadas',sum('abandonadas'),'Soma das faixas horárias']
+  ['Abertas',sum('abertas'),'Soma dos atendimentos'],
+  ['Atendidas',sum('atendidas'),'Soma dos atendimentos'],
+  ['Não atendidas',sum('nao_atendidas'),'Soma dos atendimentos'],
+  ['Abandonadas',sum('abandonadas'),'Soma dos atendimentos']
  ]:[];
  // Evita reconstruir os gráficos a cada polling (3 s) quando os dados não mudaram.
  // Assim a rolagem da matriz continua no mesmo ponto durante a leitura.
@@ -113,7 +113,7 @@ function g4fInsightsInit(host){
   <div class="g4f-report-scroll">
    <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Equipe de suporte agora</h3><small>Dados instantâneos · somente atendentes monitorados</small></div>
      <div class="g4f-report-kpis" data-g4f-report-current></div></section>
-   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Resumo das faixas horárias</h3><small>Indicadores consolidados da matriz do G4Flex, quando disponíveis</small></div>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Resumo dos atendimentos</h3><small>Indicadores consolidados da matriz do G4Flex, quando disponíveis</small></div>
      <div class="g4f-report-kpis" data-g4f-report-historical></div></section>
    <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Volume de atendimento por horário</h3><small>Abertas × Atendidas</small></div>
      <div data-g4f-report-plot></div></section>

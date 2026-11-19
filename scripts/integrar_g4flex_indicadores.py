@@ -10,6 +10,7 @@ insights_js=(root/"scripts"/"g4flex_indicadores.js").read_text(encoding="utf-8")
 insights_css=(root/"scripts"/"g4flex_indicadores.css").read_text(encoding="utf-8").strip()
 tooltip_js=(root/"scripts"/"g4flex_tooltip_filas.js").read_text(encoding="utf-8").strip()
 daily_report_js=(root/"scripts"/"g4flex_relatorio_dia.js").read_text(encoding="utf-8").strip()
+official_logo_js=(root/"scripts"/"logo_grupo_ss_oficial.js").read_text(encoding="utf-8").strip()
 
 def insert_once(marker,piece,where,tag):
     global source
@@ -59,8 +60,9 @@ def sync_embedded(start_tag, next_tag, fresh):
     source=source[:i]+fresh+"\n"+source[j:]
 
 sync_embedded("/* G4Flex - página informativa de indicadores.",css_anchor,insights_css)
-sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Relatório diário G4Flex:",insights_js)
-sync_embedded("/* Relatório diário G4Flex:","/* Tooltip acessível de filas G4Flex:",daily_report_js)
+# Reconstrói o bloco único em ordem determinística; evita conflito com outros
+# usos da logomarca no arquivo principal.
+sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Tooltip acessível de filas G4Flex:",insights_js+"\n"+official_logo_js+"\n"+daily_report_js)
 sync_embedded("/* Tooltip acessível de filas G4Flex:",js_anchor,tooltip_js)
 
 ast.parse(source)
@@ -68,6 +70,10 @@ assert source.count("function g4fInsightsRender(host,row)")==1
 assert source.count("function g4fInsightsInit(host)")==1
 assert source.count("function g4fQueueTooltipInit(host)")==1
 assert source.count("function g4fDailyReportHTML(row)")==1
+_idx_start=source.index("/* Painel analítico G4Flex - não faz novas chamadas")
+_idx_tip=source.index("/* Tooltip acessível de filas G4Flex:",_idx_start)
+assert source[_idx_start:_idx_tip].count('window.__SS_OFICIAL_LOGO__="data:image/png;base64,')==1
+assert "Soma das faixas horárias" not in source[source.index("/* Painel analítico G4Flex - não faz novas chamadas"):source.index("/* Tooltip acessível de filas G4Flex:")]
 assert source.count("function g4fExportDailyReport(row)")==1
 assert source.count("g4fQueueTooltipInit(host);")==1
 assert source.count("g4fInsightsInit(host);")==1

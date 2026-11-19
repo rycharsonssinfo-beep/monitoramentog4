@@ -20,6 +20,12 @@ function g4fDailyReportHTML(row){
  const r=row?.resumo||{};
  const clock=g4fDailyDate(r.indicadores_historicos_coletados_em||row?.capturado_em||row?.recebido_em);
  const emitted=g4fDailyDate(new Date().toISOString());
+ // O PNG da marca oficial já existe no projeto e é incluído no próprio HTML do PDF.
+ const logoValue=(typeof window!=='undefined' && typeof window.__SS_OFICIAL_LOGO__==='string')?window.__SS_OFICIAL_LOGO__:'';
+ const brandLogo=/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(logoValue)?logoValue:'';
+ const brandVisual=brandLogo
+  ?'<img class="brand-logo" src="'+g4fDailyEscape(brandLogo)+'" alt="Grupo S&amp;S — logomarca oficial">'
+  :'<span class="brand-fallback">Grupo S&amp;S</span>';
  const total=k=>hours.reduce((acc,x)=>acc+g4fReportNumber(x[k]),0);
  const stats=hours.length?[
   ['Conversas abertas',total('abertas')],
@@ -28,7 +34,7 @@ function g4fDailyReportHTML(row){
   ['Abandonadas',total('abandonadas')]
  ]:[];
  const statsHTML=stats.length?stats.map(([label,value])=>
-  '<div class="metric"><span>'+g4fDailyEscape(label)+'</span><strong>'+g4fDailyEscape(value)+'</strong><small>Soma das faixas horárias</small></div>'
+  '<div class="metric"><span>'+g4fDailyEscape(label)+'</span><strong>'+g4fDailyEscape(value)+'</strong><small>Soma dos atendimentos</small></div>'
  ).join(''):'<p class="empty">Matriz horária não disponível nesta coleta.</p>';
  const matrixHTML=hours.length?
   '<table class="matrix"><thead><tr>'+g4fReportCols.map(([key,label])=>'<th>'+g4fDailyEscape(label)+'</th>').join('')+'</tr></thead><tbody>'+
@@ -86,18 +92,84 @@ function g4fDailyReportHTML(row){
     h2{break-after:avoid}table.matrix thead{display:table-header-group}
     .matrix tr{break-inside:avoid}
   }
+
+  /* Refinamento do cabeçalho: logo oficial completa, hierarquia e metadados. */
+  .header{align-items:center;gap:32px;padding:0 0 19px;border-bottom:2px solid #1472b5}
+  .brand{gap:20px;min-width:0;flex:1}
+  .brand-logo{width:210px;height:auto;max-height:76px;object-fit:contain;object-position:left center;flex:none;display:block}
+  .brand-fallback{font-size:18px;font-weight:800;color:#047781;white-space:nowrap}
+  .brandname{font-size:10.5px;letter-spacing:.08em;color:#47728f;text-transform:uppercase;line-height:1.3}
+  h1{font-size:25px;letter-spacing:-.03em;line-height:1.15;margin:4px 0 0}
+  .meta{min-width:265px;max-width:315px;background:#f5f9ff;border:1px solid #deebf7;border-radius:9px;text-align:right;padding:12px 14px;line-height:1.7}
+  .chip{background:#eaf7f2;color:#147252;border-color:#c8e8dd}
+  /* Cards mais compactos, com leitura clara. */
+  .summary{gap:12px}
+  .metric{position:relative;border:1px solid #d5e6f3;border-top:3px solid #2c80c9;background:#f7fbff;border-radius:9px;gap:6px;padding:12px 15px;min-height:98px}
+  .metric:nth-child(2){border-top-color:#13a38e}
+  .metric:nth-child(3){border-top-color:#e6a23c}
+  .metric:nth-child(4){border-top-color:#cb5477}
+  .metric span{font-size:11px;color:#355b80}
+  .metric strong{font-size:29px;letter-spacing:-.035em}
+  .metric small{font-size:10px;color:#6a829a}
+  /* Matriz compacta e legível inclusive em A4 paisagem. */
+  table.matrix{font-size:8.6px;border-collapse:separate;border-spacing:0;border:1px solid #ccdeeb;border-radius:8px;overflow:hidden}
+  .matrix th{background:#dceaf8;color:#123d64;font-size:8px;line-height:1.25;font-weight:800;border:0;border-right:1px solid #c3d8ea;border-bottom:1px solid #bed3e6;padding:9px 4px}
+  .matrix th:first-child{width:9.2%}
+  .matrix td{color:#2c5478;border:0;border-right:1px solid #e2ecf6;border-bottom:1px solid #e2ecf6;padding:8px 3px}
+  .matrix td:first-child{color:#0d4779}
+  .matrix tbody tr:nth-child(even){background:#f0f7fd}
+  .matrix tbody tr:hover{background:#eaf3fc}
+  .matrix tr>:last-child{border-right:0}
+  .matrix tr:last-child td{border-bottom:0}
+  /* Ranking legível, posições de destaque e valores próximos das barras. */
+  .rank{grid-template-columns:24px minmax(155px,230px) minmax(140px,1fr) 30px;gap:10px;padding:7px 2px}
+  .rank strong{font-size:11.5px;color:#234e77}
+  .rank .number{font-size:11px;font-weight:800}
+  .rank:nth-child(-n+3) .number{background:#e7f2ff;border-radius:6px;padding:4px;color:#0c65ab}
+  .bar{height:15px;background:#e6f0f8}
+  .rank b{font-size:12px}
+  /* Nota e rodapé mais discretos, com identidade corporativa. */
+  .note{font-size:10px;background:#f8fbfe;border-left:3px solid #a9cade;padding:10px 12px;border-radius:4px;margin-top:16px}
+  footer{padding-top:13px;color:#6b839a;align-items:start;line-height:1.5}
+  @media(max-width:850px){
+    .header{flex-direction:column;align-items:stretch;gap:15px}
+    .meta{text-align:left;max-width:none}
+    .summary{grid-template-columns:repeat(2,1fr)}
+    .sheet{padding:22px 18px}
+  }
+  @media print{
+    @page{size:A4 landscape;margin:10mm}
+    .sheet{width:100%;max-width:none}
+    .header{gap:20px;padding-bottom:12px;break-inside:avoid}
+    .brand-logo{width:164px;max-height:60px}
+    h1{font-size:20px}
+    .meta{min-width:215px;max-width:245px;border:1px solid #dce8f4;padding:8px 11px;font-size:9.5px}
+    .metric{padding:9px 11px;min-height:75px}
+    .metric strong{font-size:23px}
+    .summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    h2{font-size:13px;margin:16px 0 8px}
+    table.matrix{font-size:7.8px;border-radius:0}
+    .matrix th{font-size:7.2px;padding:7px 2px}
+    .matrix td{padding:6px 2px}
+    .rank{grid-template-columns:18px 130px minmax(60px,1fr) 25px;gap:8px;padding:4px 0}
+    .bar{height:11px}
+    .rank strong{font-size:9.2px}
+    .rank b{font-size:10px}
+    .note,footer{font-size:9px}
+    footer{break-inside:avoid}
+  }
  `;
  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
   '<title>Relatório G4Flex - '+g4fDailyEscape(clock.date)+'</title><style>'+css+'</style></head><body>'+
   '<div class="actions"><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button>'+
   '<button type="button" class="secondary" onclick="window.close()">Fechar</button></div>'+
-  '<main class="sheet"><header class="header"><div class="brand"><span class="brandmark">S&amp;S</span>'+
+  '<main class="sheet"><header class="header"><div class="brand">'+brandVisual+
   '<div><div class="brandname">GRUPO S&amp;S · MONITORAMENTO G4FLEX</div><h1>Relatório do dia</h1></div></div>'+
   '<div class="meta"><div><strong>Data de referência:</strong> '+g4fDailyEscape(clock.date)+'</div>'+
   '<div><strong>Última coleta histórica:</strong> '+g4fDailyEscape(clock.datetime)+'</div>'+
   '<div><strong>Emissão:</strong> '+g4fDailyEscape(emitted.datetime)+'</div>'+
   '<div style="margin-top:7px"><span class="chip">Dados parciais até a última coleta</span></div></div></header>'+
-  '<h2>Resumo de atendimentos por horário</h2><div class="summary">'+statsHTML+'</div>'+
+  '<h2>Resumo dos atendimentos</h2><div class="summary">'+statsHTML+'</div>'+
   '<h2>Matriz horária de indicadores</h2>'+matrixHTML+
   '<h2>Ranking de filas — Top 10</h2>'+rankingHTML+
   '<p class="note">'+g4fDailyEscape(note)+'</p>'+
