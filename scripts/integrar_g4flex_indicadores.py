@@ -8,6 +8,7 @@ path=root/"main.py"
 source=path.read_text(encoding="utf-8")
 insights_js=(root/"scripts"/"g4flex_indicadores.js").read_text(encoding="utf-8").strip()
 insights_css=(root/"scripts"/"g4flex_indicadores.css").read_text(encoding="utf-8").strip()
+tooltip_js=(root/"scripts"/"g4flex_tooltip_filas.js").read_text(encoding="utf-8").strip()
 
 def insert_once(marker,piece,where,tag):
     global source
@@ -37,9 +38,11 @@ insert_once(css_anchor,insights_css,"before","/* G4Flex - página informativa de
 
 js_anchor="            function g4fStart(host){"
 insert_once(js_anchor,insights_js,"before","/* Painel analítico G4Flex - não faz novas chamadas")
+insert_once(js_anchor,tooltip_js,"before","/* Tooltip acessível de filas G4Flex:")
 
 init_anchor='                 host.querySelector(\'[data-ss="search"]\').value=g4fSearchText;'
 insert_once(init_anchor,'                 g4fInsightsInit(host);',"before","                 g4fInsightsInit(host);")
+insert_once(init_anchor,'                 g4fQueueTooltipInit(host);',"before","                 g4fQueueTooltipInit(host);")
 
 render_anchor="                     host.querySelector('[data-g4f=\"clock\"]').textContent=new Date().toLocaleTimeString('pt-BR');"
 insert_once(render_anchor,"                     g4fInsightsRender(host,row);","after","                     g4fInsightsRender(host,row);")
@@ -54,11 +57,14 @@ def sync_embedded(start_tag, next_tag, fresh):
     source=source[:i]+fresh+"\n"+source[j:]
 
 sync_embedded("/* G4Flex - página informativa de indicadores.",css_anchor,insights_css)
-sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas",js_anchor,insights_js)
+sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Tooltip acessível de filas G4Flex:",insights_js)
+sync_embedded("/* Tooltip acessível de filas G4Flex:",js_anchor,tooltip_js)
 
 ast.parse(source)
 assert source.count("function g4fInsightsRender(host,row)")==1
 assert source.count("function g4fInsightsInit(host)")==1
+assert source.count("function g4fQueueTooltipInit(host)")==1
+assert source.count("g4fQueueTooltipInit(host);")==1
 assert source.count("g4fInsightsInit(host);")==1
 assert source.count("g4fInsightsRender(host,row);")==1
 path.write_text(source,encoding="utf-8")
