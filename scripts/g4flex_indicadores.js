@@ -125,7 +125,7 @@ function g4fInsightsInit(host){
  function hide(){section.hidden=true;host._g4fInsightsOpen=false;}
  close.addEventListener('click',hide);
  section.addEventListener('keydown',ev=>{if(ev.key==='Escape')hide();});
- for(const parent of host.querySelectorAll('.g4f-top-actions,.ss-heading-tools')){
+ for(const parent of host.querySelectorAll('.g4f-top-actions')){
   const btn=document.createElement('button');
   btn.type='button';btn.className='g4f-insights-trigger';btn.textContent='▤ Indicadores';
   btn.setAttribute('aria-label','Abrir matriz horária e ranking de motivos G4Flex');
