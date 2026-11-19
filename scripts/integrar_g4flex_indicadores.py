@@ -72,12 +72,7 @@ assert source.count("function g4fQueueTooltipInit(host)")==1
 assert source.count("function g4fDailyReportHTML(row)")==1
 _idx_start=source.index("/* Painel analítico G4Flex - não faz novas chamadas")
 _idx_tip=source.index("/* Tooltip acessível de filas G4Flex:",_idx_start)
-_idx_report=source.find("/* Relatório diário G4Flex:",_idx_start)
-_idx_logo=source.find("/* Logo oficial Grupo S&S",_idx_start)
-_count_global=source.count("window.__SS_OFICIAL_LOGO__=")
-_count_section=source[_idx_start:_idx_tip].count("window.__SS_OFICIAL_LOGO__=")
-print("DIAG identidade: limites",_idx_start,_idx_logo,_idx_report,_idx_tip,"marcas totais",_count_global,"marcas no bloco",_count_section)
-assert _count_section==1
+assert source[_idx_start:_idx_tip].count('window.__SS_OFICIAL_LOGO__="data:image/png;base64,')==1
 assert "Soma das faixas horárias" not in source[source.index("/* Painel analítico G4Flex - não faz novas chamadas"):source.index("/* Tooltip acessível de filas G4Flex:")]
 assert source.count("function g4fExportDailyReport(row)")==1
 assert source.count("g4fQueueTooltipInit(host);")==1
