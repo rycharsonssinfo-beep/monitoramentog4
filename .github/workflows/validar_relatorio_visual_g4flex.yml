@@ -31,7 +31,7 @@ jobs:
           start=s.index('/* Painel analítico G4Flex - não faz novas chamadas')
           stop=s.index('/* Tooltip acessível de filas G4Flex:',start)
           section=s[start:stop]
-          assert section.count('window.__SS_OFICIAL_LOGO__=')==1
+          assert section.count('window.__SS_OFICIAL_LOGO__="data:image/png;base64,')==1
           assert section.count('function g4fDailyReportHTML(row)')==1
           assert 'Resumo dos atendimentos' in section
           assert 'Soma dos atendimentos' in section
