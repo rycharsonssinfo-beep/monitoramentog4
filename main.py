@@ -10191,6 +10191,8 @@ else:
 .g4f-board strong[data-g4f-queue-text]:focus-visible{outline:2px solid #50b6dd;outline-offset:3px;border-radius:3px}
 @keyframes g4f-queue-fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.g4f-queue-tooltip{animation:none}}
+
+.g4f-queue-tooltip-waiting{margin:0;padding:18px 15px;color:#d6e8f8;font-size:12px;line-height:1.55;background:#193e63}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.has-assignment):not(.is-calling){background:#f4f8ff}
 
 /* G4Flex: estado da linha e do card, com barra lateral junto à foto.
@@ -11962,7 +11964,7 @@ else:
                     const key=name.toLocaleLowerCase('pt-BR');
                     if(name && name.length<=140 && !seen.has(key)){seen.add(key);queues.push(name);}
                 }
-                return queues.length?'Filas em que está logado:\n'+queues.join('\n'):String(agent?.nome||'');
+                return queues.length?'Filas em que está logado:\n'+queues.join('\n'):'Filas em que está logado:\nFilas ainda não recebidas pelo robô';
             }
             function g4fCard(agent){
                 const status=agent.status==='pausado'?'pausado':agent.status==='ativo'?'ativo':'desconhecido';
@@ -12595,22 +12597,30 @@ function g4fQueueTooltipInit(host){
    }
    const queues=value.split(/\r?\n/).slice(1).map(s=>s.trim()).filter(Boolean).slice(0,60);
    if(!queues.length){hide();return;}
+   const waiting=queues.length===1&&queues[0]==='Filas ainda não recebidas pelo robô';
    tip.replaceChildren();
    const head=document.createElement('div');head.className='g4f-queue-tooltip-heading';
    const heading=document.createElement('strong');heading.textContent='Filas em que está logado';
-   const number=document.createElement('span');number.className='g4f-queue-tooltip-count';number.textContent=queues.length+' filas';
+   const number=document.createElement('span');number.className='g4f-queue-tooltip-count';number.textContent=waiting?'Aguardando':queues.length+' filas';
    head.append(heading,number);
    const list=document.createElement('ul');list.className='g4f-queue-tooltip-list';
-   for(const name of queues){
+   for(const name of (waiting?[]:queues)){
      const li=document.createElement('li');
      const dot=document.createElement('span');dot.className='g4f-queue-tooltip-dot';dot.setAttribute('aria-hidden','true');
      const t=document.createElement('span');t.textContent=name;
      li.append(dot,t);list.appendChild(li);
    }
+   if(waiting){
+     const empty=document.createElement('p');
+     empty.className='g4f-queue-tooltip-waiting';
+     empty.textContent='O robô ainda não enviou a lista de filas deste atendente. Verifique se a coleta está ativa.';
+     tip.append(head,empty);
+   }
    const foot=document.createElement('p');
    foot.className='g4f-queue-tooltip-foot';
-   foot.textContent='Filas vinculadas ao atendente · não indica a fila da conversa atual.';
-   tip.append(head,list,foot);tip.hidden=false;
+   foot.textContent=waiting?'O painel não usa a primeira fila como substituta.':'Filas vinculadas ao atendente · não indica a fila da conversa atual.';
+   if(!waiting)tip.append(head,list);
+   tip.append(foot);tip.hidden=false;
    el.setAttribute('aria-describedby',tip.id);
    place(el);
  }
