@@ -11,7 +11,9 @@ A tela possui:
 
 ## Relatório do dia
 
-O botão **Relatório do dia**, dentro da tela Indicadores, gera uma página independente e imprimível contendo data e horário da última captura, totais por faixa horária, matriz horária completa e ranking de filas. Na nova página, clique **Imprimir / Salvar como PDF** e selecione *Salvar como PDF* no navegador.
+O botão **Relatório do dia**, dentro da tela Indicadores, gera uma página independente e imprimível contendo data e horário da última captura, totais por faixa horária, matriz horária completa e ranking de filas.
+
+O relatório utiliza a logomarca oficial do Grupo S&S embutida em PNG (`scripts/logo_grupo_ss_oficial.js`), evitando dependências de links externos na impressão. O cabeçalho, os cards, a matriz, o ranking e o rodapé foram refinados para leitura e emissão em **A4 paisagem**. Os títulos foram padronizados como **Resumo dos atendimentos** e **Soma dos atendimentos**. A aplicação continua somando exclusivamente os valores efetivamente recebidos em `resumo.matriz_horaria`. Na nova página, clique **Imprimir / Salvar como PDF** e selecione *Salvar como PDF* no navegador.
 
 - Não faz consultas adicionais ao G4Flex ou Supabase: usa o último snapshot recebido.
 - Não inventa um fechamento definitivo; apresenta **dados parciais até a última coleta**.
