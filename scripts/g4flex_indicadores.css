@@ -74,3 +74,5 @@
 .g4f-board strong[data-g4f-queue-text]:focus-visible{outline:2px solid #50b6dd;outline-offset:3px;border-radius:3px}
 @keyframes g4f-queue-fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.g4f-queue-tooltip{animation:none}}
+
+.g4f-queue-tooltip-waiting{margin:0;padding:18px 15px;color:#d6e8f8;font-size:12px;line-height:1.55;background:#193e63}
