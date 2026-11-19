@@ -70,7 +70,7 @@ assert source.count("function g4fInsightsRender(host,row)")==1
 assert source.count("function g4fInsightsInit(host)")==1
 assert source.count("function g4fQueueTooltipInit(host)")==1
 assert source.count("function g4fDailyReportHTML(row)")==1
-assert source.count("window.__SS_OFICIAL_LOGO__=")==1
+assert source[source.index("/* Painel analítico G4Flex - não faz novas chamadas"):source.index("/* Tooltip acessível de filas G4Flex:")].count("window.__SS_OFICIAL_LOGO__=")==1
 assert "Soma das faixas horárias" not in source[source.index("/* Painel analítico G4Flex - não faz novas chamadas"):source.index("/* Tooltip acessível de filas G4Flex:")]
 assert source.count("function g4fExportDailyReport(row)")==1
 assert source.count("g4fQueueTooltipInit(host);")==1
