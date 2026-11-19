@@ -1,0 +1,52 @@
+name: Validar relatório G4Flex com logo oficial
+on:
+  push:
+    branches: [feature/g4flex-relatorio-identidade-visual]
+    paths:
+      - scripts/g4flex_relatorio_dia.js
+      - scripts/g4flex_indicadores.js
+      - scripts/integrar_g4flex_indicadores.py
+      - scripts/test_g4flex_relatorio_dia.cjs
+      - .github/workflows/validar_relatorio_visual_g4flex.yml
+permissions:
+  contents: write
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar logo, textos, relatório e regenerar código web
+        run: |
+          node --check scripts/g4flex_indicadores.js
+          node --check scripts/g4flex_relatorio_dia.js
+          node --check scripts/logo_grupo_ss_oficial.js
+          node scripts/test_g4flex_indicadores.cjs
+          node scripts/test_g4flex_relatorio_dia.cjs
+          python scripts/integrar_g4flex_indicadores.py
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('main.py').read_text(encoding='utf-8')
+          start=s.index('/* Painel analítico G4Flex - não faz novas chamadas')
+          stop=s.index('/* Tooltip acessível de filas G4Flex:',start)
+          section=s[start:stop]
+          assert section.count('window.__SS_OFICIAL_LOGO__=')==1
+          assert section.count('function g4fDailyReportHTML(row)')==1
+          assert 'Resumo dos atendimentos' in section
+          assert 'Soma dos atendimentos' in section
+          assert 'Soma das faixas horárias' not in section
+          assert 'class="brandmark"' not in section
+          assert 'class="brand-logo"' in section
+          assert s.count('setInterval(g4fPoll,3000)')==1
+          print('OK: logo oficial embutida no relatório, novos textos, coleta preservada.')
+          PY
+      - name: Publicar main.py atualizado na branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "feat: logo oficial e refinamento dos relatórios G4Flex"
+            git push origin HEAD:feature/g4flex-relatorio-identidade-visual
+          fi
