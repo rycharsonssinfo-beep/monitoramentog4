@@ -12487,10 +12487,10 @@ function g4fInsightsRender(host,row){
  screen.querySelector('[data-g4f-report-current]').innerHTML=current.map(x=>g4fReportKpi(...x)).join('');
  const sum=(k)=>hours.reduce((v,h)=>v+g4fReportNumber(h[k]),0);
  const reports=hours.length?[
-  ['Abertas',sum('abertas'),'Soma das faixas horárias'],
-  ['Atendidas',sum('atendidas'),'Soma das faixas horárias'],
-  ['Não atendidas',sum('nao_atendidas'),'Soma das faixas horárias'],
-  ['Abandonadas',sum('abandonadas'),'Soma das faixas horárias']
+  ['Abertas',sum('abertas'),'Soma dos atendimentos'],
+  ['Atendidas',sum('atendidas'),'Soma dos atendimentos'],
+  ['Não atendidas',sum('nao_atendidas'),'Soma dos atendimentos'],
+  ['Abandonadas',sum('abandonadas'),'Soma dos atendimentos']
  ]:[];
  // Evita reconstruir os gráficos a cada polling (3 s) quando os dados não mudaram.
  // Assim a rolagem da matriz continua no mesmo ponto durante a leitura.
@@ -12529,7 +12529,7 @@ function g4fInsightsInit(host){
   <div class="g4f-report-scroll">
    <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Equipe de suporte agora</h3><small>Dados instantâneos · somente atendentes monitorados</small></div>
      <div class="g4f-report-kpis" data-g4f-report-current></div></section>
-   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Resumo das faixas horárias</h3><small>Indicadores consolidados da matriz do G4Flex, quando disponíveis</small></div>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Resumo dos atendimentos</h3><small>Indicadores consolidados da matriz do G4Flex, quando disponíveis</small></div>
      <div class="g4f-report-kpis" data-g4f-report-historical></div></section>
    <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Volume de atendimento por horário</h3><small>Abertas × Atendidas</small></div>
      <div data-g4f-report-plot></div></section>
@@ -12554,6 +12554,8 @@ function g4fInsightsInit(host){
   parent.prepend(btn);
  }
 }
+/* Logo oficial Grupo S&S — enviada pelo usuário, otimizada em PNG; sem dependência externa. */
+window.__SS_OFICIAL_LOGO__="data:image/png;base64,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";
 /* Relatório diário G4Flex: gera documento imprimível a partir do snapshot existente.
    Não acessa o G4Flex, o Supabase ou qualquer servidor adicional. */
 function g4fDailyEscape(v){
@@ -12576,6 +12578,12 @@ function g4fDailyReportHTML(row){
  const r=row?.resumo||{};
  const clock=g4fDailyDate(r.indicadores_historicos_coletados_em||row?.capturado_em||row?.recebido_em);
  const emitted=g4fDailyDate(new Date().toISOString());
+ // O PNG da marca oficial já existe no projeto e é incluído no próprio HTML do PDF.
+ const logoValue=(typeof window!=='undefined' && typeof window.__SS_OFICIAL_LOGO__==='string')?window.__SS_OFICIAL_LOGO__:'';
+ const brandLogo=/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(logoValue)?logoValue:'';
+ const brandVisual=brandLogo
+  ?'<img class="brand-logo" src="'+g4fDailyEscape(brandLogo)+'" alt="Grupo S&amp;S — logomarca oficial">'
+  :'<span class="brand-fallback">Grupo S&amp;S</span>';
  const total=k=>hours.reduce((acc,x)=>acc+g4fReportNumber(x[k]),0);
  const stats=hours.length?[
   ['Conversas abertas',total('abertas')],
@@ -12584,7 +12592,7 @@ function g4fDailyReportHTML(row){
   ['Abandonadas',total('abandonadas')]
  ]:[];
  const statsHTML=stats.length?stats.map(([label,value])=>
-  '<div class="metric"><span>'+g4fDailyEscape(label)+'</span><strong>'+g4fDailyEscape(value)+'</strong><small>Soma das faixas horárias</small></div>'
+  '<div class="metric"><span>'+g4fDailyEscape(label)+'</span><strong>'+g4fDailyEscape(value)+'</strong><small>Soma dos atendimentos</small></div>'
  ).join(''):'<p class="empty">Matriz horária não disponível nesta coleta.</p>';
  const matrixHTML=hours.length?
   '<table class="matrix"><thead><tr>'+g4fReportCols.map(([key,label])=>'<th>'+g4fDailyEscape(label)+'</th>').join('')+'</tr></thead><tbody>'+
@@ -12642,18 +12650,84 @@ function g4fDailyReportHTML(row){
     h2{break-after:avoid}table.matrix thead{display:table-header-group}
     .matrix tr{break-inside:avoid}
   }
+
+  /* Refinamento do cabeçalho: logo oficial completa, hierarquia e metadados. */
+  .header{align-items:center;gap:32px;padding:0 0 19px;border-bottom:2px solid #1472b5}
+  .brand{gap:20px;min-width:0;flex:1}
+  .brand-logo{width:210px;height:auto;max-height:76px;object-fit:contain;object-position:left center;flex:none;display:block}
+  .brand-fallback{font-size:18px;font-weight:800;color:#047781;white-space:nowrap}
+  .brandname{font-size:10.5px;letter-spacing:.08em;color:#47728f;text-transform:uppercase;line-height:1.3}
+  h1{font-size:25px;letter-spacing:-.03em;line-height:1.15;margin:4px 0 0}
+  .meta{min-width:265px;max-width:315px;background:#f5f9ff;border:1px solid #deebf7;border-radius:9px;text-align:right;padding:12px 14px;line-height:1.7}
+  .chip{background:#eaf7f2;color:#147252;border-color:#c8e8dd}
+  /* Cards mais compactos, com leitura clara. */
+  .summary{gap:12px}
+  .metric{position:relative;border:1px solid #d5e6f3;border-top:3px solid #2c80c9;background:#f7fbff;border-radius:9px;gap:6px;padding:12px 15px;min-height:98px}
+  .metric:nth-child(2){border-top-color:#13a38e}
+  .metric:nth-child(3){border-top-color:#e6a23c}
+  .metric:nth-child(4){border-top-color:#cb5477}
+  .metric span{font-size:11px;color:#355b80}
+  .metric strong{font-size:29px;letter-spacing:-.035em}
+  .metric small{font-size:10px;color:#6a829a}
+  /* Matriz compacta e legível inclusive em A4 paisagem. */
+  table.matrix{font-size:8.6px;border-collapse:separate;border-spacing:0;border:1px solid #ccdeeb;border-radius:8px;overflow:hidden}
+  .matrix th{background:#dceaf8;color:#123d64;font-size:8px;line-height:1.25;font-weight:800;border:0;border-right:1px solid #c3d8ea;border-bottom:1px solid #bed3e6;padding:9px 4px}
+  .matrix th:first-child{width:9.2%}
+  .matrix td{color:#2c5478;border:0;border-right:1px solid #e2ecf6;border-bottom:1px solid #e2ecf6;padding:8px 3px}
+  .matrix td:first-child{color:#0d4779}
+  .matrix tbody tr:nth-child(even){background:#f0f7fd}
+  .matrix tbody tr:hover{background:#eaf3fc}
+  .matrix tr>:last-child{border-right:0}
+  .matrix tr:last-child td{border-bottom:0}
+  /* Ranking legível, posições de destaque e valores próximos das barras. */
+  .rank{grid-template-columns:24px minmax(155px,230px) minmax(140px,1fr) 30px;gap:10px;padding:7px 2px}
+  .rank strong{font-size:11.5px;color:#234e77}
+  .rank .number{font-size:11px;font-weight:800}
+  .rank:nth-child(-n+3) .number{background:#e7f2ff;border-radius:6px;padding:4px;color:#0c65ab}
+  .bar{height:15px;background:#e6f0f8}
+  .rank b{font-size:12px}
+  /* Nota e rodapé mais discretos, com identidade corporativa. */
+  .note{font-size:10px;background:#f8fbfe;border-left:3px solid #a9cade;padding:10px 12px;border-radius:4px;margin-top:16px}
+  footer{padding-top:13px;color:#6b839a;align-items:start;line-height:1.5}
+  @media(max-width:850px){
+    .header{flex-direction:column;align-items:stretch;gap:15px}
+    .meta{text-align:left;max-width:none}
+    .summary{grid-template-columns:repeat(2,1fr)}
+    .sheet{padding:22px 18px}
+  }
+  @media print{
+    @page{size:A4 landscape;margin:10mm}
+    .sheet{width:100%;max-width:none}
+    .header{gap:20px;padding-bottom:12px;break-inside:avoid}
+    .brand-logo{width:164px;max-height:60px}
+    h1{font-size:20px}
+    .meta{min-width:215px;max-width:245px;border:1px solid #dce8f4;padding:8px 11px;font-size:9.5px}
+    .metric{padding:9px 11px;min-height:75px}
+    .metric strong{font-size:23px}
+    .summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    h2{font-size:13px;margin:16px 0 8px}
+    table.matrix{font-size:7.8px;border-radius:0}
+    .matrix th{font-size:7.2px;padding:7px 2px}
+    .matrix td{padding:6px 2px}
+    .rank{grid-template-columns:18px 130px minmax(60px,1fr) 25px;gap:8px;padding:4px 0}
+    .bar{height:11px}
+    .rank strong{font-size:9.2px}
+    .rank b{font-size:10px}
+    .note,footer{font-size:9px}
+    footer{break-inside:avoid}
+  }
  `;
  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
   '<title>Relatório G4Flex - '+g4fDailyEscape(clock.date)+'</title><style>'+css+'</style></head><body>'+
   '<div class="actions"><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button>'+
   '<button type="button" class="secondary" onclick="window.close()">Fechar</button></div>'+
-  '<main class="sheet"><header class="header"><div class="brand"><span class="brandmark">S&amp;S</span>'+
+  '<main class="sheet"><header class="header"><div class="brand">'+brandVisual+
   '<div><div class="brandname">GRUPO S&amp;S · MONITORAMENTO G4FLEX</div><h1>Relatório do dia</h1></div></div>'+
   '<div class="meta"><div><strong>Data de referência:</strong> '+g4fDailyEscape(clock.date)+'</div>'+
   '<div><strong>Última coleta histórica:</strong> '+g4fDailyEscape(clock.datetime)+'</div>'+
   '<div><strong>Emissão:</strong> '+g4fDailyEscape(emitted.datetime)+'</div>'+
   '<div style="margin-top:7px"><span class="chip">Dados parciais até a última coleta</span></div></div></header>'+
-  '<h2>Resumo de atendimentos por horário</h2><div class="summary">'+statsHTML+'</div>'+
+  '<h2>Resumo dos atendimentos</h2><div class="summary">'+statsHTML+'</div>'+
   '<h2>Matriz horária de indicadores</h2>'+matrixHTML+
   '<h2>Ranking de filas — Top 10</h2>'+rankingHTML+
   '<p class="note">'+g4fDailyEscape(note)+'</p>'+
