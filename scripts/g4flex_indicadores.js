@@ -17,13 +17,16 @@ function g4fReportHours(row){
  if(!Array.isArray(raw))return [];
  return raw.filter(x=>x&&typeof x==='object').slice(0,48);
 }
-function g4fReportReasons(row){
- const raw=row?.resumo?.ranking_motivos;
+function g4fReportQueues(row){
+ const r=row?.resumo||{};
+ // Campo próprio quando disponível; compatibilidade com o ranking já publicado pelo coletor.
+ const raw=Array.isArray(r.ranking_filas)?r.ranking_filas:r.ranking_motivos;
  if(!Array.isArray(raw))return [];
- return raw.map(x=>({nome:String(x?.motivo||x?.nome||'').trim(),
-   quantidade:g4fReportNumber(x?.quantidade??x?.total)}))
+ return raw.map(x=>({nome:String(x?.fila||x?.nome||x?.motivo||'').trim(),
+   quantidade:g4fReportNumber(x?.quantidade??x?.total??x?.atendimentos??x?.qtd)}))
    .filter(x=>x.nome&&x.quantidade>0).sort((a,b)=>b.quantidade-a.quantidade).slice(0,10);
 }
+function g4fReportReasons(row){return g4fReportQueues(row);}
 function g4fReportKpi(label,value,note,shade){
  return `<div class="g4f-report-kpi"><small>${g4fText(label)}</small>
     <strong class="${shade||''}">${g4fText(value)}</strong>
@@ -46,7 +49,7 @@ function g4fReportTable(hours){
  <tbody>${hours.map(row=>`<tr>${g4fReportCols.map(([key])=>`<td>${g4fText(row[key]??'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function g4fReportRanking(reasons){
- if(!reasons.length)return '<div class="g4f-report-empty">O ranking de motivos ainda não está disponível na coleta do robô.</div>';
+ if(!reasons.length)return '<div class="g4f-report-empty">O ranking de filas ainda não está disponível na coleta do robô.</div>';
  const max=Math.max(1,reasons[0].quantidade);
  return `<div class="g4f-report-ranking">${reasons.map((r,i)=>`<div class="g4f-report-reason">
   <span class="g4f-report-rank">${i+1}</span><span class="g4f-report-reason-name" title="${g4fText(r.nome)}">${g4fText(r.nome)}</span>
@@ -58,7 +61,7 @@ function g4fInsightsRender(host,row){
  if(!screen||screen.hidden)return;
  const all=Array.isArray(row?.atendentes)?row.atendentes.filter(g4fVisibleAgent):[];
  const r=row?.resumo||{};
- const hours=g4fReportHours(row),reasons=g4fReportReasons(row);
+ const hours=g4fReportHours(row),reasons=g4fReportQueues(row);
  const current=[
   ['Atendentes monitorados',all.length,'Equipe de suporte'],
   ['Disponíveis',all.filter(a=>a.status==='ativo').length,'Estado atual'],
@@ -101,8 +104,9 @@ function g4fInsightsInit(host){
  section.innerHTML=`<div class="g4f-insights-content">
   <header class="g4f-report-head">
    <div><div class="g4f-report-eyebrow">GRUPO S&S · G4FLEX</div>
-     <h2>Indicadores e desempenho</h2><p>Matriz horária e motivos de atendimento</p></div>
-   <button type="button" class="g4f-insights-close" data-g4f-insights-close>← Voltar ao atendimento</button>
+     <h2>Indicadores e desempenho</h2><p>Matriz horária e ranking de filas</p></div>
+   <div class="g4f-report-head-actions"><button type="button" class="g4f-report-daily-btn" data-g4f-report-daily>▣ Relatório do dia</button>
+   <button type="button" class="g4f-insights-close" data-g4f-insights-close>← Voltar ao atendimento</button></div>
   </header>
   <div class="g4f-report-meta"><span data-g4f-report-stamp>Aguardando coleta</span>
    <span class="g4f-report-availability" data-g4f-report-availability>Aguardando indicadores históricos do robô</span></div>
@@ -115,20 +119,21 @@ function g4fInsightsInit(host){
      <div data-g4f-report-plot></div></section>
    <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Matriz horária detalhada</h3><small>Deslize horizontalmente para consultar todas as métricas</small></div>
      <div data-g4f-report-table></div></section>
-   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Ranking dos principais motivos</h3><small>Top 10 · gráfico de barras para facilitar comparação</small></div>
+   <section class="g4f-report-block"><div class="g4f-report-section-head"><h3>Ranking de filas</h3><small>Top 10 · classificação registrada no G4Flex</small></div>
      <div data-g4f-report-ranking></div></section>
-   <p class="g4f-report-disclaimer">A matriz horária e o ranking, quando integrados, podem representar toda a operação do G4Flex. A visão de equipe acima considera somente os atendentes habilitados no Monitor S&S. Não confunda indicadores históricos gerais com resultados individuais da equipe de suporte.</p>
+   <p class="g4f-report-disclaimer">A matriz horária e o ranking de filas podem representar toda a operação do G4Flex. O ranking é recebido atualmente como classificação de motivos do G4Flex. A visão de equipe acima considera somente os atendentes habilitados no Monitor S&S. Não confunda indicadores históricos gerais com resultados individuais da equipe de suporte.</p>
   </div>
  </div>`;
  host.appendChild(section);
  const close=section.querySelector('[data-g4f-insights-close]');
+ section.querySelector('[data-g4f-report-daily]').addEventListener('click',()=>g4fExportDailyReport(g4fLastData));
  function hide(){section.hidden=true;host._g4fInsightsOpen=false;}
  close.addEventListener('click',hide);
  section.addEventListener('keydown',ev=>{if(ev.key==='Escape')hide();});
  for(const parent of host.querySelectorAll('.g4f-top-actions')){
   const btn=document.createElement('button');
   btn.type='button';btn.className='g4f-insights-trigger';btn.textContent='▤ Indicadores';
-  btn.setAttribute('aria-label','Abrir matriz horária e ranking de motivos G4Flex');
+  btn.setAttribute('aria-label','Abrir matriz horária e ranking de filas G4Flex');
   btn.addEventListener('click',()=>{host._g4fInsightsOpen=true;section.hidden=false;g4fInsightsRender(host,g4fLastData);close.focus();});
   parent.prepend(btn);
  }
