@@ -10,6 +10,7 @@ insights_js=(root/"scripts"/"g4flex_indicadores.js").read_text(encoding="utf-8")
 insights_css=(root/"scripts"/"g4flex_indicadores.css").read_text(encoding="utf-8").strip()
 tooltip_js=(root/"scripts"/"g4flex_tooltip_filas.js").read_text(encoding="utf-8").strip()
 daily_report_js=(root/"scripts"/"g4flex_relatorio_dia.js").read_text(encoding="utf-8").strip()
+official_logo_js=(root/"scripts"/"logo_grupo_ss_oficial.js").read_text(encoding="utf-8").strip()
 
 def insert_once(marker,piece,where,tag):
     global source
@@ -41,6 +42,7 @@ js_anchor="            function g4fStart(host){"
 insert_once(js_anchor,insights_js,"before","/* Painel analítico G4Flex - não faz novas chamadas")
 insert_once(js_anchor,tooltip_js,"before","/* Tooltip acessível de filas G4Flex:")
 insert_once("/* Tooltip acessível de filas G4Flex:",daily_report_js,"before","/* Relatório diário G4Flex:")
+insert_once("/* Relatório diário G4Flex:",official_logo_js,"before","/* Logo oficial Grupo S&S")
 
 init_anchor='                 host.querySelector(\'[data-ss="search"]\').value=g4fSearchText;'
 insert_once(init_anchor,'                 g4fInsightsInit(host);',"before","                 g4fInsightsInit(host);")
@@ -59,7 +61,8 @@ def sync_embedded(start_tag, next_tag, fresh):
     source=source[:i]+fresh+"\n"+source[j:]
 
 sync_embedded("/* G4Flex - página informativa de indicadores.",css_anchor,insights_css)
-sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Relatório diário G4Flex:",insights_js)
+sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Logo oficial Grupo S&S",insights_js)
+sync_embedded("/* Logo oficial Grupo S&S","/* Relatório diário G4Flex:",official_logo_js)
 sync_embedded("/* Relatório diário G4Flex:","/* Tooltip acessível de filas G4Flex:",daily_report_js)
 sync_embedded("/* Tooltip acessível de filas G4Flex:",js_anchor,tooltip_js)
 
@@ -68,6 +71,8 @@ assert source.count("function g4fInsightsRender(host,row)")==1
 assert source.count("function g4fInsightsInit(host)")==1
 assert source.count("function g4fQueueTooltipInit(host)")==1
 assert source.count("function g4fDailyReportHTML(row)")==1
+assert source.count("window.__SS_OFICIAL_LOGO__=")==1
+assert "Soma das faixas horárias" not in source[source.index("/* Painel analítico G4Flex - não faz novas chamadas"):source.index("/* Tooltip acessível de filas G4Flex:")]
 assert source.count("function g4fExportDailyReport(row)")==1
 assert source.count("g4fQueueTooltipInit(host);")==1
 assert source.count("g4fInsightsInit(host);")==1
