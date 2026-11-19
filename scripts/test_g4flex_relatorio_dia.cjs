@@ -42,11 +42,11 @@ assert.match(html,/class="brand-fallback"/); // fallback seguro se a logo não c
 assert.doesNotMatch(html,/class="brandmark"/);
 ctx.window={};
 vm.runInContext(fs.readFileSync(path.join(here,'logo_grupo_ss_oficial.js'),'utf8'),ctx);
-assert.match(ctx.window.__SS_OFICIAL_LOGO__,/^data:image\\/png;base64,/);
+assert.match(ctx.window.__SS_OFICIAL_LOGO__,/^data:image\/png;base64,/);
 const withLogo=vm.runInContext('g4fDailyReportHTML(fixture)',ctx);
 assert.match(withLogo,/class="brand-logo"/);
 assert.match(withLogo,/alt="Grupo S&amp;S — logomarca oficial"/);
-assert.match(withLogo,/src="data:image\\/png;base64,/);
+assert.match(withLogo,/src="data:image\/png;base64,/);
 assert.doesNotMatch(withLogo,/class="brand-fallback"/);
 assert.match(withLogo,/border-top:3px solid/);
 assert.match(withLogo,/Resumo dos atendimentos/);
