@@ -1,0 +1,47 @@
+name: Validar melhoria visual G4Flex
+on:
+  push:
+    branches: [fix/g4flex-topo-tooltip-premium]
+    paths:
+      - scripts/g4flex_indicadores.js
+      - scripts/g4flex_indicadores.css
+      - scripts/g4flex_tooltip_filas.js
+      - scripts/integrar_g4flex_indicadores.py
+      - .github/workflows/validar_g4flex_visual.yml
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar codigo e integrar ao main.py
+        run: |
+          node --check scripts/g4flex_indicadores.js
+          node --check scripts/g4flex_tooltip_filas.js
+          node scripts/test_g4flex_indicadores.cjs
+          python scripts/integrar_g4flex_indicadores.py
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('main.py').read_text(encoding='utf-8')
+          js=Path('scripts/g4flex_indicadores.js').read_text(encoding='utf-8')
+          assert s.count('function g4fQueueTooltipInit(host)')==1
+          assert s.count('g4fQueueTooltipInit(host);')==1
+          assert s.count('function g4fInsightsInit(host)')==1
+          assert s.count("for(const parent of host.querySelectorAll('.g4f-top-actions'))")==1
+          assert ".ss-heading-tools'" not in js.split('function g4fInsightsInit(host)',1)[1].split('function ',1)[0]
+          assert 'g4f-queue-tooltip-list' in s
+          assert s.count('setInterval(g4fPoll,3000)')==1
+          print('OK: um unico botao Indicadores, tooltip customizado, modo Lista/Cards, polling preservado.')
+          PY
+      - name: Commit da integração no main.py da branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- main.py; then
+            git add main.py
+            git commit -m "fix: botão Indicadores único e tooltip com visual melhorado"
+            git push origin HEAD:fix/g4flex-topo-tooltip-premium
+          fi
