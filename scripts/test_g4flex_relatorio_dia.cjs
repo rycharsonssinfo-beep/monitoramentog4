@@ -35,6 +35,21 @@ assert.match(html,/ranking_motivos/);
 assert.match(html,/Imprimir \/ Salvar como PDF/);
 assert.ok(html.includes('size:A4 landscape'));
 assert.match(html,/Dados parciais até a última coleta/);
+assert.match(html,/Resumo dos atendimentos/);
+assert.match(html,/Soma dos atendimentos/);
+assert.doesNotMatch(html,/Soma das faixas horárias/);
+assert.match(html,/class="brand-fallback"/); // fallback seguro se a logo não carregar
+assert.doesNotMatch(html,/class="brandmark"/);
+ctx.window={};
+vm.runInContext(fs.readFileSync(path.join(here,'logo_grupo_ss_oficial.js'),'utf8'),ctx);
+assert.match(ctx.window.__SS_OFICIAL_LOGO__,/^data:image\\/png;base64,/);
+const withLogo=vm.runInContext('g4fDailyReportHTML(fixture)',ctx);
+assert.match(withLogo,/class="brand-logo"/);
+assert.match(withLogo,/alt="Grupo S&amp;S — logomarca oficial"/);
+assert.match(withLogo,/src="data:image\\/png;base64,/);
+assert.doesNotMatch(withLogo,/class="brand-fallback"/);
+assert.match(withLogo,/border-top:3px solid/);
+assert.match(withLogo,/Resumo dos atendimentos/);
 ctx.empty={resumo:{}};
 assert.equal(vm.runInContext('g4fDailyReportHTML(empty)',ctx),null);
 assert.equal(vm.runInContext('g4fReportQueues(empty).length',ctx),0);
@@ -48,9 +63,10 @@ assert.doesNotMatch(vm.runInContext('g4fDailyReportHTML(evil)',ctx),/<script>ale
 assert.match(vm.runInContext('g4fDailyReportHTML(evil)',ctx),/&lt;script&gt;/);
 let popped=null;
 ctx.window={
+ __SS_OFICIAL_LOGO__:ctx.window.__SS_OFICIAL_LOGO__,
  open(){const win={document:{open(){},write(v){popped=v;},close(){}},focus(){}};return win;},
  alert(){throw Error('Não deveria mostrar alerta ao abrir relatório')}
 };
 assert.equal(vm.runInContext('g4fExportDailyReport(fixture)',ctx),true);
 assert.match(popped,/Relatório do dia/);
-console.log('PASS: ranking de filas, relatório diário, datas, somas, escape de HTML, escopo e abertura imprimível.');
+console.log('PASS: logo oficial PNG no PDF, resumo dos atendimentos, ranking de filas, datas, somas, segurança e impressão.');
