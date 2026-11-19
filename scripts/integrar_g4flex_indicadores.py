@@ -42,7 +42,6 @@ js_anchor="            function g4fStart(host){"
 insert_once(js_anchor,insights_js,"before","/* Painel analítico G4Flex - não faz novas chamadas")
 insert_once(js_anchor,tooltip_js,"before","/* Tooltip acessível de filas G4Flex:")
 insert_once("/* Tooltip acessível de filas G4Flex:",daily_report_js,"before","/* Relatório diário G4Flex:")
-insert_once("/* Relatório diário G4Flex:",official_logo_js,"before","/* Logo oficial Grupo S&S")
 
 init_anchor='                 host.querySelector(\'[data-ss="search"]\').value=g4fSearchText;'
 insert_once(init_anchor,'                 g4fInsightsInit(host);',"before","                 g4fInsightsInit(host);")
@@ -61,9 +60,9 @@ def sync_embedded(start_tag, next_tag, fresh):
     source=source[:i]+fresh+"\n"+source[j:]
 
 sync_embedded("/* G4Flex - página informativa de indicadores.",css_anchor,insights_css)
-sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Logo oficial Grupo S&S",insights_js)
-sync_embedded("/* Logo oficial Grupo S&S","/* Relatório diário G4Flex:",official_logo_js)
-sync_embedded("/* Relatório diário G4Flex:","/* Tooltip acessível de filas G4Flex:",daily_report_js)
+# Reconstrói o bloco único em ordem determinística; evita conflito com outros
+# usos da logomarca no arquivo principal.
+sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Tooltip acessível de filas G4Flex:",insights_js+"\n"+official_logo_js+"\n"+daily_report_js)
 sync_embedded("/* Tooltip acessível de filas G4Flex:",js_anchor,tooltip_js)
 
 ast.parse(source)
