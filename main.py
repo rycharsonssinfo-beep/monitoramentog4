@@ -10169,6 +10169,28 @@ else:
 @media(max-width:820px){.g4f-insights .g4f-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.g4f-insights .g4f-report-head{padding:14px 17px}.g4f-insights .g4f-report-block{padding:13px}.g4f-insights .g4f-report-reason{grid-template-columns:21px minmax(90px,145px) minmax(40px,1fr) 28px;gap:6px}}
 @media(max-width:540px){.g4f-insights .g4f-report-kpis{grid-template-columns:1fr 1fr;gap:7px}.g4f-insights .g4f-report-kpi{padding:10px}.g4f-insights .g4f-report-head h2{font-size:17px}.g4f-insights .g4f-insights-close{padding:8px;font-size:10px}.g4f-insights .g4f-report-section-head{display:block}.g4f-insights .g4f-report-section-head small{display:block;margin-top:5px}.g4f-insights .g4f-report-reason-name{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.g4f-insights *{transition:none!important;scroll-behavior:auto!important}}
+
+
+/* G4Flex: ações únicas, sem sobreposição entre Layout S&S e Layout G4Flex. */
+.g4f-board .g4f-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;min-width:0}
+.g4f-board .g4f-top-actions>.g4f-insights-trigger{order:-1;display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:8px 13px!important;border-radius:9px!important;flex-shrink:0;position:relative;inset:auto}
+.g4f-board .ss-heading-tools .g4f-insights-trigger{display:none!important}
+@media(max-width:900px){.g4f-board .g4f-top-actions{gap:6px}.g4f-board .g4f-top-actions>.g4f-insights-trigger{padding:7px 9px!important}}
+/* Tooltip personalizado: visível na foto ou no nome, com limite de altura para filas numerosas. */
+.g4f-queue-tooltip[hidden]{display:none!important}
+.g4f-queue-tooltip{position:fixed;z-index:10030;width:min(315px,calc(100vw - 24px));max-height:min(385px,calc(100vh - 25px));box-sizing:border-box;background:#112d4d;color:#edf5ff;border:1px solid #3c658c;border-radius:13px;box-shadow:0 15px 40px #071e3999;overflow:hidden;font-family:inherit;font-size:12px;display:flex;flex-direction:column;animation:g4f-queue-fade .12s ease-out}
+.g4f-queue-tooltip-heading{padding:13px 15px 10px;display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:1px solid #375678}
+.g4f-queue-tooltip-heading strong{font-size:13px;font-weight:850;color:white;line-height:1.3}
+.g4f-queue-tooltip-count{flex-shrink:0;background:#275787;border:1px solid #436c92;color:#e0f3ff;border-radius:99px;padding:4px 8px;font-weight:700;font-size:10px}
+.g4f-queue-tooltip-list{list-style:none;margin:0;padding:8px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:#537b9f transparent}
+.g4f-queue-tooltip-list li{display:flex;align-items:flex-start;gap:9px;padding:6px 7px;border-radius:6px;line-height:1.4;color:#f2f6ff;overflow-wrap:anywhere}
+.g4f-queue-tooltip-list li:nth-child(even){background:#1b3c62}
+.g4f-queue-tooltip-dot{width:7px;height:7px;border-radius:50%;background:#49c5e3;margin-top:5px;flex-shrink:0}
+.g4f-queue-tooltip-foot{font-size:10px;line-height:1.4;color:#b8d5f0;background:#0c2440;padding:10px 14px;margin:0;border-top:1px solid #365676}
+.g4f-board strong[data-g4f-queue-text],.g4f-board strong[title^="Filas em que está logado:"]{cursor:help}
+.g4f-board strong[data-g4f-queue-text]:focus-visible{outline:2px solid #50b6dd;outline-offset:3px;border-radius:3px}
+@keyframes g4f-queue-fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.g4f-queue-tooltip{animation:none}}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.has-assignment):not(.is-calling){background:#f4f8ff}
 
 /* G4Flex: estado da linha e do card, com barra lateral junto à foto.
@@ -12506,13 +12528,119 @@ function g4fInsightsInit(host){
  function hide(){section.hidden=true;host._g4fInsightsOpen=false;}
  close.addEventListener('click',hide);
  section.addEventListener('keydown',ev=>{if(ev.key==='Escape')hide();});
- for(const parent of host.querySelectorAll('.g4f-top-actions,.ss-heading-tools')){
+ for(const parent of host.querySelectorAll('.g4f-top-actions')){
   const btn=document.createElement('button');
   btn.type='button';btn.className='g4f-insights-trigger';btn.textContent='▤ Indicadores';
   btn.setAttribute('aria-label','Abrir matriz horária e ranking de motivos G4Flex');
   btn.addEventListener('click',()=>{host._g4fInsightsOpen=true;section.hidden=false;g4fInsightsRender(host,g4fLastData);close.focus();});
   parent.prepend(btn);
  }
+}
+/* Tooltip acessível de filas G4Flex: somente os dados recebidos no snapshot.
+   Lê o title existente (g4fQueueTitle); nunca confunde fila inicial com filas logadas.
+   Eventos delegados: continuam funcionando após re-render do painel. */
+function g4fQueueTooltipInit(host){
+ if(!host || host._g4fQueueTooltipReady)return;
+ host._g4fQueueTooltipReady=true;
+ const tip=document.createElement('aside');
+ tip.className='g4f-queue-tooltip';
+ tip.id='g4f-queue-popover-'+Math.random().toString(36).slice(2,9);
+ tip.setAttribute('role','tooltip');
+ tip.hidden=true;
+ document.body.appendChild(tip);
+ let current=null,hideTimer=null;
+ const cancel=()=>{if(hideTimer){clearTimeout(hideTimer);hideTimer=null;}};
+ function hide(){
+   cancel();
+   if(current){current.removeAttribute('aria-describedby');current=null;}
+   tip.hidden=true;
+ }
+ function deferHide(){cancel();hideTimer=setTimeout(hide,180);}
+ function textFrom(el){
+   if(!el)return'';
+   const t=el.getAttribute('data-g4f-queue-text')||el.getAttribute('title')||'';
+   return t.startsWith('Filas em que está logado:')?t:'';
+ }
+ function getTrigger(target){
+   const el=target?.closest?.('strong, img, .g4f-avatar');
+   if(!el)return null;
+   if(el.matches('strong')){
+     return textFrom(el)?el:null;
+   }
+   const group=el.closest('.ss-list-name,.ss-agent,.g4f-agent,.g4f-card,.ss-card,.g4f-agent-card');
+   if(!group)return null;
+   const strong=[...group.querySelectorAll('strong')].find(x=>textFrom(x));
+   return strong||null;
+ }
+ function place(el){
+   const r=el.getBoundingClientRect();
+   const w=tip.offsetWidth||305,h=tip.offsetHeight||180;
+   const gap=10;
+   let x=r.right+gap;
+   if(x+w>window.innerWidth-12)x=r.left-w-gap;
+   if(x<12)x=Math.min(Math.max(12,r.left),Math.max(12,window.innerWidth-w-12));
+   const y=Math.max(12,Math.min(r.top-14,window.innerHeight-h-12));
+   tip.style.left=Math.round(x)+'px';
+   tip.style.top=Math.round(y)+'px';
+ }
+ function show(el){
+   const value=textFrom(el);if(!value)return;
+   cancel();
+   if(current===el&&!tip.hidden){place(el);return;}
+   if(current)current.removeAttribute('aria-describedby');
+   current=el;
+   if(el.hasAttribute('title')){
+     el.setAttribute('data-g4f-queue-text',value);
+     el.removeAttribute('title'); // substitui tooltip nativo do navegador
+   }
+   const queues=value.split(/\r?\n/).slice(1).map(s=>s.trim()).filter(Boolean).slice(0,60);
+   if(!queues.length){hide();return;}
+   tip.replaceChildren();
+   const head=document.createElement('div');head.className='g4f-queue-tooltip-heading';
+   const heading=document.createElement('strong');heading.textContent='Filas em que está logado';
+   const number=document.createElement('span');number.className='g4f-queue-tooltip-count';number.textContent=queues.length+' filas';
+   head.append(heading,number);
+   const list=document.createElement('ul');list.className='g4f-queue-tooltip-list';
+   for(const name of queues){
+     const li=document.createElement('li');
+     const dot=document.createElement('span');dot.className='g4f-queue-tooltip-dot';dot.setAttribute('aria-hidden','true');
+     const t=document.createElement('span');t.textContent=name;
+     li.append(dot,t);list.appendChild(li);
+   }
+   const foot=document.createElement('p');
+   foot.className='g4f-queue-tooltip-foot';
+   foot.textContent='Filas vinculadas ao atendente · não indica a fila da conversa atual.';
+   tip.append(head,list,foot);tip.hidden=false;
+   el.setAttribute('aria-describedby',tip.id);
+   place(el);
+ }
+ host.addEventListener('mouseover',ev=>{
+   const node=getTrigger(ev.target);
+   if(node)show(node);else if(current && !tip.contains(ev.relatedTarget))deferHide();
+ });
+ host.addEventListener('mouseout',ev=>{
+   if(current && !tip.contains(ev.relatedTarget))deferHide();
+ });
+ host.addEventListener('focusin',ev=>{const node=getTrigger(ev.target);if(node)show(node);});
+ host.addEventListener('focusout',ev=>{if(current && !tip.contains(ev.relatedTarget))deferHide();});
+ host.addEventListener('pointerdown',ev=>{
+   const node=getTrigger(ev.target);
+   if(ev.pointerType==='touch'&&node){show(node);}
+ });
+ tip.addEventListener('mouseenter',cancel);
+ tip.addEventListener('mouseleave',deferHide);
+ document.addEventListener('keydown',ev=>{if(ev.key==='Escape')hide();});
+ document.addEventListener('pointerdown',ev=>{if(!tip.hidden&&!tip.contains(ev.target)&&!host.contains(ev.target))hide();});
+ function enhance(){
+   if(!host.isConnected){hide();return;}
+   for(const name of host.querySelectorAll('strong[title^="Filas em que está logado:"],strong[data-g4f-queue-text]')){
+     if(!name.hasAttribute('tabindex'))name.tabIndex=0;
+   }
+   if(current&&!current.isConnected)hide();
+ }
+ const observer=new MutationObserver(enhance);
+ observer.observe(host,{subtree:true,childList:true});
+ enhance();
 }
             function g4fStart(host){
                 g4fWidgets.add(host);
@@ -12555,6 +12683,7 @@ function g4fInsightsInit(host){
                 host.querySelectorAll('[data-g4f-layout]').forEach(btn=>btn.addEventListener('click',()=>g4fChangeLayout(btn.dataset.g4fLayout)));
                 host.classList.toggle('g4f-ss-mode',g4fCurrentLayout==='ss');
                  g4fInsightsInit(host);
+                 g4fQueueTooltipInit(host);
                 host.querySelector('[data-ss="search"]').value=g4fSearchText;
                 host.querySelector('[data-ss="search"]').addEventListener('input',e=>{g4fSearchText=e.target.value;host._ssListPage=0;g4fRender();});
                 host.querySelector('[data-ss-filter-select]').value=ssFocusFilter;
