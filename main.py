@@ -7408,7 +7408,7 @@ if not st.session_state.iniciado:
                 kind = {"sim": "SIM", "g4flex": "G4Flex", "portais": "Portais",
                         "personalizado": "Personalizado", "normal": "Página web"}.get(painel.get("tipo"), "Página web")
                 with st.container(border=True, key=f"cfg_panel_{pid}"):
-                    details, reorder = st.columns([3.5, 1.6], vertical_alignment="center")
+                    details, reorder = st.columns([5, 1.15], vertical_alignment="center")
                     with details:
                         st.markdown(
                             f'<div class="cfg-panel-summary"><b>{i + 1}. {html.escape(name)}</b>'
@@ -7416,14 +7416,14 @@ if not st.session_state.iniciado:
                             f'<span class="cfg-panel-state {tone}">{panel_status}</span></div>',
                             unsafe_allow_html=True,
                         )
-                    with reorder:
+                    with reorder, st.container(key=f"cfg_order_{pid}"):
                         up, down = st.columns(2)
                         with up:
-                            move_up = st.button("Subir", icon=":material/arrow_upward:", key=f"up_{pid}",
-                                                help=f"Mover {name} para cima", disabled=i == 0, use_container_width=True)
+                            move_up = st.button(f"Subir {name}", icon=":material/arrow_upward:", key=f"up_{pid}",
+                                                disabled=i == 0, use_container_width=True)
                         with down:
-                            move_down = st.button("Descer", icon=":material/arrow_downward:", key=f"down_{pid}",
-                                                  help=f"Mover {name} para baixo", disabled=i == len(paineis) - 1,
+                            move_down = st.button(f"Descer {name}", icon=":material/arrow_downward:", key=f"down_{pid}",
+                                                  disabled=i == len(paineis) - 1,
                                                   use_container_width=True)
                     if move_up or move_down:
                         target = i - 1 if move_up else i + 1
