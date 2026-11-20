@@ -44,6 +44,12 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
   background: #eaf3fb !important; color: #07539e !important;
 }
 .stApp [data-testid="stTextInput"] button :is(svg, [data-testid="stIconMaterial"]) { color: inherit !important; }
+.stApp [data-testid="stCheckbox"] :is(button, [data-testid="stTooltipIcon"]) {
+  color: #465d74 !important;
+}
+.stApp [data-testid="stCheckbox"] :is(button, [data-testid="stTooltipIcon"]) svg {
+  color: inherit !important;
+}
 [data-baseweb="popover"] :is([role="listbox"], [role="option"]),
 .stApp [role="combobox"] { background: #fff !important; color: #16324a !important; }
 [data-baseweb="popover"] [role="option"]:is(:hover, [aria-selected="true"]) { background: #ddedfc !important; }
@@ -110,8 +116,31 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
 .auth-brand { max-width: 450px; margin: 0 auto; }
 .auth-brand picture { display: block; margin: 0 0 14px; }
 .auth-brand img { display: block; width: 100%; height: auto; }
-.auth-brand h1 { font-size: clamp(28px, 4vw, 46px); line-height: 1.1; margin: 0; letter-spacing: -.025em; }
-.auth-brand p { color: #465d74; font-size: 15px; margin: 8px 0 0; }
+.auth-brand h1 {
+  font-size: clamp(30px, 4.2vw, 52px);
+  font-weight: 900;
+  line-height: 1.06;
+  margin: 0;
+  letter-spacing: -.035em;
+}
+.stApp .auth-brand h1 { color: #0b315e !important; }
+.auth-brand h1 span { display: block; color: #0767b6; }
+.stApp .auth-brand .auth-brand-name {
+  color: #07539e !important;
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0 0 8px;
+}
+.stApp .auth-brand .auth-brand-subtitle { color: #465d74 !important; font-size: 15px; margin: 10px 0 0; }
+.auth-brand-copy::after {
+  content: "";
+  display: block;
+  width: 54px;
+  height: 4px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1bc1b6, #149fca);
+}
 @media (max-width: 780px) {
   .st-key-monitor_login_layout [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .auth-brand) {
     flex-direction: column; align-items: stretch !important; gap: 12px !important;
@@ -122,5 +151,8 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
   .auth-brand { margin: 0; max-width: none; display: flex; align-items: center; gap: 10px; }
   .auth-brand picture { flex: 0 0 64px; margin: 0; }
   .auth-brand h1 { font-size: clamp(19px, 4.5vw, 26px); }
-  .auth-brand p { margin: 3px 0 0; font-size: 13px; }
+  .auth-brand h1 span { display: inline; }
+  .stApp .auth-brand .auth-brand-name { margin-bottom: 4px; font-size: 13px; }
+  .stApp .auth-brand .auth-brand-subtitle { margin-top: 5px; font-size: 13px; }
+  .auth-brand-copy::after { display: none; }
 }

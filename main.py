@@ -2390,7 +2390,8 @@ def _auth_login_css():
     st.markdown(f"<style>{stylesheet}</style>", unsafe_allow_html=True)
 
 
-def _render_auth_brand(subtitle="Grupo S&S"):
+def _render_auth_brand(subtitle=""):
+    subtitle_html = f'<p class="auth-brand-subtitle">{html.escape(subtitle)}</p>' if subtitle else ""
     st.markdown(
         f"""
         <div class="auth-brand">
@@ -2400,7 +2401,11 @@ def _render_auth_brand(subtitle="Grupo S&S"):
                  srcset="app/static/login-mascote-640.webp 640w, app/static/login-mascote-960.webp 960w"
                  sizes="450px" width="640" height="360" alt="" decoding="async">
           </picture>
-          <div><h1>Painel de Monitoramento</h1><p>{html.escape(subtitle)}</p></div>
+          <div class="auth-brand-copy">
+            <p class="auth-brand-name">Grupo S&amp;S</p>
+            <h1>Painel de <span>Monitoramento</span></h1>
+            {subtitle_html}
+          </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -2617,10 +2622,7 @@ def _render_login_gate():
                 # fazemos o envio no navegador do solicitante, sem expor Secrets.
                 if _monitor_formspree_endpoint():
                     st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
-                    st.caption("Cadastre seu e-mail e escolha uma senha. O acesso será liberado somente depois da aprovação do administrador.")
                     _monitor_render_formspree_browser_form()
-                    st.caption("A senha é processada pelo Supabase Auth e nunca é enviada ao Formspree ou por e-mail.")
-                    st.caption("O pré-cadastro fica bloqueado até a aprovação. O administrador enviará o retorno por e-mail.")
                     st.stop()
                 st.markdown('<div class="auth-reset-title">Solicitar acesso</div>', unsafe_allow_html=True)
                 st.caption("Preencha os dados. O pedido será enviado automaticamente ao administrador, que fará o cadastro após analisar a solicitação.")
@@ -5364,14 +5366,9 @@ def _monitor_render_formspree_browser_form():
     Uma conta Supabase Auth bloqueada e com e-mail NÃO confirmado é criada.
     Depois, o administrador valida a titularidade e aprova a conta.
     """
-    st.caption("Informe seus dados e escolha uma senha. O sistema registra o pré-cadastro, "
-               "mas o acesso aos painéis depende de aprovação administrativa.")
     finished = st.session_state.get("_monitor_registration_finished_v3365")
     if isinstance(finished, dict):
-        st.success("Pré-cadastro registrado com sucesso! Sua conta está aguardando aprovação. "
-                   "Você receberá um retorno no e-mail informado após a análise administrativa.")
-        st.caption("A senha escolhida fica protegida no Supabase Auth; ela não é enviada por e-mail "
-                   "nem compartilhada com o Formspree. A área solicitada não concede acesso automático.")
+        st.success("Pré-cadastro registrado. Aguarde a análise do administrador.")
         notification = st.session_state.pop("_monitor_registration_notification_v3365", None)
         if notification:
             _monitor_render_formspree_registration_notice(notification)
@@ -5395,11 +5392,11 @@ def _monitor_render_formspree_browser_form():
                                   autocomplete="new-password")
         motivo = st.text_area("Setor / motivo da solicitação (opcional)", max_chars=500,
                               height=75, placeholder="Ex.: setor ou necessidade de acesso")
+        st.caption("O Formspree encaminha seu nome, e-mail, área e motivo ao administrador. "
+                   "Sua senha é processada pelo Supabase Auth.")
         concordo = st.checkbox("Estou ciente de que meu cadastro depende de aprovação.")
         enviar = st.form_submit_button("Solicitar cadastro", type="primary", use_container_width=True)
     if not enviar:
-        st.caption("A senha nunca é enviada ao Formspree. Ele recebe somente "
-                   "nome, e-mail e motivo da solicitação.")
         return
     name = " ".join(str(nome).split())
     mail = str(email).strip().lower()
