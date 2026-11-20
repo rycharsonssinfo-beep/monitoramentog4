@@ -35,6 +35,21 @@ GROUPS = {
     ),
 }
 
+SECTION_ICONS = {
+    "panels": "layers", "profiles": "group", "stability": "monitor_heart", "visual": "desktop_windows",
+    "ticker": "sell", "updates": "sync", "agenda": "event", "comunicados": "campaign",
+    "integration": "hub", "sim_alert": "notifications", "access": "manage_accounts",
+    "backup": "backup", "diagnostics": "monitoring", "releases": "download", "news": "info",
+}
+GROUP_ICONS = {
+    "Monitoramento": "desktop_windows", "Comunicação": "campaign",
+    "Integrações e alertas": "hub", "Administração": "admin_panel_settings",
+}
+
+
+def _icon(name):
+    return f'<span class="cfg-material-icon" aria-hidden="true">{html.escape(name)}</span>'
+
 
 def _select_section(key):
     st.query_params["sec"] = key
@@ -63,12 +78,13 @@ def _focus_section(section):
 
 
 def _render_nav(groups, sections, section):
-    query = st.text_input("Buscar configuração", placeholder="Ex.: recarregar painel", key="cfg_workspace_search")
+    query = st.text_input(":material/search: Buscar configuração", placeholder="Ex.: recarregar painel",
+                          key="cfg_workspace_search")
     if query.strip():
         matches = [(key, title) for group, items in groups.items() for key, title, terms in items
                    if matches_search(query, f"{group} {title} {terms}")]
         for key, title in matches:
-            st.button(title, key=f"cfg_result_{key}", use_container_width=True,
+            st.button(title, key=f"cfg_result_{key}", icon=f":material/{SECTION_ICONS[key]}:", use_container_width=True,
                       type="primary" if key == section else "secondary", on_click=_select_section, args=(key,))
         if not matches:
             st.info("Nenhuma configuração encontrada.")
@@ -78,9 +94,10 @@ def _render_nav(groups, sections, section):
         for group, items in groups.items():
             group_key = items[0][0]
             with st.container(key=f"cfg_nav_group_{group_key}"):
-                st.html(f'<div class="cfg-nav-group" role="heading" aria-level="3">{html.escape(group)}</div>')
+                st.html(f'<div class="cfg-nav-group" role="heading" aria-level="3">'
+                        f'{_icon(GROUP_ICONS[group])}<span>{html.escape(group)}</span></div>')
                 for key, title, _ in items:
-                    st.button(title, key=f"cfg_link_{key}", use_container_width=True,
+                    st.button(title, key=f"cfg_link_{key}", icon=f":material/{SECTION_ICONS[key]}:", use_container_width=True,
                               type="primary" if key == section else "secondary", on_click=_select_section, args=(key,))
     with st.container(key="cfg_workspace_mobile_nav"):
         mobile_key = f"cfg_mobile_{section}"
@@ -103,24 +120,25 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
     css = (Path(__file__).parent / "scripts" / "central_config.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
     with st.container(key="cfg_workspace"):
-        st.markdown(
+        st.html(
             '<div class="cfg-workspace-header"><img src="app/static/grupo-ss-oficial.png" '
-            'alt="Grupo S&S" width="182"><h1>Configurações</h1></div>',
-            unsafe_allow_html=True,
+            'alt="Grupo S&S" width="225" height="58">'
+            f'<div class="cfg-header-title"><span class="cfg-title-tile">{_icon("settings")}</span>'
+            '<h1>Configurações</h1></div></div>',
         )
         with st.container(key="cfg_workspace_profile"):
             profile_col, summary_col, launch_col = st.columns([1.45, 1.2, 1.1], vertical_alignment="center")
             with profile_col:
                 ids = list(config["profiles"])
                 selected = st.selectbox(
-                    "Perfil em edição", ids, index=ids.index(profile_id),
+                    ":material/person: Perfil em edição", ids, index=ids.index(profile_id),
                     format_func=lambda pid: config["profiles"][pid]["nome"], key=f"cfg_workspace_profile_{profile_id}",
                 )
                 if selected != profile_id:
                     st.session_state.pop("cfg_pending_restore", None)
                     st.query_params["perfil"] = selected
                     st.rerun()
-            with summary_col:
+            with summary_col, st.container(key="cfg_workspace_summary"):
                 summary = st.empty()
                 save_status = st.empty()
             with launch_col, st.container(key="cfg_workspace_launch"):
@@ -133,18 +151,23 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
         with menu_col, st.container(key="cfg_workspace_nav"):
             _render_nav(groups, sections, section)
         with content_col, st.container(key="cfg_workspace_content"):
-            st.header(sections[section], anchor=False)
+            scope = ""
             if section in {"panels", "stability", "visual"}:
-                st.caption(f"Perfil: {profile['nome']}")
+                scope = f"Perfil: {profile['nome']}"
             elif section in {"ticker", "updates", "agenda", "integration", "sim_alert", "comunicados", "access"}:
-                st.caption("Configuração global")
+                scope = "Configuração global"
+            scope_html = f'<p class="cfg-section-scope">{html.escape(scope)}</p>' if scope else ""
+            st.html(f'<div class="cfg-section-heading"><span class="cfg-title-tile">{_icon(SECTION_ICONS[section])}</span>'
+                    f'<div><h2>{html.escape(sections[section])}</h2>{scope_html}</div></div>')
             render_section(section)
         _focus_section(section)
 
         if launch:
             start()
         default_label = " · Perfil padrão" if profile_id == config.get("default_profile_id") else ""
-        summary.markdown(f"**{len(active_panels(profile))} de {len(profile['paineis'])} painéis ativos**{default_label}")
+        summary.html(f'<div class="cfg-profile-count">{_icon("layers")}<span>'
+                     f'<strong>{len(active_panels(profile))} de {len(profile["paineis"])} painéis ativos</strong>'
+                     f'{default_label}</span></div>')
         error = st.session_state.get("ultimo_erro_persistencia")
         saved_at = st.session_state.get("ultima_gravacao")
         if st.session_state.get("config_conflito"):
