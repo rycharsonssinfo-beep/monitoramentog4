@@ -2421,17 +2421,29 @@ def _auth_login_css():
           color:#15314D!important;background:#FFF!important;border-color:#CBD8E7!important;color-scheme:light!important}
         div[data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
         div[data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within{
-          outline:2px solid rgba(13,119,218,.28)!important;outline-offset:1px!important}
+          outline:2px solid #0752A0!important;outline-offset:1px!important}
+        .stApp button:focus-visible,
+        .stApp a:focus-visible,
+        div[data-testid="stCheckbox"] label:focus-within,
+        div[data-testid="stSelectbox"] [data-baseweb="select"]:focus-within{
+          outline:3px solid #0752A0!important;outline-offset:3px!important}
         div[data-testid="stCheckbox"] label,div[data-testid="stRadio"] label,
         div[data-testid="stForm"] p,div[data-testid="stForm"] span{color:#244563!important}
         .stButton>button,.stFormSubmitButton>button{
           min-height:45px!important;border-radius:12px!important;font-weight:800!important}
-        .stFormSubmitButton>button{
+        .stFormSubmitButton>button[kind="primaryFormSubmit"],
+        .stFormSubmitButton>button[data-testid="stBaseButton-primaryFormSubmit"]{
           min-height:50px!important;border:0!important;color:#fff!important;
           background:linear-gradient(105deg,#096FBF,#0752A0)!important;
           box-shadow:0 9px 19px rgba(6,89,165,.22)!important}
-        .stFormSubmitButton>button:hover{background:linear-gradient(105deg,#087DCC,#0866BA)!important;
+        div[data-testid="stForm"] .stFormSubmitButton>button[kind="primaryFormSubmit"] :is(p,span),
+        div[data-testid="stForm"] .stFormSubmitButton>button[data-testid="stBaseButton-primaryFormSubmit"] :is(p,span){
+          color:#fff!important}
+        .stFormSubmitButton>button[kind="primaryFormSubmit"]:hover,
+        .stFormSubmitButton>button[data-testid="stBaseButton-primaryFormSubmit"]:hover{
+          background:linear-gradient(105deg,#087DCC,#0866BA)!important;
           box-shadow:0 12px 23px rgba(6,89,165,.26)!important;transform:translateY(-1px)}
+        .st-key-monitor_login_actions div[data-testid="stHorizontalBlock"]{gap:12px!important}
         .auth-security-note{margin-top:18px;padding:14px 12px;border-top:1px solid #E0EAF4;
           color:#5B7085;text-align:center;font-size:12px;line-height:1.55}
         .auth-security-note strong{color:#244563}
@@ -2590,7 +2602,10 @@ def _render_set_password(flow_type, token_hash):
     if not isinstance(current_flow, dict) or current_flow.get("token_hash") != token_hash:
         with st.container(border=True):
             st.subheader("Confirmar convite de acesso" if flow_type == "invite" else "Confirmar link de recuperação")
-            st.write("Clique abaixo para validar o convite e escolher sua senha. O link só será utilizado após sua confirmação.")
+            st.write(
+                "Confirme o convite para escolher sua senha." if flow_type == "invite"
+                else "Confirme o link para escolher uma nova senha."
+            )
             if st.button("Aceitar convite e definir senha" if flow_type == "invite" else "Validar link de recuperação", type="primary", use_container_width=True):
                 try:
                     data = _auth_verify_token_hash(token_hash, flow_type)
@@ -2626,7 +2641,7 @@ def _render_set_password(flow_type, token_hash):
         with st.form("auth_new_password_form", clear_on_submit=False):
             senha1 = st.text_input("Nova senha", type="password", autocomplete="new-password")
             senha2 = st.text_input("Confirmar nova senha", type="password", autocomplete="new-password")
-            salvar = st.form_submit_button("Salvar nova senha", use_container_width=True)
+            salvar = st.form_submit_button("Salvar nova senha", type="primary", use_container_width=True)
 
         if salvar:
             if len(senha1) < 8:
@@ -2635,7 +2650,8 @@ def _render_set_password(flow_type, token_hash):
                 st.error("As senhas informadas não são iguais.")
             else:
                 try:
-                    _auth_update_password(access_token, senha1)
+                    with st.spinner("Salvando nova senha…"):
+                        _auth_update_password(access_token, senha1)
                     session_data = flow_data.get("session")
                     if isinstance(session_data, dict):
                         _auth_store_session(session_data)
@@ -2647,6 +2663,47 @@ def _render_set_password(flow_type, token_hash):
                     st.error(_auth_error_pt(exc))
 
     st.stop()
+
+
+def _open_password_recovery():
+    st.session_state["_monitor_login_email_hint"] = st.session_state.get("_monitor_login_email", "")
+    st.session_state["_monitor_login_recovery_open"] = True
+
+
+def _render_password_recovery():
+    st.subheader("Recuperar senha")
+    st.caption("Informe o e-mail cadastrado para receber um link de redefinição.")
+    with st.form("monitor_auth_recovery"):
+        email = st.text_input(
+            "E-mail cadastrado", value=st.session_state.get("_monitor_login_email_hint", ""),
+            autocomplete="email", max_chars=254, key="_monitor_recovery_email",
+        )
+        feedback = st.empty()
+        send = st.form_submit_button("Enviar link de recuperação", type="primary", use_container_width=True)
+
+    if send:
+        email = email.strip()
+        if not _monitor_valid_email(email):
+            feedback.error("Informe um endereço de e-mail válido.")
+        else:
+            try:
+                with st.spinner("Solicitando link de recuperação…"):
+                    _auth_recover(email)
+            except RuntimeError as exc:
+                cause = exc.__cause__
+                if isinstance(cause, HTTPError) and cause.code == 429:
+                    feedback.warning("Muitas tentativas. Aguarde um momento antes de tentar novamente.")
+                elif isinstance(cause, HTTPError) and "user not found" in str(exc).lower():
+                    feedback.success("Se o e-mail estiver cadastrado, você receberá um link de recuperação. Verifique também o spam.")
+                else:
+                    feedback.error("Não foi possível solicitar o link agora. Tente novamente em instantes.")
+            else:
+                feedback.success("Se o e-mail estiver cadastrado, você receberá um link de recuperação. Verifique também o spam.")
+
+    if st.button("Voltar para Entrar", use_container_width=True):
+        st.session_state["_monitor_login_email_hint"] = email
+        st.session_state.pop("_monitor_login_recovery_open", None)
+        st.rerun()
 
 
 def _render_login_gate():
@@ -2724,33 +2781,48 @@ def _render_login_gate():
                 st.caption("O acesso ao painel depende de cadastro e autorização realizados pelo administrador.")
                 st.stop()
 
+            if st.session_state.get("_monitor_login_recovery_open"):
+                _render_password_recovery()
+                st.stop()
+
             st.markdown('<div class="auth-reset-title">Entrar</div>', unsafe_allow_html=True)
             st.caption("Use o e-mail e a senha cadastrados pelo administrador do painel.")
             if st.session_state.get("_monitor_auth_browser_unavailable_v342"):
                 st.warning("Este navegador não permite salvar a sessão. O acesso continuará funcionando, mas poderá exigir novo login após fechar a página.")
             with st.form("monitor_auth_login", clear_on_submit=False):
-                email = st.text_input("Usuário (e-mail)", placeholder="nome@empresa.com.br", autocomplete="username")
+                email = st.text_input(
+                    "Usuário (e-mail)", placeholder="nome@empresa.com.br", autocomplete="username",
+                    value=st.session_state.get("_monitor_login_email_hint", ""), key="_monitor_login_email",
+                )
                 password = st.text_input("Senha", type="password", autocomplete="current-password")
                 remember_device = st.checkbox(
                     "Permanecer conectado neste dispositivo",
                     value=True, key="monitor_remember_device_v342",
                     help="Mantém o acesso após atualizar ou reabrir este navegador. Não habilite em dispositivos compartilhados.",
                 )
-                submit = st.form_submit_button("Entrar no painel", use_container_width=True)
+                feedback = st.empty()
+                with st.container(key="monitor_login_actions"):
+                    enter_col, recovery_col = st.columns(2)
+                    with enter_col:
+                        submit = st.form_submit_button("Entrar no painel", type="primary", use_container_width=True)
+                    with recovery_col:
+                        st.form_submit_button(
+                            "Esqueci minha senha", on_click=_open_password_recovery, use_container_width=True,
+                        )
             if submit:
                 if not email.strip() or not password:
-                    st.error("Informe o e-mail e a senha.")
+                    feedback.error("Informe o e-mail e a senha.")
                 else:
                     try:
-                        data = _auth_login(email, password)
+                        with st.spinner("Entrando no painel…"):
+                            data = _auth_login(email, password)
                         st.session_state["_monitor_auth_remember_v342"] = bool(remember_device)
                         _auth_store_session(data)
                         st.rerun()
                     except Exception as exc:
-                        st.error(_auth_error_pt(exc))
+                        feedback.error(_auth_error_pt(exc))
             st.markdown(
-                '<div class="auth-security-note">Acesso restrito a contas aprovadas pela administração. '
-                '<strong>Problemas com a senha?</strong> Solicite a redefinição ao administrador.</div>',
+                '<div class="auth-security-note">Acesso restrito a contas aprovadas pela administração.</div>',
                 unsafe_allow_html=True,
             )
         st.stop()
