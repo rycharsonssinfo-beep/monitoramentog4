@@ -35,23 +35,37 @@
 .st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav p { margin: 0; }
 .st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav,
 .st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav > [data-testid="stVerticalBlock"] {
-  gap: 3px !important;
+  gap: 14px !important;
+}
+.st-key-cfg_workspace_desktop_nav [class*="st-key-cfg_nav_group_"],
+.st-key-cfg_workspace_desktop_nav [class*="st-key-cfg_nav_group_"] > [data-testid="stVerticalBlock"] {
+  gap: 4px !important;
 }
 .cfg-nav-group {
-  margin: 14px 0 3px;
-  padding-inline: 9px;
+  display: flex;
+  align-items: center;
+  min-block-size: 1.75rem;
+  padding: 4px 11px;
   color: #48637e;
   font-size: .78rem;
   font-weight: 750;
+  line-height: 1.35;
 }
 .st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav button {
   justify-content: flex-start !important;
   text-align: left;
-  min-height: 40px;
+  min-block-size: 42px;
   padding-inline: 11px;
   border-radius: 8px;
   border-color: transparent !important;
   background: transparent !important;
+}
+.st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav button [data-testid="stMarkdownContainer"] {
+  inline-size: 100%;
+  text-align: start;
+}
+.st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav button [data-testid="stMarkdownContainer"] p {
+  text-align: start;
 }
 .st-key-cfg_workspace .st-key-cfg_workspace_desktop_nav button:hover {
   background: #edf5fc !important;
