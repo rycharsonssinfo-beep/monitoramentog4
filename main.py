@@ -6677,15 +6677,17 @@ def render_central_comunicados():
         visual_tipo = "mascote" if visual_label.startswith("Mascote") else "megafone"
         st.markdown("**Anexos do comunicado (opcionais)**")
         imagens_upload = st.file_uploader(
-            "Adicionar imagens (até 3, PNG/JPG/WEBP, máximo 5 MB por imagem)",
+            "Adicionar imagens (até 3)",
             type=["png", "jpg", "jpeg", "webp"], accept_multiple_files=True,
             key="com_imgs_333",
+            max_upload_size=COM_MAX_IMAGE_BYTES // (1024 * 1024),
             help="As imagens serão mostradas junto do aviso, no lugar da arte padrão. Sem imagem, mantém megafone/mascote.",
         )
         audio_upload = st.file_uploader(
-            "Adicionar áudio (MP3, M4A, OGG ou WAV, máximo 6 MB)",
+            "Adicionar áudio",
             type=["mp3", "m4a", "ogg", "wav"], accept_multiple_files=False,
             key="com_audio_333",
+            max_upload_size=COM_MAX_AUDIO_BYTES // (1024 * 1024),
             help="O arquivo será reproduzido na TV quando o navegador permitir. Também haverá controles para iniciar manualmente.",
         )
         st.caption("Imagens e áudio usam armazenamento privado. A opção 'Alerta sonoro' continua controlando o toque inicial.")
