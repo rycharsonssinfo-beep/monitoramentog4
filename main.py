@@ -29,7 +29,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from config_workspace import render_workspace
-from config_settings import ConfigConflict, config_changes, matches_search, read_config, revision, write_config
+from config_settings import ConfigConflict, config_changes, read_config, revision, write_config, write_portal_cache
 
 # =========================================================
 # Painel de Monitoramento 3.10.0
@@ -3692,8 +3692,7 @@ DEFAULT_CONFIG = {
 
 
 def config_hash(data):
-    raw = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return revision(json.dumps(data, ensure_ascii=False).encode("utf-8"))
 
 
 def _load_sim_persistent_state():
@@ -4990,7 +4989,7 @@ def carregar_config():
                 st.session_state["config_corrompida_backup"] = corrupt.name
             except OSError:
                 pass
-        st.session_state["ultimo_erro_persistencia"] = "Falha ao ler a configura??o do servidor."
+        st.session_state["ultimo_erro_persistencia"] = "Falha ao ler a configuração do servidor."
     return copy.deepcopy(DEFAULT_CONFIG)
 
 
@@ -7041,12 +7040,28 @@ if "config_v23" not in st.session_state:
 config = normalizar_config(st.session_state.config_v23)
 st.session_state.config_v23 = config
 
+if st.session_state.get("config_conflito"):
+    try:
+        stored = read_config(CONFIG_PATH)
+        if stored is not None and config_hash(normalizar_config(json.loads(stored))) == config_hash(config):
+            st.session_state["config_disk_revision"] = revision(stored)
+            st.session_state["ultimo_hash_salvo"] = config_hash(config)
+            st.session_state.pop("config_conflito", None)
+            st.session_state.pop("ultimo_erro_persistencia", None)
+    except (OSError, UnicodeError, ValueError):
+        pass
+
 # Atualiza o cache autenticado do S&S Conecta quando o intervalo configurado vencer.
 # Não grava credenciais; apenas notícias/agenda já renderizadas pelo portal.
 if not st.session_state.get("ultimo_erro_persistencia"):
     _portal_sync_changed, _portal_sync_state = sincronizar_portal_ticker(config.setdefault("ticker", ticker_padrao()), force=False)
     if _portal_sync_changed and _com_is_admin():
-        salvar_config(config)
+        try:
+            write_portal_cache(CONFIG_PATH, st.session_state.get("config_disk_revision"),
+                               config["ticker"]["portal_cache"], _config_write_lock())
+            st.session_state.pop("cfg_portal_cache_error", None)
+        except (OSError, UnicodeError, ValueError):
+            st.session_state["cfg_portal_cache_error"] = True
 
 query_iniciado = str(st.query_params.get("iniciado", "false")).lower() == "true"
 if "iniciado" not in st.session_state:
@@ -7224,7 +7239,6 @@ if not st.session_state.iniciado:
             st.error("Existem painéis ativos com URL inválida. Corrija-os antes de iniciar.")
             return
         if not salvar_config(config, verify_revision=True):
-            st.error(st.session_state.get("ultimo_erro_persistencia", "Não foi possível salvar."))
             return
         st.session_state['_monitor_perf_start_t0_v352'] = time.perf_counter()
         st.session_state.iniciado = True
@@ -8216,6 +8230,8 @@ if not st.session_state.iniciado:
             st.write(f"Persistência local: `{CONFIG_PATH.name}` com gravação atômica + backup")
             if (render_ms := st.session_state.get("cfg_last_render_ms")) is not None:
                 st.caption(f"Última renderização da Central no servidor: {render_ms} ms.")
+            if st.session_state.get("cfg_portal_cache_error"):
+                st.warning("O cache do S&S Conecta foi atualizado na sessão, mas não pôde ser gravado.")
 
             st.markdown("**Rede do backend · IP de saída do servidor**")
             st.caption(

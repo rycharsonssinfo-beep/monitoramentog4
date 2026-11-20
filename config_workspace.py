@@ -76,7 +76,7 @@ def _render_nav(groups, sections, section):
 
     with st.container(key="cfg_workspace_desktop_nav"):
         for group, items in groups.items():
-            st.markdown(f"**{group}**")
+            st.markdown(f'<div class="cfg-nav-group">{html.escape(group)}</div>', unsafe_allow_html=True)
             for key, title, _ in items:
                 st.button(title, key=f"cfg_link_{key}", use_container_width=True,
                           type="primary" if key == section else "secondary", on_click=_select_section, args=(key,))
@@ -123,15 +123,9 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
                 save_status = st.empty()
             with launch_col, st.container(key="cfg_workspace_launch"):
                 launch = st.button("Iniciar monitoramento", icon=":material/play_arrow:",
-                                   type="primary", use_container_width=True)
-        if st.session_state.get("config_conflito"):
-            st.warning("Há uma revisão mais recente no servidor. Exporte esta edição antes de recarregar, se quiser preservá-la.")
-            recover_col, reload_col = st.columns(2)
-            with recover_col:
-                st.download_button("Exportar minha edição", json.dumps(config, ensure_ascii=False, indent=2),
-                                   file_name="monitoramento_config_edicao.json", mime="application/json")
-            with reload_col:
-                st.button("Descartar edição e carregar revisão do servidor", on_click=reload_revision)
+                                   type="primary", use_container_width=True,
+                                   disabled=bool(st.session_state.get("config_conflito")))
+        conflict_notice = st.empty()
 
         menu_col, content_col = st.columns([1, 3.15], gap="medium")
         with menu_col, st.container(key="cfg_workspace_nav"):
@@ -145,13 +139,28 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
             render_section(section)
         _focus_section(section)
 
+        if launch:
+            start()
         default_label = " · Perfil padrão" if profile_id == config.get("default_profile_id") else ""
         summary.markdown(f"**{len(active_panels(profile))} de {len(profile['paineis'])} painéis ativos**{default_label}")
         error = st.session_state.get("ultimo_erro_persistencia")
         saved_at = st.session_state.get("ultima_gravacao")
-        if error:
+        if st.session_state.get("config_conflito"):
+            with conflict_notice.container(), st.container(key="cfg_revision_actions"):
+                st.markdown(
+                    '<div class="cfg-revision-notice" role="alert"><strong>Há uma revisão mais recente.</strong> '
+                    'Exporte sua edição antes de carregar a revisão do servidor se quiser preservá-la.</div>',
+                    unsafe_allow_html=True,
+                )
+                recover_col, reload_col = st.columns(2)
+                with recover_col:
+                    st.download_button("Exportar minha edição", json.dumps(config, ensure_ascii=False, indent=2),
+                                       file_name="monitoramento_config_edicao.json", mime="application/json")
+                with reload_col:
+                    st.button("Descartar edição e carregar revisão do servidor", on_click=reload_revision)
+        elif error:
             save_status.error(error)
-            if not st.session_state.get("config_conflito") and st.button("Tentar salvar novamente"):
+            if st.button("Tentar salvar novamente"):
                 if save(config, force=True):
                     st.rerun()
         elif saved_at:
@@ -159,5 +168,3 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
                                  unsafe_allow_html=True)
         else:
             save_status.caption("Sem alterações nesta sessão")
-        if launch:
-            start()

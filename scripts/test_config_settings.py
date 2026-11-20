@@ -1,4 +1,5 @@
 import sys
+import json
 import tempfile
 import threading
 import unittest
@@ -7,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from config_settings import ConfigConflict, config_changes, matches_search, revision, write_config
+from config_settings import ConfigConflict, config_changes, matches_search, revision, write_config, write_portal_cache
 
 
 class SettingsTest(unittest.TestCase):
@@ -44,6 +45,26 @@ class SettingsTest(unittest.TestCase):
     def test_search_ignores_accents_and_term_order(self):
         self.assertTrue(matches_search("EXIBICAO paineis", "Painéis e ordem de exibição"))
         self.assertFalse(matches_search("exibicao backup", "Painéis e ordem de exibição"))
+
+    def test_portal_sync_keeps_manual_revision_and_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "config.json"
+            backup = Path(directory) / "backup.json"
+            lock = threading.Lock()
+            initial = {"name": "Suporte", "ticker": {"portal_enabled": True, "portal_cache": {"last_sync": "2026-11-19T14:00:00"}}}
+            raw = json.dumps(initial).encode()
+            base = write_config(config, backup, None, raw, lock)
+            fresh_cache = {"last_sync": "2026-11-19T14:05:00", "news": [{"titulo": "Aviso"}]}
+            write_portal_cache(config, base, fresh_cache, lock)
+            self.assertEqual(revision(config.read_bytes()), base)
+            self.assertFalse(backup.exists())
+            proposed = {**initial, "name": "Coordenação"}
+            write_config(config, backup, base, json.dumps(proposed).encode(), lock)
+            saved = json.loads(config.read_bytes())
+            self.assertEqual(saved["name"], "Coordenação")
+            self.assertEqual(saved["ticker"]["portal_cache"], fresh_cache)
+            write_portal_cache(config, base, {"last_sync": "2026-11-19T14:10:00"}, lock)
+            self.assertEqual(json.loads(config.read_bytes()), saved)
 
     def test_preview_detects_added_modified_and_removed_panels(self):
         def config(items):

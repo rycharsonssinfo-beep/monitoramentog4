@@ -1,6 +1,7 @@
 """Storage and navigation helpers for the monitor settings."""
 
 import hashlib
+import json
 import os
 import tempfile
 import unicodedata
@@ -19,7 +20,39 @@ def read_config(path):
 
 
 def revision(raw):
-    return hashlib.sha256(raw).hexdigest() if raw is not None else None
+    if raw is None:
+        return None
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict) and isinstance(data.get("ticker"), dict):
+            data["ticker"].pop("portal_cache", None)
+        raw = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    except (UnicodeError, ValueError):
+        # A backup can still replace a corrupt file if it hasn't changed since reading.
+        pass
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _with_latest_portal_cache(previous, proposed):
+    if previous is None:
+        return proposed
+    try:
+        current = json.loads(previous)
+        target = json.loads(proposed)
+        old_ticker, new_ticker = current.get("ticker"), target.get("ticker")
+        if not isinstance(old_ticker, dict) or not isinstance(new_ticker, dict):
+            return proposed
+        portal_keys = ("portal_enabled", "portal_agenda_days", "source_mode")
+        if any(old_ticker.get(key) != new_ticker.get(key) for key in portal_keys):
+            return proposed
+        old_cache = old_ticker.get("portal_cache") or {}
+        new_cache = new_ticker.get("portal_cache") or {}
+        if old_cache.get("last_sync", "") > new_cache.get("last_sync", ""):
+            new_ticker["portal_cache"] = old_cache
+            return json.dumps(target, ensure_ascii=False, indent=2).encode("utf-8")
+    except (AttributeError, UnicodeError, ValueError, TypeError):
+        pass
+    return proposed
 
 
 def atomic_write(path, raw):
@@ -37,14 +70,33 @@ def atomic_write(path, raw):
 def write_config(path, backup, expected_revision, raw, lock):
     with lock:
         previous = read_config(path)
-        if previous == raw:
-            return revision(raw)
-        if revision(previous) != expected_revision:
+        previous_revision, next_revision = revision(previous), revision(raw)
+        if previous_revision not in (expected_revision, next_revision):
             raise ConfigConflict
-        if previous is not None:
+        raw = _with_latest_portal_cache(previous, raw)
+        if previous == raw:
+            return next_revision
+        if previous is not None and previous_revision != next_revision:
             atomic_write(backup, previous)
         atomic_write(path, raw)
-        return revision(raw)
+        return next_revision
+
+
+def write_portal_cache(path, expected_revision, cache, lock):
+    """Update only the generated cache, without writing a new settings revision."""
+    with lock:
+        raw = read_config(path)
+        if raw is None or revision(raw) != expected_revision:
+            return
+        data = json.loads(raw)
+        ticker = data.get("ticker")
+        if not isinstance(ticker, dict):
+            return
+        updated = _with_latest_portal_cache(raw, json.dumps({
+            **data, "ticker": {**ticker, "portal_cache": cache},
+        }, ensure_ascii=False, indent=2).encode("utf-8"))
+        if updated != raw:
+            atomic_write(path, updated)
 
 
 def matches_search(query, text):
