@@ -91,7 +91,8 @@
   -webkit-text-fill-color: #16324a !important;
 }
 .st-key-cfg_workspace :is([data-baseweb="select"] > div, [data-baseweb="input"], [data-baseweb="textarea"],
-                         div:has(>input[data-testid="stTextInputField"])) {
+                         [data-testid="stNumberInputContainer"],
+                         div:has(> :is([data-testid="stTextInputField"], [data-testid="stTextAreaField"]))) {
   color: #16324a !important;
   background: #fff !important;
   border-color: #97afc4 !important;
@@ -118,9 +119,56 @@ body:has(.st-key-cfg_workspace) [data-baseweb="popover"] [role="option"]:is(:hov
 }
 .st-key-cfg_workspace button:disabled { opacity: .55; }
 .st-key-cfg_workspace button [data-testid="stMarkdownContainer"] p { white-space: normal; overflow: visible; }
+.st-key-cfg_workspace [data-testid="stCaptionContainer"],
+.st-key-cfg_workspace [data-testid="stCaptionContainer"] p {
+  color: #48637e !important;
+}
+.st-key-cfg_workspace [data-testid="stTooltipIcon"] button {
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  padding: 0;
+  color: #456886 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 50%;
+}
+.st-key-cfg_workspace [data-testid="stTooltipIcon"] button:hover { background: #e3f0fc !important; }
+.st-key-cfg_workspace [data-testid="stFileUploaderDropzone"] {
+  background: #f4f9fe !important;
+  border: 1px dashed #8baac5 !important;
+  border-radius: 12px;
+  color: #16324a !important;
+}
+.st-key-cfg_workspace [data-testid="stFileUploaderDropzoneInstructions"] :is(span, small, p),
+.st-key-cfg_workspace [data-testid="stFileUploaderFile"] :is(span, small, p) {
+  color: #48637e !important;
+}
+.st-key-cfg_workspace [data-testid="stFileUploaderDropzone"]:focus-within {
+  border-color: #07539e !important;
+}
+.st-key-cfg_workspace [data-testid="stCheckbox"] label > :is(div:first-child, span + div:not([data-testid])),
+.st-key-cfg_workspace [role="radiogroup"] label > div:first-child,
+.st-key-cfg_workspace [role="radiogroup"] label > span + div > div:first-child:not([data-testid]) {
+  background: #fff !important;
+  border-color: #6685a1 !important;
+}
+.st-key-cfg_workspace [data-testid="stCheckbox"] label:has(input:checked) > :is(div:first-child, span + div:not([data-testid])),
+.st-key-cfg_workspace [role="radiogroup"] label:has(input:checked) > div:first-child,
+.st-key-cfg_workspace [role="radiogroup"] label:has(input:checked) > span + div > div:first-child:not([data-testid]) {
+  background: #07539e !important;
+  border-color: #07539e !important;
+}
+.st-key-cfg_workspace [data-testid="stCheckbox"] label:has(input:checked) svg { color: #fff !important; }
+.st-key-cfg_workspace [role="radiogroup"] label:has(input:checked) > span + div > div:first-child > div {
+  background: #fff !important;
+}
 .st-key-cfg_workspace :is(button, a, summary, h2):focus-visible,
+.st-key-cfg_workspace :is([data-testid="stCheckbox"], [data-testid="stRadio"]) label:has(input:focus-visible),
 .st-key-cfg_workspace :is([data-baseweb="select"], [data-baseweb="input"],
-                         div:has(>input[data-testid="stTextInputField"])):focus-within {
+                         [data-testid="stNumberInputContainer"],
+                         div:has(> :is([data-testid="stTextInputField"], [data-testid="stTextAreaField"]))):focus-within {
   outline: 3px solid #07539e !important;
   outline-offset: 2px !important;
 }
