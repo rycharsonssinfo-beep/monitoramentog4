@@ -9928,22 +9928,45 @@ else:
  .portal-footer{flex-wrap:wrap}
 }
 
+            __PANEL_TOOLBAR_CSS__
         </style>
     </head>
     <body class="bar-top">
         <div id="control-shell">
-            <div id="toolbar">
-                <div class="toolbar-left"><span id="state-dot" class="state-dot"></span><span id="panel-name">Carregando...</span><span id="panel-order"></span><span id="robot-heartbeat-badge" class="waiting">● Robô: aguardando</span><span id="network-status" class="status-text">· Online</span></div>
-                <div class="toolbar-center"><div id="dots"></div><span id="countdown">--:--</span><span id="focus-status" class="hidden-item"></span><span id="runtime-status" class="status-text"></span></div>
+            <div id="toolbar" role="region" aria-label="Controles do monitor">
+                <div class="toolbar-left">
+                    <div class="toolbar-identity">
+                        <span id="panel-name">Carregando...</span>
+                        <div class="toolbar-meta">
+                            <span id="panel-order"></span>
+                            <span id="robot-heartbeat-badge" class="waiting" hidden></span>
+                            <span id="network-status" class="status-text" hidden></span>
+                        </div>
+                    </div>
+                    <span id="state-dot" class="state-dot" aria-hidden="true"></span>
+                </div>
+                <div class="toolbar-center">
+                    <div class="toolbar-rotation" role="group" aria-label="Rotação de painéis">
+                        <button class="btn toolbar-arrow" type="button" onclick="mudarTela(-1)" aria-label="Painel anterior" title="Painel anterior (←)">‹</button>
+                        <button class="btn" id="pause-btn" type="button" onclick="alternarPausa()" aria-label="Pausar rotação" title="Pausar/retomar (Espaço)">Ⅱ <span class="label">Pausar</span></button>
+                        <button class="btn toolbar-arrow" type="button" onclick="mudarTela(1)" aria-label="Próximo painel" title="Próximo painel (→)">›</button>
+                    </div>
+                    <div id="dots" role="group" aria-label="Ir diretamente para um painel"></div>
+                    <span id="countdown" title="Tempo restante neste painel">--:--</span>
+                    <span id="focus-status" class="hidden-item"></span>
+                </div>
                 <div class="toolbar-right">
-                    <button class="btn" onclick="mudarTela(-1)" title="Painel anterior (←)">←</button>
-                    <button class="btn" id="pause-btn" onclick="alternarPausa()" title="Pausar/retomar (Espaço)">Ⅱ <span class="label">Pausar</span></button>
-                    <button class="btn" onclick="mudarTela(1)" title="Próximo painel (→)">→</button>
-                    <button class="btn" id="reload-toggle" onclick="alternarRecarregamentoTemporario()" title="F5 automático deste painel; ON/OFF fica preservado neste navegador">↻ <span class="label">F5</span></button>
-                    <button class="btn" onclick="alternarTelaCheia()" title="Tela cheia (F)">⛶</button>
+                    <button class="btn toolbar-desktop-action" type="button" onclick="alternarTelaCheia()" aria-label="Tela cheia" title="Tela cheia (F)">⛶</button>
                     <div class="more-wrap">
-                        <button class="btn" id="more-btn" onclick="toggleMoreMenu(event)" title="Mais controles">⋮</button>
+                        <button class="btn" id="more-btn" type="button" onclick="toggleMoreMenu(event)" aria-label="Mais opções" aria-expanded="false" aria-controls="more-menu" title="Mais opções">⋮</button>
                         <div class="more-menu" id="more-menu">
+                            <div class="toolbar-menu-heading" id="jump-heading">Ir para painel</div>
+                            <div id="panel-jump" role="group" aria-labelledby="jump-heading"></div>
+                            <div class="toolbar-menu-heading">Controles</div>
+                            <p id="runtime-status" class="toolbar-runtime"></p>
+                            <button class="menu-item" id="reload-toggle" type="button" onclick="alternarRecarregamentoTemporario(); closeMoreMenu();">Configurar F5</button>
+                            <button class="menu-item toolbar-mobile-action" type="button" onclick="alternarTelaCheia(); closeMoreMenu();">⛶ Tela cheia</button>
+                            <button class="menu-item toolbar-mobile-action" type="button" onclick="irParaAjustes(); closeMoreMenu();">⚙ Configurações</button>
                             <button class="menu-item" onclick="recarregarAgora(); closeMoreMenu();" title="Atualizar o painel atual agora (R)">⟳ Atualizar agora</button>
                             <button class="menu-item" id="ticker-btn" onclick="alternarTickerTemporario(); closeMoreMenu();" title="Mostrar ou ocultar temporariamente a faixa de atualizações">▤ Ocultar faixa</button>
                             <button class="menu-item" id="com-audio-menu" onclick="habilitarSomComunicados();closeMoreMenu();" title="Liberar som dos comunicados neste navegador">♫ Habilitar som de comunicados</button>
@@ -9953,7 +9976,7 @@ else:
                             <button class="menu-item" onclick="toggleDiag(); closeMoreMenu();" title="Abrir diagnóstico">ⓘ Diagnóstico</button>
                         </div>
                     </div>
-                    <button class="btn settings-btn" id="settings-btn" onclick="irParaAjustes()" title="Voltar para os ajustes">⚙</button>
+                    <button class="btn settings-btn toolbar-desktop-action" id="settings-btn" type="button" onclick="irParaAjustes()" aria-label="Configurações" title="Voltar para os ajustes">⚙</button>
                     <span id="clock"></span>
                 </div>
             </div>
@@ -11691,6 +11714,7 @@ else:
             }
             function g4fRender(){
                 const row=g4fLastData;
+                renderToolbarCollection();
                 const r=row?.resumo||{};
                 const state=g4fState(row);
                 const kpis=[
@@ -15026,9 +15050,97 @@ function portalStart(host){
                 },msUntilPreload);
             }
 
-            function renderDots(){ dots.innerHTML=''; panels.forEach((p,i)=>{ const d=document.createElement('span'); d.className='dot'+(i===index?' active':''); d.title=p.nome; d.onclick=()=>{index=i;afterIndexChange('Indicador');}; dots.appendChild(d); }); }
-            function renderReloadButton(){ const p=panels[index]; if(p.tipo==='portais'){reloadToggle.classList.remove('active');reloadToggle.classList.add('off');reloadToggle.innerHTML='◉ <span class="label">PORTAIS LIVE</span>';reloadToggle.title='Consulta automática ao Supabase, sem F5';return;} if(p.tipo==='g4flex'){reloadToggle.classList.remove('active');reloadToggle.classList.add('off');reloadToggle.innerHTML='◉ <span class="label">G4Flex LIVE</span>';reloadToggle.title='Atualização dos dados a cada 3 segundos, sem F5';return;} if(isSimPanel(p)){ runtimeReloadOverrides[p.id]=false; saveReloadOverrides(); reloadToggle.classList.remove('active'); reloadToggle.classList.add('off'); reloadToggle.innerHTML='▣ <span class="label">F5 OFF</span>'; reloadToggle.title='Monitor SIM: o iframe é mantido aberto. Somente as atualizações internas do próprio Consulta TCE continuam ativas.'; return; } const on=effectiveReload(p), overridden=typeof runtimeReloadOverrides[p.id]==='boolean'; reloadToggle.classList.toggle('active',on); reloadToggle.classList.toggle('off',!on); reloadToggle.innerHTML=on?`↻ <span class="label">F5 ON${overridden?'*':''}</span>`:`▣ <span class="label">F5 OFF${overridden?'*':''}</span>`; reloadToggle.title='F5 deste painel. A escolha ON/OFF fica preservada neste navegador. * indica valor diferente da configuração salva.'; }
-            function updateHeader(){ const p=panels[index]; panelName.textContent=p.nome; panelOrder.textContent=`· ${index+1} de ${panels.length}`; renderDots(); renderReloadButton(); renderFocusButton(); if(p.iframe_check&&p.iframe_check.blocked)runtimeStatus.textContent='Iframe bloqueado'; localStorage.setItem(indexKey,p.id); }
+            function renderPanelNavigation(){
+                const jump = document.getElementById('panel-jump');
+                const focused = document.activeElement;
+                const group = [dots,jump].find(el=>el.contains(focused));
+                const currentFocus = group ? focused.dataset.panelIndex : null;
+                if(dots.children.length!==panels.length || jump.children.length!==panels.length){
+                    dots.replaceChildren();
+                    jump.replaceChildren();
+                    panels.forEach((panel,i)=>{
+                        [dots,jump].forEach(host=>{
+                            const button=document.createElement('button');
+                            button.type='button';
+                            button.dataset.panelIndex=String(i);
+                            button.className=host===dots?'dot':'menu-item';
+                            button.title=panel.nome;
+                            button.setAttribute('aria-label',`Ir para painel ${i+1}: ${panel.nome}`);
+                            if(host===jump)button.textContent=`${i+1}. ${panel.nome}`;
+                            button.onclick=()=>{
+                                if(host===jump){closeMoreMenu();moreBtn.focus();}
+                                index=i;
+                                afterIndexChange('Acesso direto');
+                            };
+                            host.appendChild(button);
+                        });
+                    });
+                    if(group && currentFocus!==null)group.children[Number(currentFocus)]?.focus();
+                }
+                [dots,jump].forEach(host=>Array.from(host.children).forEach((button,i)=>{
+                    button.classList.toggle('active',i===index);
+                    if(i===index)button.setAttribute('aria-current','true');
+                    else button.removeAttribute('aria-current');
+                }));
+            }
+
+            function renderReloadButton(){
+                const p=panels[index];
+                if(['g4flex','portais'].includes(p.tipo)){
+                    reloadToggle.hidden=true;
+                    return;
+                }
+                reloadToggle.hidden=false;
+                const sim=isSimPanel(p);
+                if(sim && runtimeReloadOverrides[p.id]!==false){
+                    runtimeReloadOverrides[p.id]=false;
+                    saveReloadOverrides();
+                }
+                const on=!sim && effectiveReload(p);
+                reloadToggle.textContent=`↻ Recarregamento automático: ${on?'ligado':'desligado'}`;
+                reloadToggle.setAttribute('aria-pressed',String(on));
+                reloadToggle.title=sim?'O Monitor SIM mantém a sessão do iframe aberta.':'O ajuste deste painel fica salvo neste navegador.';
+            }
+
+            function toolbarAge(seconds){
+                if(!Number.isFinite(seconds))return '';
+                const minutes=Math.floor(seconds/60);
+                if(minutes<1)return `${seconds} s`;
+                if(minutes<60)return `${minutes} min`;
+                return `${Math.floor(minutes/60)} h ${minutes%60} min`;
+            }
+
+            function renderToolbarCollection(){
+                const panel=panels[index];
+                const g4=panel?.tipo==='g4flex';
+                const sim=panel && isSimPanel(panel);
+                robotHeartbeatBadge.hidden=!settings.showStatus || (!g4 && !sim);
+                if(robotHeartbeatBadge.hidden)return;
+                const status=robotHeartbeatStatus;
+                const row=g4?g4fLastData:status;
+                const seconds=g4?g4fAgeSec(row):row?Math.round(row.age_ms/1000):Infinity;
+                const state=g4?g4fState(row):row?.online?'online':'offline';
+                const stamp=g4?(row?.recebido_em||row?.capturado_em):row?.last_heartbeat;
+                const age=toolbarAge(seconds);
+                robotHeartbeatBadge.className=!row?'waiting':state==='online'?'online':age?'stale':'offline';
+                robotHeartbeatBadge.textContent=g4
+                    ? (!row?'Aguardando coleta':state==='online'?'Coleta atualizada':age?`Coleta atrasada · ${age}`:'Coleta indisponível')
+                    : (!row?'Aguardando robô SIM':state==='online'?'Robô SIM conectado':age?`Robô SIM sem sinal · ${age}`:'Robô SIM indisponível');
+                robotHeartbeatBadge.title=stamp?`${g4?'Última coleta':'Último sinal'}: ${g4fTime(stamp)}`:robotHeartbeatBadge.textContent;
+            }
+
+            function updateHeader(){
+                const p=panels[index];
+                panelName.textContent=p.nome;
+                panelName.title=p.nome;
+                panelOrder.textContent=`${index+1} de ${panels.length} painéis`;
+                renderPanelNavigation();
+                renderReloadButton();
+                renderToolbarCollection();
+                renderFocusButton();
+                runtimeStatus.textContent=p.iframe_check?.blocked?'Iframe bloqueado':'';
+                localStorage.setItem(indexKey,p.id);
+            }
 
             function stopTimers(){ clearInterval(timer); clearInterval(intervalReloadTimer); clearTimeout(preloadTimer); timer=null; intervalReloadTimer=null; preloadTimer=null; }
             function setupIntervalReload(){ clearInterval(intervalReloadTimer); intervalReloadTimer=null; const p=panels[index]; if(p.iframe_check&&p.iframe_check.blocked){ runtimeStatus.textContent='Iframe bloqueado'; return; } if(!effectiveReload(p)||p.reload_strategy!=='interval')return; const every=Math.max(5,parseInt(p.reload_interval||60,10)); intervalReloadTimer=setInterval(()=>{ if(!paused && panels[index].id===p.id && effectiveReload(p)){ const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,false); } },every*1000); runtimeStatus.textContent=`F5 ${every}s`; }
@@ -15061,16 +15173,16 @@ function portalStart(host){
             function alternarPausa(){
                 paused=!paused;
                 try{ localStorage.setItem(pauseStateKey, paused ? '1' : '0'); }catch(e){}
-                if(paused){ pauseRemainingMs=Math.max(1000,targetEndMs-Date.now()); stopTimers(); pauseBtn.classList.add('pause'); pauseBtn.innerHTML='▶ <span class="label">Retomar</span>'; countdown.textContent='PAUSA'; progress.style.transition='none'; runtimeStatus.textContent='Pausado'; log('Rotação pausada'); }
-                else { pauseBtn.classList.remove('pause'); pauseBtn.innerHTML='Ⅱ <span class="label">Pausar</span>'; runtimeStatus.textContent=''; startTimerWith(pauseRemainingMs||Math.max(5,panels[index].tempo)*1000); log('Rotação retomada'); }
+                if(paused){ pauseRemainingMs=Math.max(1000,targetEndMs-Date.now()); stopTimers(); pauseBtn.classList.add('pause'); pauseBtn.setAttribute('aria-label','Retomar rotação'); pauseBtn.innerHTML='▶ <span class="label">Retomar rotação</span>'; countdown.hidden=true; progress.style.transition='none'; runtimeStatus.textContent=''; log('Rotação pausada'); }
+                else { pauseBtn.classList.remove('pause'); pauseBtn.setAttribute('aria-label','Pausar rotação'); countdown.hidden=false; pauseBtn.innerHTML='Ⅱ <span class="label">Pausar</span>'; runtimeStatus.textContent=''; startTimerWith(pauseRemainingMs||Math.max(5,panels[index].tempo)*1000); log('Rotação retomada'); }
             }
 
             function alternarRecarregamentoTemporario(){ const p=panels[index]; if(p.tipo==='portais'){portalPoll();return;} if(p.tipo==='g4flex'){g4fPoll();return;} if(isSimPanel(p)){ runtimeReloadOverrides[p.id]=false; saveReloadOverrides(); renderReloadButton(); setupIntervalReload(); runtimeStatus.textContent='SIM: F5 externo bloqueado'; log(`F5 externo mantido OFF: ${p.nome}`); return; } const current=effectiveReload(p); runtimeReloadOverrides[p.id]=!current; saveReloadOverrides(); renderReloadButton(); setupIntervalReload(); log(`F5 persistente ${!current?'ON':'OFF'}: ${p.nome}`); }
             function recarregarAgora(){ const p=panels[index]; if(p.tipo==='portais'){portalPoll();return;} if(p.tipo==='g4flex'){g4fPoll();return;} const item=pool.get(p.id)||createPanelFrame(index,'active'); reloadItem(item,true); }
             function alternarTelaCheia(){ if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{});}else if(document.exitFullscreen){document.exitFullscreen().catch(()=>{});} }
 
-            function closeMoreMenu(){ if(moreMenu)moreMenu.classList.remove('open'); }
-            function toggleMoreMenu(event){ if(event)event.stopPropagation(); if(moreMenu)moreMenu.classList.toggle('open'); showControls(); }
+            function closeMoreMenu(){ if(moreMenu)moreMenu.classList.remove('open'); moreBtn.setAttribute('aria-expanded','false'); }
+            function toggleMoreMenu(event){ if(event)event.stopPropagation(); if(moreMenu)moreBtn.setAttribute('aria-expanded', String(moreMenu.classList.toggle('open'))); showControls(); }
             function scheduleControlsHide(delayMs=kioskMode?2200:4300){
                 clearTimeout(hideTimer);
                 if(settings.autoHide||kioskMode)hideTimer=setTimeout(hideControls,delayMs);
@@ -15089,7 +15201,10 @@ function portalStart(host){
             function hideControls(){
                 if(!(settings.autoHide||kioskMode))return;
                 // Não ocultar controles enquanto o menu de opções está aberto.
-                if(moreMenu&&moreMenu.classList.contains('open')){scheduleControlsHide();return;}
+                if(moreMenu.classList.contains('open') || controlShell.querySelector(':focus-visible')){
+                    scheduleControlsHide();
+                    return;
+                }
                 controlShell.classList.add('hidden');
                 document.body.classList.add('controls-hidden');
                 if(kioskMode)document.body.style.cursor='none';
@@ -15129,7 +15244,7 @@ function portalStart(host){
             }
 
             function updateClock(){ const d=new Date(); clock.textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
-            function updateNetwork(){ const online=navigator.onLine; networkStatus.textContent=online?'· Online':'· Sem conexão'; setState(online?'online':'offline'); document.getElementById('d-network').textContent=online?'Online':'Offline'; if(online)log('Conexão restabelecida'); }
+            function updateNetwork(){ const online=navigator.onLine; networkStatus.hidden=online; networkStatus.textContent=online?'':'Sem conexão'; setState(online?'online':'offline'); document.getElementById('d-network').textContent=online?'Online':'Offline'; if(online)log('Conexão restabelecida'); }
             window.addEventListener('online',updateNetwork); window.addEventListener('offline',updateNetwork);
 
             function updateDiag(){
@@ -15180,12 +15295,20 @@ function portalStart(host){
             controlShell.addEventListener('mouseenter',()=>{
                 if(!controlShell.classList.contains('hidden'))clearTimeout(hideTimer);
             });
+            controlShell.addEventListener('focusin',event=>{
+                if(event.target.matches(':focus-visible'))showControls();
+            });
             controlShell.addEventListener('mouseleave',()=>{
                 if(!controlShell.classList.contains('hidden'))scheduleControlsHide(1100);
             });
             document.addEventListener('click',(e)=>{ if(moreMenu && !moreMenu.contains(e.target) && e.target!==moreBtn)closeMoreMenu(); });
             if(revealStrip){ revealStrip.addEventListener('mouseenter',showControls); revealStrip.addEventListener('touchstart',showControls,{passive:true}); }
-            document.addEventListener('keydown',(e)=>{ if(e.key==='ArrowLeft')mudarTela(-1);else if(e.key==='ArrowRight')mudarTela(1);else if(e.code==='Space'){e.preventDefault();alternarPausa();}else if(e.key.toLowerCase()==='f')alternarTelaCheia();else if(e.key.toLowerCase()==='r')recarregarAgora();else if(e.key.toLowerCase()==='k')alternarModoTV(); });
+            document.addEventListener('keydown',(e)=>{
+                if(e.key==='Escape' && moreMenu.classList.contains('open')){closeMoreMenu();moreBtn.focus();return;}
+                if(e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey ||
+                   e.target.closest?.('input,textarea,select,[contenteditable]') ||
+                   (e.code==='Space' && e.target.closest?.('button')))return;
+                if(e.key==='ArrowLeft')mudarTela(-1);else if(e.key==='ArrowRight')mudarTela(1);else if(e.code==='Space'){e.preventDefault();alternarPausa();}else if(e.key.toLowerCase()==='f')alternarTelaCheia();else if(e.key.toLowerCase()==='r')recarregarAgora();else if(e.key.toLowerCase()==='k')alternarModoTV(); });
 
             if(settings.generalReloadMs>0){ setTimeout(()=>{ pendingGeneralReload=true; restartNotice.style.display='block'; restartNotice.textContent='Reinício programado: a aplicação será reiniciada ao fim do painel atual.'; runtimeStatus.textContent='Reinício pendente'; log('Reinício geral aguardando o fim do painel atual'); },settings.generalReloadMs); }
 
@@ -15223,11 +15346,8 @@ function portalStart(host){
 
             function renderRobotHeartbeat(status){
                 robotHeartbeatStatus=status;
+                renderToolbarCollection();
                 if(!status){
-                    if(robotHeartbeatBadge){
-                        robotHeartbeatBadge.className='waiting';
-                        robotHeartbeatBadge.textContent='● Robô: aguardando';
-                    }
                     setSimPollStatus('aguardando','robô · heartbeat ainda não publicado');
                     return;
                 }
@@ -15239,20 +15359,9 @@ function portalStart(host){
 
                 if(status.online){
                     const detail=`robô online · ${ageSec}s · v${version||'?'}${queue?` · fila ${queue}`:''}${tce?` · TCE ${tce}`:''}`;
-                    if(robotHeartbeatBadge){
-                        robotHeartbeatBadge.className='online';
-                        robotHeartbeatBadge.textContent=`● Robô online · ${ageSec}s${queue?` · fila ${queue}`:''}`;
-                        robotHeartbeatBadge.title=`Versão ${version||'?'}${tce?` · TCE: ${tce}`:''}`;
-                    }
                     setSimPollStatus('ativo',detail);
                 }else{
                     const detail=`ROBÔ OFFLINE · último heartbeat há ${Number.isFinite(ageSec)?ageSec:'?'}s`;
-                    if(robotHeartbeatBadge){
-                        robotHeartbeatBadge.className='offline';
-                        const tempo=Number.isFinite(ageSec)?(ageSec<120?`${ageSec}s`:`${Math.round(ageSec/60)} min`):'?';
-                        robotHeartbeatBadge.textContent=`● Robô offline · ${tempo}`;
-                        robotHeartbeatBadge.title=String(status.last_error||'Sem heartbeat recente');
-                    }
                     setSimPollStatus('erro',detail);
                 }
 
@@ -15388,6 +15497,8 @@ function portalStart(host){
     else:
         _retorno_uri = ""
     html_painel = html_painel.replace("__MASCOTE_RETORNO_DATA_URI__", _retorno_uri)
+    toolbar_css = (Path(__file__).parent / "scripts" / "barra_paineis.css").read_text(encoding="utf-8")
+    html_painel = html_painel.replace("__PANEL_TOOLBAR_CSS__", toolbar_css)
     html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)
     html_painel = html_painel.replace("__MEGAFONE_SVG__", COM_MEGAFONE_SVG)
     html_painel = html_painel.replace("__MASCOTE_COMUNICADO_DATA_URI__", COM_MASCOTE_AVISO_DATA_URI)

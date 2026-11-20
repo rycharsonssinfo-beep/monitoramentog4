@@ -1,0 +1,82 @@
+/* The stage and control shell use the same height variables. */
+:root { --toolbar-h: 46px; --progress-h: 2px; }
+#toolbar {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: clamp(6px, 1.2vw, 20px);
+  padding-inline: clamp(8px, 1vw, 18px);
+  background: linear-gradient(108deg, #102e4d, #071b35 70%, #092641);
+  box-shadow: 0 2px 7px #071b3530;
+}
+#toolbar [hidden] { display: none !important; }
+.toolbar-identity { display: grid; gap: 2px; min-width: 0; }
+.toolbar-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#panel-name { display: block; font-size: 1.13em; line-height: 1.15; }
+#panel-order { line-height: 1; color: #b9d9ee; font-size: .87em; }
+#toolbar #state-dot:not(.offline):not(.recovering) { display: none; }
+#toolbar #robot-heartbeat-badge {
+  display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  padding: 2px 6px; line-height: 1; font-size: .87em;
+}
+#toolbar #robot-heartbeat-badge.stale,
+#toolbar #robot-heartbeat-badge.waiting { background: #fff0c5; border-color: #ffe0a0; color: #654009; }
+#toolbar #robot-heartbeat-badge.online { background: #d9f5e8; border-color: #b9ead6; color: #155a44; }
+#toolbar #network-status { color: #ffced0; }
+#toolbar .toolbar-center { display: flex; gap: 9px; }
+.toolbar-rotation { display: flex; align-items: center; gap: 4px; }
+#toolbar .btn { min-width: 32px; height: 32px; border-radius: 8px; }
+#toolbar .toolbar-arrow { padding: 0; font-size: 23px; font-weight: 500; line-height: 1; }
+#toolbar #pause-btn { min-width: 98px; }
+#toolbar #pause-btn.pause { background: #6dddfa; color: #082439; border-color: #9aedff; }
+#toolbar #pause-btn.pause:hover { background: #a9ebfc; }
+#toolbar #dots { gap: 2px; max-inline-size: 126px; overflow-x: auto; scrollbar-width: thin; }
+#toolbar .dot {
+  position: relative; width: 20px; height: 26px; border: 0; padding: 0;
+  background: transparent; border-radius: 5px; opacity: 1; flex: none;
+}
+#toolbar .dot::before {
+  content: ""; position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%);
+  width: 8px; height: 8px; border: 1px solid #9dbcd3; border-radius: 50%;
+}
+#toolbar .dot.active::before { background: #7be4fa; border-color: #7be4fa; }
+#toolbar .dot:hover::before { border-color: #fff; }
+#toolbar :is(.btn,.dot,.menu-item):focus-visible { outline: 2px solid #69d8fa; outline-offset: 1px; }
+#toolbar #countdown { min-width: 0; padding-inline: 5px; background: none; border: 0; color: #cfe6f5; }
+#toolbar .toolbar-runtime { color: #4b6b85; margin: 0; padding: 4px 10px; }
+#toolbar .toolbar-runtime:empty { display: none; }
+#clock { min-width: 0; margin-inline-start: 6px; font-size: 1.18em; font-variant-numeric: tabular-nums; }
+#progress-container { background: #173d59; }
+#progress { background: linear-gradient(90deg, #329ac1, #6ce6ff); }
+#toolbar .more-menu {
+  width: min(300px, calc(100vw - 20px));
+  max-height: calc(100dvh - var(--toolbar-h) - var(--ticker-h) - 18px);
+  overflow-y: auto; border-radius: 13px;
+}
+.toolbar-menu-heading { padding: 7px 10px 4px; color: #4b6b85; font-size: 11px; font-weight: 800; }
+#panel-jump { margin-block-end: 3px; padding-block-end: 4px; border-bottom: 1px solid #dce8f2; }
+#panel-jump .menu-item { overflow-wrap: anywhere; }
+#panel-jump .menu-item.active { color: #0a4b7e; background: #e5f5fd; }
+#toolbar .toolbar-mobile-action { display: none; }
+body.kiosk #toolbar #panel-name { font-size: 1.25em; }
+body.kiosk #toolbar #clock { font-size: 1.3em; }
+@media (min-width: 761px) {
+  #toolbar #pause-btn .label { display: inline; }
+}
+@media (max-width: 980px) {
+  #toolbar { grid-template-columns: minmax(0, 1fr) auto auto; }
+  #toolbar #network-status { display: inline; }
+}
+@media (max-width: 760px) {
+  #toolbar .toolbar-desktop-action, #toolbar #countdown, #toolbar #dots { display: none; }
+  #toolbar .toolbar-mobile-action { display: flex; }
+  #toolbar #pause-btn { min-width: 34px; }
+  #toolbar .toolbar-meta { gap: 5px; }
+  #toolbar #clock { font-size: 1em; margin: 0; }
+}
+@media (max-width: 420px) {
+  #toolbar #panel-order { display: none; }
+  #toolbar #clock { display: none; }
+  #toolbar .btn { min-width: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #control-shell { transition: none; }
+}
