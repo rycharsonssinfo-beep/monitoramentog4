@@ -76,7 +76,7 @@ def _render_nav(groups, sections, section):
 
     with st.container(key="cfg_workspace_desktop_nav"):
         for group, items in groups.items():
-            st.markdown(f"**{group}**")
+            st.markdown(f'<div class="cfg-nav-group">{html.escape(group)}</div>', unsafe_allow_html=True)
             for key, title, _ in items:
                 st.button(title, key=f"cfg_link_{key}", use_container_width=True,
                           type="primary" if key == section else "secondary", on_click=_select_section, args=(key,))
@@ -125,7 +125,7 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
                 launch = st.button("Iniciar monitoramento", icon=":material/play_arrow:",
                                    type="primary", use_container_width=True,
                                    disabled=bool(st.session_state.get("config_conflito")))
-        conflict_notice = st.container()
+        conflict_notice = st.empty()
 
         menu_col, content_col = st.columns([1, 3.15], gap="medium")
         with menu_col, st.container(key="cfg_workspace_nav"):
@@ -146,7 +146,7 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
         error = st.session_state.get("ultimo_erro_persistencia")
         saved_at = st.session_state.get("ultima_gravacao")
         if st.session_state.get("config_conflito"):
-            with conflict_notice:
+            with conflict_notice.container(), st.container(key="cfg_revision_actions"):
                 st.markdown(
                     '<div class="cfg-revision-notice" role="alert"><strong>Há uma revisão mais recente.</strong> '
                     'Exporte sua edição antes de carregar a revisão do servidor se quiser preservá-la.</div>',
