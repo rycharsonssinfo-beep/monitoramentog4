@@ -1,0 +1,126 @@
+.stApp {
+  color-scheme: light !important;
+  color: #16324a !important;
+  background: radial-gradient(ellipse at top left, #ddf5fa, transparent 58%), #f2f7fc !important;
+}
+header[data-testid="stHeader"] { background: transparent !important; }
+div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !important; }
+.block-container { max-width: 640px !important; padding: 32px 20px !important; }
+.stApp:has(.st-key-monitor_login_layout) .block-container {
+  max-width: 1120px !important;
+  padding: clamp(24px, 6vh, 64px) clamp(16px, 4vw, 44px) !important;
+}
+.st-key-monitor_login_layout [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .auth-brand) {
+  gap: clamp(24px, 5vw, 64px) !important;
+}
+.st-key-monitor_login_card {
+  background: #fff !important;
+  border: 1px solid #cbd9e7 !important;
+  border-radius: 20px !important;
+  padding: clamp(16px, 3vw, 30px) !important;
+  box-shadow: 0 16px 42px #174b7521 !important;
+}
+.stApp :is(h1, h2, h3, label, [data-testid="stWidgetLabel"]),
+.stApp :is(label, [data-testid="stWidgetLabel"]) p { color: #16324a !important; }
+.stApp [data-testid="stMarkdownContainer"] p { color: #16324a !important; }
+.stApp [data-testid="stCaptionContainer"] p { color: #465d74 !important; }
+.stApp [data-testid="stTextInput"] div:has(> input[data-testid="stTextInputField"]),
+.stApp :is([data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div) {
+  background: #fff !important;
+  color: #16324a !important;
+  border-color: #829ab0 !important;
+}
+.stApp :is(input, textarea) {
+  color: #16324a !important;
+  -webkit-text-fill-color: #16324a !important;
+  background: #fff !important;
+}
+.stApp :is(input, textarea)::placeholder {
+  color: #516a82 !important;
+  -webkit-text-fill-color: #516a82 !important;
+  opacity: 1 !important;
+}
+.stApp [data-testid="stTextInput"] button {
+  background: #eaf3fb !important; color: #07539e !important;
+}
+.stApp [data-testid="stTextInput"] button :is(svg, [data-testid="stIconMaterial"]) { color: inherit !important; }
+[data-baseweb="popover"] :is([role="listbox"], [role="option"]),
+.stApp [role="combobox"] { background: #fff !important; color: #16324a !important; }
+[data-baseweb="popover"] [role="option"]:is(:hover, [aria-selected="true"]) { background: #ddedfc !important; }
+.stApp [role="radiogroup"] { gap: 8px !important; }
+.stApp [role="radiogroup"] label {
+  background: #f1f6fb !important;
+  border: 1px solid #b9cbdb !important;
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-height: 44px;
+}
+.stApp [role="radiogroup"] label:has(input:checked) {
+  background: #ddedfc !important;
+  border-color: #07539e !important;
+}
+.stApp [data-testid="stCheckbox"] label > :is(div:first-child, span + div:not([data-testid])),
+.stApp [role="radiogroup"] label > div:first-child,
+.stApp [role="radiogroup"] label > span + div > div:first-child:not([data-testid]) {
+  background: #fff !important;
+  border-color: #526d86 !important;
+}
+.stApp [data-testid="stCheckbox"] label:has(input:checked) > :is(div:first-child, span + div:not([data-testid])),
+.stApp [role="radiogroup"] label:has(input:checked) > div:first-child,
+.stApp [role="radiogroup"] label:has(input:checked) > span + div > div:first-child:not([data-testid]) {
+  background: #07539e !important;
+  border-color: #07539e !important;
+}
+.stApp [role="radiogroup"] label:has(input:checked) > span + div > div:first-child > div {
+  background: #fff !important;
+}
+.stApp :is(button, a):focus-visible,
+.stApp [data-testid="stTextInput"] div:has(> input[data-testid="stTextInputField"]):focus-within,
+.stApp :is([data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"]):focus-within,
+.stApp :is([data-testid="stCheckbox"], [data-testid="stRadio"]) label:focus-within {
+  outline: 3px solid #07539e !important;
+  outline-offset: 3px !important;
+}
+.stApp [data-testid="stAlert"] :is(p, span), .stApp [data-testid="stSpinner"] :is(p, span) {
+  color: #16324a !important;
+}
+.stApp [data-testid="stAlert"] [role="alert"] { background: #eaf3fb !important; color: #16324a !important; }
+.stApp :is(.stButton, .stFormSubmitButton) button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid #93aec7 !important;
+  color: #123d65 !important;
+  background: #f0f6fc !important;
+  font-weight: 650;
+}
+.stApp :is(.stButton, .stFormSubmitButton) button :is(p, span) { color: inherit !important; }
+.stApp :is(.stButton, .stFormSubmitButton) button:hover { background: #ddedfc !important; }
+.stApp button:is([data-testid="stBaseButton-primary"], [data-testid="stBaseButton-primaryFormSubmit"],
+                 [kind="primary"], [kind="primaryFormSubmit"]) {
+  color: #fff !important;
+  background: #07539e !important;
+  border-color: #07539e !important;
+}
+.stApp button:is([data-testid="stBaseButton-primary"], [data-testid="stBaseButton-primaryFormSubmit"],
+                 [kind="primary"], [kind="primaryFormSubmit"]):hover { background: #064783 !important; }
+.stApp .st-key-monitor_login_card [data-testid="stForm"] { border: 0 !important; padding: 0 !important; }
+.st-key-monitor_login_actions [data-testid="stHorizontalBlock"] { gap: 10px !important; }
+.auth-security-note { color: #465d74; font-size: 13px; margin: 6px 0 0; }
+.stApp .auth-reset-title { color: #16324a; font-size: clamp(24px, 3vw, 30px); line-height: 1.15; margin: 0; }
+.auth-brand { max-width: 450px; margin: 0 auto; }
+.auth-brand picture { display: block; margin: 0 0 14px; }
+.auth-brand img { display: block; width: 100%; height: auto; }
+.auth-brand h1 { font-size: clamp(28px, 4vw, 46px); line-height: 1.1; margin: 0; letter-spacing: -.025em; }
+.auth-brand p { color: #465d74; font-size: 15px; margin: 8px 0 0; }
+@media (max-width: 780px) {
+  .st-key-monitor_login_layout [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .auth-brand) {
+    flex-direction: column; align-items: stretch !important; gap: 12px !important;
+  }
+  .st-key-monitor_login_layout [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .auth-brand) > [data-testid="stColumn"] {
+    width: 100% !important; min-width: 0 !important; flex: auto !important;
+  }
+  .auth-brand { margin: 0; max-width: none; display: flex; align-items: center; gap: 10px; }
+  .auth-brand picture { flex: 0 0 64px; margin: 0; }
+  .auth-brand h1 { font-size: clamp(19px, 4.5vw, 26px); }
+  .auth-brand p { margin: 3px 0 0; font-size: 13px; }
+}
