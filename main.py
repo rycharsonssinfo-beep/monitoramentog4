@@ -28,6 +28,9 @@ from urllib.error import HTTPError, URLError
 import streamlit as st
 import streamlit.components.v1 as components
 
+from config_workspace import render_workspace
+from config_settings import ConfigConflict, config_changes, matches_search, read_config, revision, write_config
+
 # =========================================================
 # Painel de Monitoramento 3.10.0
 # Inclui: 2.2 Estabilidade e Operação + 2.3 Experiência e Visual + 2.4 Primeiro Uso
@@ -4966,65 +4969,61 @@ def validar_config_importada(data):
     return erros, avisos
 
 
+@st.cache_resource(show_spinner=False)
+def _config_write_lock():
+    return threading.Lock()
+
+
 def carregar_config():
-    if CONFIG_PATH.exists():
-        try:
-            with CONFIG_PATH.open("r", encoding="utf-8") as f:
-                return normalizar_config(json.load(f))
-        except Exception as exc:
+    raw = None
+    try:
+        raw = read_config(CONFIG_PATH)
+        st.session_state["config_disk_revision"] = revision(raw)
+        if raw is not None:
+            return normalizar_config(json.loads(raw))
+    except Exception:
+        if raw is not None:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            corrupt = CONFIG_PATH.with_name(f"monitoramento_config.corrompido_{stamp}.json")
             try:
-                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                corrupt = CONFIG_PATH.with_name(f"monitoramento_config.corrompido_{stamp}.json")
-                shutil.copy2(CONFIG_PATH, corrupt)
+                corrupt.write_bytes(raw)
                 st.session_state["config_corrompida_backup"] = corrupt.name
-            except Exception:
+            except OSError:
                 pass
-            st.session_state["ultimo_erro_persistencia"] = f"Falha ao ler configuração: {exc}"
+        st.session_state["ultimo_erro_persistencia"] = "Falha ao ler a configura??o do servidor."
     return copy.deepcopy(DEFAULT_CONFIG)
 
 
-def salvar_config(config, force=False):
-    """Grava apenas para administradores, com backup e substituição atômica."""
-    # As rotinas da aplicação chamam este método tanto por botões quanto
-    # por atualizações automáticas; validar o papel também no servidor.
+def salvar_config(config, force=False, verify_revision=False):
+    """Persiste a revisão editada apenas se ela ainda for a vigente no servidor."""
     if not _com_is_admin():
         return False
     try:
         cfg = normalizar_config(config)
         current_hash = config_hash(cfg)
         if not force and st.session_state.get("ultimo_hash_salvo") == current_hash:
-            return True
-
-        if CONFIG_PATH.exists():
-            try:
-                current_disk = CONFIG_PATH.read_text(encoding="utf-8")
-                disk_hash = hashlib.sha256(current_disk.encode("utf-8")).hexdigest()
-                new_raw = json.dumps(cfg, ensure_ascii=False, indent=2)
-                new_hash_raw = hashlib.sha256(new_raw.encode("utf-8")).hexdigest()
-                if disk_hash != new_hash_raw:
-                    shutil.copy2(CONFIG_PATH, BACKUP_PATH)
-            except Exception:
-                pass
-
-        raw = json.dumps(cfg, ensure_ascii=False, indent=2)
-        fd, temp_name = tempfile.mkstemp(prefix="monitoramento_", suffix=".json", dir=str(CONFIG_PATH.parent))
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as tmp:
-                tmp.write(raw)
-                tmp.flush()
-                os.fsync(tmp.fileno())
-            os.replace(temp_name, CONFIG_PATH)
-        finally:
-            if os.path.exists(temp_name):
-                os.unlink(temp_name)
-
+            if verify_revision and revision(read_config(CONFIG_PATH)) != st.session_state.get("config_disk_revision"):
+                raise ConfigConflict
+            return not bool(st.session_state.get("ultimo_erro_persistencia"))
+        raw = json.dumps(cfg, ensure_ascii=False, indent=2).encode("utf-8")
+        with st.spinner("Salvando configuração…"):
+            st.session_state["config_disk_revision"] = write_config(
+                CONFIG_PATH, BACKUP_PATH, st.session_state.get("config_disk_revision"),
+                raw, _config_write_lock(),
+            )
         st.session_state["ultimo_hash_salvo"] = current_hash
         st.session_state["ultima_gravacao"] = datetime.now().strftime("%H:%M:%S")
         st.session_state.pop("ultimo_erro_persistencia", None)
+        st.session_state.pop("config_conflito", None)
         return True
-    except Exception as exc:
-        st.session_state["ultimo_erro_persistencia"] = str(exc)
-        return False
+    except ConfigConflict:
+        st.session_state["config_conflito"] = True
+        st.session_state["ultimo_erro_persistencia"] = (
+            "Outra sessão salvou uma revisão mais recente. Exporte sua edição antes de carregar a revisão do servidor."
+        )
+    except Exception:
+        st.session_state["ultimo_erro_persistencia"] = "Falha ao gravar a configuração no servidor."
+    return False
 
 
 def regenerar_ids(perfil):
@@ -7044,9 +7043,10 @@ st.session_state.config_v23 = config
 
 # Atualiza o cache autenticado do S&S Conecta quando o intervalo configurado vencer.
 # Não grava credenciais; apenas notícias/agenda já renderizadas pelo portal.
-_portal_sync_changed, _portal_sync_state = sincronizar_portal_ticker(config.setdefault("ticker", ticker_padrao()), force=False)
-if _portal_sync_changed and _com_is_admin():
-    salvar_config(config, force=True)
+if not st.session_state.get("ultimo_erro_persistencia"):
+    _portal_sync_changed, _portal_sync_state = sincronizar_portal_ticker(config.setdefault("ticker", ticker_padrao()), force=False)
+    if _portal_sync_changed and _com_is_admin():
+        salvar_config(config)
 
 query_iniciado = str(st.query_params.get("iniciado", "false")).lower() == "true"
 if "iniciado" not in st.session_state:
@@ -7191,144 +7191,6 @@ st.markdown(
         .news-headline {display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}.news-title{font-weight:780;color:#244157;font-size:12.5px}.news-meta{display:flex;gap:5px;flex-wrap:wrap}
         .block-container { padding-bottom:100px!important; }
         /* v3.14.0 · Home de configurações inspirada no mockup aprovado */
-        .cfg-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; margin:2px 0 18px; }
-        .cfg-hero-main { display:flex; align-items:center; gap:18px; min-width:0; }
-        .cfg-brand-box { width:190px; min-width:190px; height:auto; flex:none; display:flex; align-items:center; justify-content:flex-start; background:transparent; border:0; border-radius:0; box-shadow:none; overflow:visible; padding:0; }
-        .cfg-brand-box img { width:180px; max-width:100%; height:auto; display:block; object-fit:contain; }
-        .cfg-hero-title { color:#0A1D3A; font-size:31px; line-height:1.08; font-weight:850; letter-spacing:-.7px; margin:0 0 6px; }
-        .cfg-hero-subtitle { color:#718096; font-size:14px; line-height:1.45; max-width:760px; }
-        .cfg-version-card { flex:none; min-width:260px; background:rgba(255,255,255,.86); border:1px solid #CFE0ED; border-radius:14px; padding:13px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 5px 18px rgba(14,82,133,.05); }
-        .cfg-version-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#1673C9; font-size:20px; font-weight:900; }
-        .cfg-version-title { color:#16324A; font-size:12px; font-weight:800; }
-        .cfg-version-sub { color:#718096; font-size:10.5px; margin-top:2px; }
-        .cfg-dot { width:8px; height:8px; display:inline-block; border-radius:50%; background:#19A35B; margin-right:6px; box-shadow:0 0 0 3px #E6F8EE; }
-        .cfg-profile-strip { background:#fff; border:1px solid #D8E5EF; border-radius:13px; padding:9px 14px 5px; margin:0 0 14px; box-shadow:0 2px 9px rgba(14,82,133,.035); }
-        .cfg-metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:0 0 25px; }
-        .cfg-metric { min-height:96px; background:#fff; border:1px solid #DCE8F1; border-radius:13px; padding:13px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 5px 18px rgba(14,82,133,.045); }
-        .cfg-metric-icon { width:48px; height:48px; flex:none; display:flex; align-items:center; justify-content:center; border-radius:12px; font-size:23px; font-weight:850; }
-        .cfg-ic-blue{background:#E9F3FF;color:#0877E3}.cfg-ic-green{background:#E7FBF1;color:#07945A}.cfg-ic-purple{background:#F3EAFE;color:#7426E7}.cfg-ic-orange{background:#FFF0E4;color:#F06A00}.cfg-ic-red{background:#FFE9EC;color:#DC243D}
-        .cfg-metric-value { color:#071A3B; font-size:24px; line-height:1; font-weight:850; }
-        .cfg-metric-label { color:#23415C; font-size:12px; font-weight:800; margin-top:4px; }
-        .cfg-metric-sub { color:#8291A3; font-size:10px; line-height:1.25; margin-top:2px; }
-        .cfg-section-bar { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin:0 0 13px; }
-        .cfg-section-heading { display:flex; align-items:center; gap:12px; }
-        .cfg-section-grid-icon { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#0E5285; font-weight:900; font-size:18px; }
-        .cfg-section-title { color:#0A1D3A; font-size:20px; font-weight:850; margin:0; }
-        .cfg-section-sub { color:#7A8A9E; font-size:12px; margin-top:2px; }
-        .cfg-nav-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
-        .cfg-nav-card { text-decoration:none!important; color:inherit!important; background:#fff; border:1px solid #D9E6F0; border-radius:13px; min-height:92px; padding:13px 15px; display:flex; align-items:center; gap:14px; position:relative; box-shadow:0 4px 15px rgba(14,82,133,.04); transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease; }
-        .cfg-nav-card:hover { transform:translateY(-1px); box-shadow:0 9px 25px rgba(14,82,133,.09); border-color:#AFCDE2; }
-        .cfg-nav-card.active { border-color:#4A96CE; box-shadow:0 0 0 2px rgba(14,82,133,.07),0 7px 20px rgba(14,82,133,.07); }
-        .cfg-nav-icon { width:50px; height:50px; flex:none; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:23px; font-weight:900; }
-        .cfg-nav-copy { min-width:0; padding-right:30px; }
-        .cfg-nav-title { color:#0A1D3A; font-size:14px; font-weight:830; line-height:1.25; }
-        .cfg-nav-desc { color:#74869A; font-size:11.5px; line-height:1.35; margin-top:4px; }
-        .cfg-nav-arrow { position:absolute; right:14px; top:50%; transform:translateY(-50%); width:31px; height:31px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#F1F7FC; color:#0877E3; font-size:20px; font-weight:700; }
-        .cfg-active-head { scroll-margin-top:18px; background:linear-gradient(135deg,#F8FBFE,#EEF6FB); border:1px solid #CADDEA; border-radius:14px; padding:14px 16px; margin:8px 0 12px; display:flex; align-items:center; gap:13px; }
-        .cfg-active-head-icon { width:45px; height:45px; flex:none; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#EAF3FA; color:#0E5285; font-size:22px; font-weight:900; }
-        .cfg-active-head-title { color:#0A1D3A; font-size:16px; font-weight:850; }
-        .cfg-active-head-desc { color:#718096; font-size:11.5px; margin-top:2px; }
-        .cfg-home-hint { color:#8493A4; font-size:11px; margin:0 0 8px; }
-        .cfg-launch-card { margin:16px 0 6px; border-radius:15px; background:linear-gradient(110deg,#0867B8 0%,#0E5285 58%,#0A70C8 100%); color:#fff!important; padding:14px 20px; box-shadow:0 9px 25px rgba(14,82,133,.18); display:flex; align-items:center; gap:14px; text-decoration:none!important; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease, filter .15s ease; }
-        .cfg-launch-card:hover { transform:translateY(-1px); box-shadow:0 12px 28px rgba(14,82,133,.24); filter:brightness(1.03); }
-        .cfg-launch-card:active { transform:translateY(0); }
-        .cfg-launch-play { width:48px; height:48px; flex:none; border-radius:50%; background:#fff; color:#0E5285; display:flex; align-items:center; justify-content:center; font-size:20px; }
-        .cfg-launch-kicker { font-size:9px; font-weight:850; letter-spacing:.35px; text-transform:uppercase; opacity:.9; }
-        .cfg-launch-title { font-size:18px; font-weight:850; margin-top:1px; }
-        .cfg-launch-sub { font-size:10.5px; opacity:.85; }
-        /* O conteúdo de configuração aberto ocupa toda a largura, mesmo que o menu use duas colunas. */
-        div[data-testid="stExpander"] details { border-color:#D9E6F0!important; border-radius:12px!important; }
-        .ux24-fixed-bar { background:rgba(246,250,253,.94)!important; border-top:1px solid #D9E6F0!important; box-shadow:0 -5px 20px rgba(14,82,133,.05)!important; }
-        .ux24-start-link { background:linear-gradient(110deg,#0867B8,#0E5285 65%,#0A70C8)!important; border-radius:10px!important; min-width:220px!important; }
-        @media(max-width:900px){
-            .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-            .cfg-hero{align-items:flex-start;flex-direction:column}.cfg-version-card{width:100%;min-width:0}.cfg-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cfg-nav-grid{grid-template-columns:1fr}.cfg-section-bar{align-items:stretch;flex-direction:column}.cfg-hero-title{font-size:25px}.cfg-brand-box{width:160px;min-width:160px;height:auto}.cfg-brand-box img{width:150px}
-            .block-container{padding-left:12px!important;padding-right:12px!important;padding-bottom:112px!important;}
-            .onboarding-steps{grid-template-columns:1fr;}
-            .ux24-fixed-inner{padding:9px 12px;}
-            .ux24-fixed-copy span{display:none;}
-            .ux24-start-link,.ux24-start-disabled{min-width:155px;}
-        }
-        /* v3.15.0 · Refinamentos de hierarquia, responsividade e operação */
-        .block-container{max-width:1280px!important;padding-top:12px!important;padding-bottom:96px!important}.cfg-hero-v315{margin:0 0 10px!important;gap:18px!important}.cfg-hero-v315 .cfg-brand-box{width:170px!important;min-width:170px!important}.cfg-hero-v315 .cfg-brand-box img{width:164px!important}.cfg-hero-v315 .cfg-hero-title{font-size:28px!important;margin-bottom:4px!important}.cfg-hero-v315 .cfg-hero-subtitle{font-size:12.5px!important;color:#5E7489!important}.cfg-version-card{padding:10px 13px!important;min-width:235px!important}.cfg-version-icon svg{width:20px;height:20px}.cfg-version-title{font-size:11.5px!important}.cfg-version-sub{color:#62778B!important}.st-key-cfg_profile_card_v315{margin-bottom:12px}.st-key-cfg_profile_card_v315 [data-testid="stVerticalBlockBorderWrapper"]{border:1px solid #D8E5EF!important;border-radius:14px!important;background:#fff!important;box-shadow:0 4px 15px rgba(14,82,133,.035)!important}.st-key-cfg_profile_card_v315 [data-testid="stVerticalBlock"]{gap:.25rem!important}.cfg-profile-eyebrow{font-size:9px;letter-spacing:.55px;font-weight:850;color:#7B8FA2;margin-bottom:2px}.cfg-profile-title{font-size:13px;font-weight:830;color:#173A56;margin-bottom:4px}.st-key-perfil_select_v315 label{font-size:13px!important;font-weight:830!important;color:#173A56!important;margin-bottom:3px!important}.st-key-perfil_select_v315 [data-testid="stSelectbox"]{margin-top:0!important}.cfg-profile-stat{height:100%;min-height:55px;display:flex;flex-direction:column;justify-content:center;padding-left:12px;border-left:1px solid #E7EEF4;color:#698096;font-size:10px}.cfg-profile-stat strong{font-size:11.5px;color:#23415C;margin:2px 0}.cfg-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#94A3B8}.cfg-status-dot.ok{background:#16A05D;box-shadow:0 0 0 3px #E7F8EF}.cfg-profile-mini-icon{width:18px;height:18px;color:#0876D1;display:block}.cfg-profile-mini-icon svg{width:18px;height:18px}.cfg-section-heading{margin:3px 0 4px}.cfg-section-title{font-size:19px!important}.cfg-section-sub{color:#657B90!important}.cfg-section-grid-icon svg{width:19px;height:19px}.cfg-group-label{display:flex;align-items:center;gap:10px;margin:14px 0 7px;color:#6A8094;font-size:10px;font-weight:850;letter-spacing:.65px;text-transform:uppercase}.cfg-group-label:after{content:"";height:1px;background:#DCE7EF;flex:1}.cfg-home-hint-v315{background:#F8FBFD;border:1px dashed #CADCE9;border-radius:11px;padding:10px 12px;margin:8px 0 2px;color:#687E91!important}.cfg-active-head-v315{margin:2px 0 10px!important;padding:12px 14px!important;border-color:#BBD6E8!important;background:linear-gradient(100deg,#F2F8FC,#FAFCFE)!important;box-shadow:0 4px 14px rgba(14,82,133,.045)}.cfg-active-head-v315 .cfg-active-head-icon{background:#EAF3FA}.cfg-active-head-icon svg{width:22px;height:22px}.cfg-active-copy{min-width:0;flex:1}.cfg-active-title-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.cfg-active-head-title{font-size:15px!important}.cfg-active-head-desc{color:#60768A!important}.cfg-active-status{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:850;background:#EEF5FA;color:#537087;border:1px solid #D6E3EC}.cfg-active-status.ok{background:#ECFDF3;color:#087A44;border-color:#C5F2D5}.cfg-active-status.warn{background:#FFF7E8;color:#9A5A00;border-color:#F6DEAF}.cfg-active-status.new{background:#EAF9F0;color:#087A44;border-color:#BFE9D0}.cfg-footer-v315{background:rgba(248,251,253,.96)!important}.cfg-footer-inner-v315{max-width:1280px!important;padding:8px 18px!important}.cfg-footer-indicators{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.cfg-footer-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border:1px solid #D8E5EE;background:#fff;border-radius:999px;color:#63798D;font-size:9.8px;line-height:1}.cfg-footer-pill b{color:#274A67}.cfg-footer-pill.ok{background:#F0FBF5;border-color:#CBEED9;color:#17804D}.cfg-footer-start{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none!important;background:linear-gradient(110deg,#0A70C8,#0E5285);color:#fff!important;padding:9px 15px;border-radius:10px;font-size:11.5px;font-weight:850;box-shadow:0 4px 12px rgba(14,82,133,.18);transition:transform .14s ease,filter .14s ease}.cfg-footer-start:hover{transform:translateY(-1px);filter:brightness(1.04)}.cfg-footer-start.disabled{background:#D7E1E8;color:#8B9AA8!important;box-shadow:none;cursor:not-allowed}.cfg-footer-play{font-size:9px}.cfg-back-top{position:fixed;right:22px;bottom:68px;z-index:999999;width:36px;height:36px;border-radius:50%;background:#fff;border:1px solid #C8DDEB;box-shadow:0 6px 18px rgba(14,82,133,.13);display:flex;align-items:center;justify-content:center;text-decoration:none!important;color:#0E5285!important;font-size:18px;font-weight:850;transition:transform .14s ease,box-shadow .14s ease}.cfg-back-top:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(14,82,133,.18)}.cfg-metric-sub,.cfg-nav-desc,.cfg-section-sub,.cfg-active-head-desc,.cfg-version-sub{color:#60768A!important}@media(max-width:900px){.cfg-hero-v315{flex-direction:column!important}.cfg-version-card{width:100%!important}.cfg-profile-stat{border-left:0;border-top:1px solid #E7EEF4;padding:8px 0 0;margin-top:5px}.cfg-footer-inner-v315{padding:7px 10px!important}.cfg-footer-pill:nth-child(2){display:none}.cfg-back-top{right:14px;bottom:64px}}
-
-        /* v3.49.0 — Reformulação conservadora da Central de Configurações.
-           Os seletores abaixo não atingem os iframes de monitoramento (modo TV). */
-        .block-container {
-            max-width: 1480px !important;
-            width: min(100%, 1480px) !important;
-            padding-left: clamp(14px, 2vw, 28px) !important;
-            padding-right: clamp(14px, 2vw, 28px) !important;
-            padding-top: 16px !important;
-            padding-bottom: 112px !important;
-        }
-        .cfg-hero-v315 { align-items:center; gap:24px !important; margin-bottom:15px !important; }
-        .cfg-hero-v315 .cfg-brand-box { width:205px !important; min-width:205px !important; }
-        .cfg-hero-v315 .cfg-brand-box img { width:198px !important; }
-        .cfg-hero-v315 .cfg-hero-title { font-size:clamp(24px, 2vw, 30px) !important; line-height:1.14 !important; }
-        .cfg-hero-v315 .cfg-hero-subtitle { font-size:13px !important; color:#557087 !important; }
-        .cfg-version-card { min-width:225px !important; padding:10px 13px !important; }
-        .cfg-version-title { font-size:12px !important; }
-        .cfg-version-sub { font-size:10.5px !important; }
-        .st-key-cfg_profile_card_v315 { margin-bottom:10px !important; }
-        .st-key-cfg_profile_card_v315 [data-testid="stVerticalBlockBorderWrapper"] {
-            background:linear-gradient(110deg,#fff,#F7FBFF) !important;
-            padding:4px 6px !important;
-        }
-        .st-key-perfil_select_v315 label { font-size:13px !important; }
-        .cfg-profile-stat { min-height:56px !important; font-size:11px !important; }
-        .cfg-profile-stat strong { font-size:12.5px !important; }
-        .cfg-section-heading-v349 { margin:11px 0 9px !important; }
-        .cfg-section-heading-v349 .cfg-section-title { font-size:20px !important; }
-        .cfg-section-heading-v349 .cfg-section-sub { font-size:12.5px !important; }
-        .cfg-group-label { margin:14px 0 8px !important; font-size:10.5px !important; }
-        .cfg-footer-inner-v315 { max-width:1480px !important; padding:9px 25px !important; }
-        .cfg-footer-start { font-size:12.5px !important; padding:11px 20px !important; }
-        .cfg-footer-pill { font-size:10.5px !important; }
-        /* Os atalhos são links para âncoras reais no documento, sem recarregar a página. */
-        .cfg-quick-nav { display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-height:48px;padding:5px 0; }
-        .cfg-quick-title { flex:none;margin-right:7px;color:#24435F;font-size:12px;font-weight:800;white-space:nowrap; }
-        .cfg-quick-link {
-            display:inline-flex;align-items:center;justify-content:center;gap:6px;
-            white-space:nowrap;min-height:35px;padding:7px 10px;border-radius:10px;
-            font-size:11.5px;font-weight:720;line-height:1.1;
-            text-decoration:none !important;background:#FFFFFF;color:#164675 !important;
-            border:1px solid #D4E2EE;box-shadow:0 2px 5px rgba(14,82,133,.035);
-            transition:border-color .15s,background .15s,transform .15s;
-        }
-        .cfg-quick-link svg {width:15px;height:15px;stroke-width:2;flex:none;}
-        .cfg-quick-link:hover,.cfg-quick-link:focus-visible {
-            background:#EAF4FF;border-color:#91BEE1;color:#0E5285 !important;
-            outline:2px solid transparent;transform:translateY(-1px);
-        }
-        .cfg-quick-link:focus-visible {outline:2px solid #287EB8;outline-offset:2px;}
-        .cfg-quick-link.primary {background:#0E5285;color:#FFFFFF !important;border-color:#0E5285;}
-        .cfg-quick-link.primary:hover {background:#0A4674;color:#FFFFFF !important;}
-        .cfg-quick-anchor {display:block;height:0;scroll-margin-top:22px;}
-        .st-key-config_search_v315 input {font-size:12.5px !important;min-height:39px !important;}
-        @media (max-width:1250px) {
-            .cfg-hero-v315 .cfg-brand-box { width:180px !important;min-width:180px !important; }
-            .cfg-hero-v315 .cfg-brand-box img { width:172px !important; }
-            .cfg-quick-nav {gap:5px;}
-            .cfg-quick-link {font-size:11px;padding:6px 8px;}
-        }
-        @media (max-width:900px) {
-            .block-container {padding-left:14px !important;padding-right:14px !important;}
-            .cfg-hero-v315 { flex-direction:column !important;align-items:stretch !important;}
-            .cfg-version-card {width:100% !important;}
-            .cfg-quick-nav {min-height:0;}
-            .cfg-footer-inner-v315 {padding:9px 12px !important;}
-        }
-        @media (max-width:640px) {
-            .cfg-quick-title {width:100%;}
-            .cfg-quick-link {flex:1 1 auto;}
-            .cfg-hero-v315 .cfg-hero-title {font-size:23px !important;}
-            .cfg-footer-start {min-width:0 !important;padding:10px 12px !important;}
-        }
-        @media (prefers-reduced-motion:reduce) {
-            .cfg-quick-link {transition:none !important;}
-            .cfg-quick-link:hover {transform:none !important;}
-        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -7338,6 +7200,7 @@ st.markdown(
 # TELA 1 - CONFIGURAÇÃO
 # =========================================================
 if not st.session_state.iniciado:
+    _config_render_started = time.perf_counter()
     com_is_admin = _com_is_admin()
     perfil = perfil_por_id(config, active_profile_id)
     if perfil is None:
@@ -7346,13 +7209,8 @@ if not st.session_state.iniciado:
 
     paineis = perfil["paineis"]
     ativos = perfil_ativos(perfil)
-    verificar_paineis_iframe(ativos)  # Pré-aquecimento sem bloquear a configuração.
-    tempo_total = sum(int(p.get("tempo", 0)) for p in ativos)
-    m, s = divmod(tempo_total, 60)
-    tempo_fmt = f"{m}m {s:02d}s" if m else f"{s}s"
     urls_invalidas = sum(1 for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", "")))
     preservados = sum(1 for p in paineis if p.get("preserve_session", False) or not p.get("reload_enabled", True))
-    invalid_active = [p for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
 
     # v3.16.3: Modo Foco removido. Campos legados são ignorados para compatibilidade.
 
@@ -7365,7 +7223,9 @@ if not st.session_state.iniciado:
         if invalidos:
             st.error("Existem painéis ativos com URL inválida. Corrija-os antes de iniciar.")
             return
-        salvar_config(config)
+        if not salvar_config(config, verify_revision=True):
+            st.error(st.session_state.get("ultimo_erro_persistencia", "Não foi possível salvar."))
+            return
         st.session_state['_monitor_perf_start_t0_v352'] = time.perf_counter()
         st.session_state.iniciado = True
         st.query_params["perfil"] = active_profile_id
@@ -7375,53 +7235,6 @@ if not st.session_state.iniciado:
     # =========================================================
     # v3.15.0 · CENTRAL DE CONFIGURAÇÕES REFINADA
     # =========================================================
-    valid_sections = {
-        "profiles", "panels", "ticker", "integration", "updates", "agenda",
-        "sim_alert", "stability", "visual", "backup", "news", "releases"
-    }
-    if com_is_admin:
-        valid_sections.add("comunicados")
-        valid_sections.add("access")
-
-    legacy_section = str(st.query_params.get("sec", "") or "").strip().lower()
-    if legacy_section not in valid_sections:
-        legacy_section = ""
-    if "config_active_section_v315" not in st.session_state:
-        st.session_state["config_active_section_v315"] = legacy_section
-    active_section = str(st.session_state.get("config_active_section_v315", "") or "").strip().lower()
-    if active_section not in valid_sections:
-        active_section = ""
-        st.session_state["config_active_section_v315"] = ""
-
-    ticker_home = normalizar_ticker(config.get("ticker"))
-    sim_alert_home = normalizar_sim_alerts(config.get("sim_alerts"))
-    sim_api_home = _sim_api_credentials()
-    profiles_count = len(config.get("profiles", {}))
-    faixas_ativas = int(bool(ticker_home.get("enabled", True))) + int(bool(ticker_home.get("agenda_enabled", True)))
-    integracoes_ativas = int(bool(ticker_home.get("portal_enabled", True))) + int(bool(sim_api_home.get("configured")))
-    alertas_ativos = int(bool(sim_alert_home.get("enabled", True)))
-    updates_count = len(noticias_ativas_ticker(ticker_home))
-    agenda_count = len(agenda_ativa_ticker(ticker_home))
-    last_saved = st.session_state.get("ultima_gravacao")
-    last_saved_short = str(last_saved or "Agora")
-
-    def _cfg_icon_svg(name):
-        icons = {
-            "profiles": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-            "panels": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',
-            "ticker": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>',
-            "integration": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1.15 1.15"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1.15-1.15"/></svg>',
-            "updates": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>',
-            "agenda": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
-            "sim_alert": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
-            "stability": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1-2.9 2.9-.1-.1A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21H9.5v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1-2.9-2.9.1-.1A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-1.6-1H2V10h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.3-1.8l-.1-.1 2.9-2.9.1.1A1.7 1.7 0 0 0 8 3.6 1.7 1.7 0 0 0 9.5 2H13.5A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.8-.3l.1-.1 2.9 2.9-.1.1A1.7 1.7 0 0 0 19.4 8a1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 2Z"/></svg>',
-            "visual": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
-            "backup": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>',
-            "comunicados": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2l12 5V6L3 11Z"/><path d="M15 9a4 4 0 0 1 0 6M18 7a7 7 0 0 1 0 10"/><path d="M5 14l2 7h3l-2-6"/></svg>',
-            "news": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9L12 3Z"/></svg>',
-        }
-        return icons.get(name, icons["panels"])
-
     def render_config_section(section_key):
         active_section = section_key
         if active_section == "comunicados":
@@ -7449,9 +7262,9 @@ if not st.session_state.iniciado:
                         new_profile = copy.deepcopy(_DEFAULT_PROFILE)
                         new_profile.update({"id": pid, "nome": nome, "paineis": []})
                         config["profiles"][pid] = new_profile
-                        salvar_config(config, force=True)
                         st.query_params["perfil"] = pid
-                        st.toast("Perfil criado.")
+                        if salvar_config(config, force=True):
+                            st.toast("Perfil criado.")
                         st.rerun()
             with p3:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
@@ -7466,9 +7279,9 @@ if not st.session_state.iniciado:
                         candidate = f"{base} - Cópia {n}"
                     clone["nome"] = candidate
                     config["profiles"][clone["id"]] = clone
-                    salvar_config(config, force=True)
                     st.query_params["perfil"] = clone["id"]
-                    st.toast("Perfil duplicado.")
+                    if salvar_config(config, force=True):
+                        st.toast("Perfil duplicado.")
                     st.rerun()
             with p4:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
@@ -7485,8 +7298,8 @@ if not st.session_state.iniciado:
                     nome = nome_editado.strip()
                     if nome and not any(pid != active_profile_id and p["nome"].strip().lower() == nome.lower() for pid, p in config["profiles"].items()):
                         perfil["nome"] = nome
-                        salvar_config(config, force=True)
-                        st.toast("Perfil renomeado.")
+                        if salvar_config(config, force=True):
+                            st.toast("Perfil renomeado.")
                         st.rerun()
                     else:
                         st.warning("Use um nome válido e não repetido.")
@@ -7495,8 +7308,8 @@ if not st.session_state.iniciado:
                 is_default = active_profile_id == config.get("default_profile_id")
                 if st.button("Perfil padrão ✓" if is_default else "Definir como padrão", use_container_width=True, key="default_profile_v23", disabled=is_default):
                     config["default_profile_id"] = active_profile_id
-                    salvar_config(config, force=True)
-                    st.toast("Perfil padrão atualizado.")
+                    if salvar_config(config, force=True):
+                        st.toast("Perfil padrão atualizado.")
                     st.rerun()
 
             st.markdown("**URL fixa para esta TV/perfil**")
@@ -7522,47 +7335,33 @@ if not st.session_state.iniciado:
                         st.rerun()
 
         if active_section == "panels":
-            # Cabeçalho dos painéis
-            header_l, header_m, header_r, header_g4f, header_portais = st.columns([2.30, 0.96, 1.02, 1.20, 1.25])
-            with header_l:
-                st.caption("Os painéis ativos entram na rotação na ordem abaixo. Atualização automática e manter a página aberta são configurações independentes.")
-            with header_m:
+            view_col, add_col, special_col = st.columns([1, 1.4, 1.4], vertical_alignment="bottom")
+            with view_col:
                 view_options = ["compact", "detailed"]
                 perfil["config_view"] = st.selectbox(
-                    "Visualização",
-                    view_options,
-                    index=view_options.index(perfil.get("config_view", "compact")),
-                    format_func=lambda x: "Compacta" if x == "compact" else "Detalhada",
+                    "Visualização", view_options, index=view_options.index(perfil.get("config_view", "compact")),
+                    format_func=lambda value: "Compacta" if value == "compact" else "Detalhada",
                     key=f"view_{active_profile_id}",
-                    help="Compacta recolhe as configurações avançadas. Detalhada deixa essas opções abertas.",
                 )
-            with header_r:
-                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("＋ Adicionar painel", use_container_width=True, key="add_painel_v23"):
-                    paineis.append(painel_padrao(f"Novo Painel {len(paineis) + 1}", "", 20, True))
-                    salvar_config(config, force=True)
-                    st.toast("Painel adicionado.")
+            with add_col:
+                if st.button("Adicionar painel", icon=":material/add:", use_container_width=True, key="add_painel_v23"):
+                    panel = painel_padrao(f"Novo Painel {len(paineis) + 1}", "", 20, True)
+                    paineis.append(panel)
+                    st.session_state[f"cfg_edit_{panel['id']}"] = True
+                    if salvar_config(config, force=True):
+                        st.toast("Painel adicionado.")
                     st.rerun()
-            with header_g4f:
-                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("＋ Painel G4Flex", use_container_width=True, key="add_g4flex_v326"):
-                    if any(p.get("tipo") == "g4flex" or p.get("link") == G4FLEX_INTERNAL_URL for p in paineis):
-                        st.warning("Este perfil já possui o Painel G4Flex. Ative-o na lista abaixo.")
-                    else:
-                        paineis.append(painel_padrao("Painel de Atendimento · G4Flex", G4FLEX_INTERNAL_URL, 45, False, True, tipo="g4flex"))
-                        salvar_config(config, force=True)
-                        st.toast("Painel de Atendimento adicionado à rotação.")
-                        st.rerun()
-
-            with header_portais:
-                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                if st.button("＋ Monitor de Portais", use_container_width=True, key="add_portais_v340"):
-                    if any(p.get("tipo") == "portais" or p.get("link") == PORTAIS_INTERNAL_URL for p in paineis):
-                        st.warning("Este perfil já possui o Monitor de Portais. Ative-o na lista abaixo.")
-                    else:
-                        paineis.append(painel_padrao("Monitor de Portais S&S", PORTAIS_INTERNAL_URL, 45, False, True, tipo="portais"))
-                        salvar_config(config, force=True)
-                        st.toast("Monitor de Portais adicionado à rotação. Configure o coletor e as tabelas Supabase.")
+            with special_col, st.popover("Adicionar painel integrado", use_container_width=True):
+                integrations = (
+                    ("g4flex", G4FLEX_INTERNAL_URL, "Painel de Atendimento · G4Flex", "add_g4flex_v326"),
+                    ("portais", PORTAIS_INTERNAL_URL, "Monitor de Portais S&S", "add_portais_v340"),
+                )
+                for kind, link, label, key in integrations:
+                    exists = any(panel.get("tipo") == kind or panel.get("link") == link for panel in paineis)
+                    if st.button(label, key=key, disabled=exists, use_container_width=True):
+                        paineis.append(painel_padrao(label, link, 45, False, True, tipo=kind))
+                        if salvar_config(config, force=True):
+                            st.toast("Painel adicionado.")
                         st.rerun()
 
             # v3.42: não altera automaticamente perfis existentes; aplicar é uma ação explícita do administrador.
@@ -7578,69 +7377,63 @@ if not st.session_state.iniciado:
                         paineis.append(painel_padrao("Painel de Atendimento · G4Flex", G4FLEX_INTERNAL_URL, 45, False, True, tipo="g4flex"))
                     if "portais" not in _have:
                         paineis.append(painel_padrao("Monitor de Portais S&S", PORTAIS_INTERNAL_URL, 45, False, True, tipo="portais"))
-                    salvar_config(config, force=True)
-                    st.toast("Padrão aplicado. Os painéis adicionais continuam cadastrados e podem ser reativados.")
+                    if salvar_config(config, force=True):
+                        st.toast("Padrão aplicado. Os painéis adicionais continuam cadastrados e podem ser reativados.")
                     st.rerun()
 
             pending_delete = st.session_state.get("painel_pendente_exclusao_v23")
 
             for i, painel in enumerate(paineis):
                 pid = painel["id"]
-                nome_cabecalho = html.escape(str(painel.get("nome") or "Painel sem nome"))
-                ativo_badge = '<span class="badge badge-blue">ATIVO</span>' if painel.get("ativo", True) else '<span class="badge badge-gray">INATIVO</span>'
-                f5_badge = '<span class="badge badge-green">DADOS AO VIVO</span>' if painel.get("tipo") in ("g4flex", "portais") else ('<span class="badge badge-blue">F5 ON</span>' if painel.get("reload_enabled", True) else '<span class="badge badge-gray">F5 OFF</span>')
-                preserve_badge = '<span class="badge badge-green">MANTIDO ABERTO</span>' if (painel.get("preserve_session", False) or not painel.get("reload_enabled", True)) else ''
-                focus_badge = ''
-                iframe_badge = (
-                    '<span class="badge badge-gray">AVISO S&S</span>'
-                    if painel.get("iframe_mode", "auto") == "fallback"
-                    else ''
-                )
-
-                with st.container(border=True):
-                    st.markdown(
-                        f"""
-                        <div class="panel-headline">
-                            <div class="panel-headline-left">
-                                <span class="panel-number">{i+1:02d}</span>
-                                <span class="panel-headline-name">{nome_cabecalho}</span>
-                            </div>
-                            <div class="panel-badges">{ativo_badge}{f5_badge}{preserve_badge}{focus_badge}{iframe_badge}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-                    row = st.columns([0.46, 0.46, 1.05, 3.15, 1.0, 1.45, 1.0, 0.9])
+                name = str(painel.get("nome") or "Painel sem nome")
+                active = bool(painel.get("ativo", True))
+                panel_status = "Inativo" if not active else ("Ativo" if url_valida(painel.get("link", "")) else "URL pendente ou inválida")
+                tone = "ok" if panel_status == "Ativo" else ("warn" if active else "muted")
+                kind = {"sim": "SIM", "g4flex": "G4Flex", "portais": "Portais",
+                        "personalizado": "Personalizado", "normal": "Página web"}.get(painel.get("tipo"), "Página web")
+                with st.container(border=True, key=f"cfg_panel_{pid}"):
+                    details, reorder = st.columns([3.5, 1.6], vertical_alignment="center")
+                    with details:
+                        st.markdown(
+                            f'<div class="cfg-panel-summary"><b>{i + 1}. {html.escape(name)}</b>'
+                            f'<span>{kind} · {int(painel["tempo"])} s</span>'
+                            f'<span class="cfg-panel-state {tone}">{panel_status}</span></div>',
+                            unsafe_allow_html=True,
+                        )
+                    with reorder:
+                        up, down = st.columns(2)
+                        with up:
+                            move_up = st.button("Subir", icon=":material/arrow_upward:", key=f"up_{pid}",
+                                                help=f"Mover {name} para cima", disabled=i == 0, use_container_width=True)
+                        with down:
+                            move_down = st.button("Descer", icon=":material/arrow_downward:", key=f"down_{pid}",
+                                                  help=f"Mover {name} para baixo", disabled=i == len(paineis) - 1,
+                                                  use_container_width=True)
+                    if move_up or move_down:
+                        target = i - 1 if move_up else i + 1
+                        paineis[target], paineis[i] = paineis[i], paineis[target]
+                        if salvar_config(config):
+                            st.toast("Ordem atualizada.")
+                        st.rerun()
+                    if not st.toggle("Editar painel", value=perfil.get("config_view") == "detailed",
+                                     key=f"cfg_edit_{pid}", help=f"Ajustes de {name}") and pending_delete != pid:
+                        continue
+                    row = st.columns([1, 2.5, 1.15, 1.1, 1.25, 1.0])
                     with row[0]:
-                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                        if st.button("▲", key=f"up_{pid}", help="Mover este painel para cima", disabled=i == 0, use_container_width=True):
-                            paineis[i - 1], paineis[i] = paineis[i], paineis[i - 1]
-                            salvar_config(config, force=True)
-                            st.toast("Ordem atualizada.")
-                            st.rerun()
-                    with row[1]:
-                        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-                        if st.button("▼", key=f"down_{pid}", help="Mover este painel para baixo", disabled=i == len(paineis)-1, use_container_width=True):
-                            paineis[i + 1], paineis[i] = paineis[i], paineis[i + 1]
-                            salvar_config(config, force=True)
-                            st.toast("Ordem atualizada.")
-                            st.rerun()
-                    with row[2]:
                         painel["ativo"] = st.toggle(
                             "Exibir",
                             value=bool(painel.get("ativo", True)),
                             key=f"ativo_{pid}",
                             help="Liga ou desliga este painel na rotação. Desligado, ele continua cadastrado.",
                         )
-                    with row[3]:
+                    with row[1]:
                         painel["nome"] = st.text_input("Nome do painel", value=painel["nome"], key=f"nome_{pid}")
-                    with row[4]:
+                    with row[2]:
                         painel["tempo"] = st.number_input(
                             "Tempo na tela", 5, 600, int(painel.get("tempo", 20)), 5, key=f"tempo_{pid}",
                             help="Quantidade de segundos que este painel ficará visível antes de passar para o próximo.",
                         )
-                    with row[5]:
+                    with row[3]:
                         painel["reload_enabled"] = st.toggle(
                             "Atualização",
                             value=bool(painel.get("reload_enabled", True)) if painel.get("tipo") not in ("g4flex", "portais") else False,
@@ -7648,17 +7441,17 @@ if not st.session_state.iniciado:
                             disabled=painel.get("tipo") in ("g4flex", "portais"),
                             help="O G4Flex consulta Supabase automaticamente a cada 3 segundos, sem recarregar o iframe.",
                         )
-                    with row[6]:
+                    with row[4]:
                         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                         if st.button("⧉ Duplicar", key=f"dup_{pid}", help="Criar uma cópia deste painel", use_container_width=True):
                             clone = copy.deepcopy(painel)
                             clone["id"] = novo_id("p_")
                             clone["nome"] = f"{clone['nome']} - Cópia"
                             paineis.insert(i + 1, clone)
-                            salvar_config(config, force=True)
-                            st.toast("Painel duplicado.")
+                            if salvar_config(config, force=True):
+                                st.toast("Painel duplicado.")
                             st.rerun()
-                    with row[7]:
+                    with row[5]:
                         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                         if st.button("🗑 Excluir", key=f"del_{pid}", help="Excluir este painel", use_container_width=True):
                             st.session_state["painel_pendente_exclusao_v23"] = pid
@@ -7765,6 +7558,15 @@ if not st.session_state.iniciado:
                         with compat_c2:
                             if painel["iframe_mode"] == "auto":
                                 st.info("O monitor verificará os cabeçalhos do site. Se o bloqueio for confirmado, exibirá o mascote e manterá normalmente o tempo de rotação do painel.")
+                                if painel.get("tipo") not in ("g4flex", "portais") and url_valida(painel.get("link", "")):
+                                    if st.button("Verificar iframe", key=f"cfg_probe_{pid}"):
+                                        check = verificar_paineis_iframe([painel]).get(pid, {})
+                                        if check.get("status") == "pending":
+                                            st.info("Verificação em andamento. Consulte novamente para ver o resultado.")
+                                        elif check.get("blocked") or check.get("status") == "unknown":
+                                            st.warning(check.get("reason") or "Compatibilidade ainda não confirmada.")
+                                        else:
+                                            st.info(check.get("reason") or "Verificação concluída.")
                             elif painel["iframe_mode"] == "force_iframe":
                                 st.warning("O monitor tentará abrir este endereço normalmente, mesmo que haja indícios de bloqueio. Use apenas se a detecção automática gerar falso positivo.")
                             else:
@@ -7784,8 +7586,8 @@ if not st.session_state.iniciado:
                             if st.button("Confirmar exclusão", key=f"confirm_del_{pid}", type="primary", use_container_width=True):
                                 perfil["paineis"] = [p for p in paineis if p["id"] != pid]
                                 st.session_state["painel_pendente_exclusao_v23"] = None
-                                salvar_config(config, force=True)
-                                st.toast("Painel excluído.")
+                                if salvar_config(config, force=True):
+                                    st.toast("Painel excluído.")
                                 st.rerun()
 
         # =========================================================
@@ -7918,9 +7720,10 @@ if not st.session_state.iniciado:
             with pbtn1:
                 if st.button("↻ Sincronizar agora", use_container_width=True, key="portal_sync_now_v300", disabled=not ticker.get("portal_enabled", True) or ticker.get("source_mode") == "manual"):
                     changed, sync_state = sincronizar_portal_ticker(ticker, force=True)
-                    salvar_config(config, force=True)
+                    saved = salvar_config(config, force=True)
                     if sync_state == "ok":
-                        st.toast("Portal S&S sincronizado com sucesso.")
+                        if saved:
+                            st.toast("Portal S&S sincronizado com sucesso.")
                     elif sync_state == "not_configured":
                         st.error("Configure [portal_ss] em Settings → Secrets no Streamlit Cloud.")
                     else:
@@ -7976,7 +7779,10 @@ if not st.session_state.iniciado:
             add_left, add_right = st.columns([4, 1])
             with add_right:
                 if st.button("＋ Adicionar notícia", use_container_width=True, key="add_news_v290"):
-                    ticker["news"].append(noticia_padrao()); salvar_config(config, force=True); st.toast("Notícia adicionada."); st.rerun()
+                    ticker["news"].append(noticia_padrao())
+                    if salvar_config(config, force=True):
+                        st.toast("Notícia adicionada.")
+                    st.rerun()
 
             pending_news_delete = st.session_state.get("news_pendente_exclusao_v290")
             category_options = ["novo", "melhoria", "correcao", "aviso", "importante"]
@@ -8041,7 +7847,10 @@ if not st.session_state.iniciado:
             with ag_add:
                 st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
                 if st.button("＋ Adicionar compromisso", use_container_width=True, key="add_agenda_v290"):
-                    ticker["agenda"].append(agenda_item_padrao()); salvar_config(config, force=True); st.toast("Compromisso adicionado."); st.rerun()
+                    ticker["agenda"].append(agenda_item_padrao())
+                    if salvar_config(config, force=True):
+                        st.toast("Compromisso adicionado.")
+                    st.rerun()
 
             pending_agenda_delete = st.session_state.get("agenda_pendente_exclusao_v290")
             modalidade_options=["presencial","online","hibrido","outro"]
@@ -8232,8 +8041,6 @@ if not st.session_state.iniciado:
             st.caption("Fonte: robô `monitor_sim.py` → Supabase (`sim_monitor_events`). Todos os navegadores do monitoramento consultam a mesma última entrega, sem F5 e sem depender do login backend do Consulta TCE.")
             st.info("O teste usa a **última entrega publicada pelo robô**, a mesma fonte usada pelos alertas automáticos.")
 
-        # Salva somente se houve alteração efetiva.
-        salvar_config(config)
 
         st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
@@ -8324,67 +8131,82 @@ if not st.session_state.iniciado:
             )
             st.caption("Quando ativado, as atribuições maiores que zero recebem um aviso. Sem animação contínua ou som; pessoas em pausa continuam com fundo azul e pessoas ativas com fundo verde.")
 
-        salvar_config(config)
-
-        # Backup/importação/diagnóstico
         if active_section == "backup":
-            b1, b2, b3 = st.columns(3)
-            with b1:
+            export_col, backup_col, default_col = st.columns(3)
+            with export_col:
                 st.download_button(
-                    "Exportar configuração",
-                    data=json.dumps(config, ensure_ascii=False, indent=2),
+                    "Exportar configuração", json.dumps(config, ensure_ascii=False, indent=2),
                     file_name=f"monitoramento_config_v{APP_VERSION.replace('.', '_')}.json",
-                    mime="application/json",
-                    use_container_width=True,
+                    mime="application/json", use_container_width=True,
                 )
-            with b2:
-                if BACKUP_PATH.exists() and st.button("Restaurar último backup", use_container_width=True, key="restore_backup_v23"):
+            with backup_col:
+                if st.button("Prévia do último backup", disabled=not BACKUP_PATH.exists(), use_container_width=True):
                     try:
-                        restored = normalizar_config(json.loads(BACKUP_PATH.read_text(encoding="utf-8")))
-                        st.session_state.config_v23 = restored
-                        salvar_config(restored, force=True)
-                        st.toast("Backup restaurado.")
-                        st.rerun()
-                    except Exception as exc:
-                        st.error(f"Falha ao restaurar backup: {exc}")
-            with b3:
-                if st.button("Restaurar perfil padrão SS", use_container_width=True, key="restore_profile_default_v23"):
-                    novo = copy.deepcopy(_DEFAULT_PROFILE)
-                    novo["id"] = active_profile_id
-                    novo["nome"] = perfil["nome"]
-                    # novos IDs evitam conflito com estados antigos do navegador
-                    for p in novo["paineis"]:
-                        p["id"] = novo_id("p_")
-                    config["profiles"][active_profile_id] = novo
-                    salvar_config(config, force=True)
-                    st.toast("Perfil restaurado para a configuração padrão.")
-                    st.rerun()
-
+                        backup = json.loads(BACKUP_PATH.read_bytes())
+                        errors, _ = validar_config_importada(backup)
+                        if errors:
+                            st.error("O backup não passou na validação. Exporte a configuração atual antes de continuar.")
+                        else:
+                            st.session_state["cfg_pending_restore"] = ("Restaurar backup", normalizar_config(backup))
+                    except (OSError, ValueError):
+                        st.error("Não foi possível ler o último backup.")
+            with default_col:
+                if st.button("Prévia do perfil padrão S&S", use_container_width=True):
+                    candidate = copy.deepcopy(config)
+                    default_profile = regenerar_ids(_DEFAULT_PROFILE)
+                    default_profile["id"] = active_profile_id
+                    default_profile["nome"] = perfil["nome"]
+                    candidate["profiles"][active_profile_id] = default_profile
+                    st.session_state["cfg_pending_restore"] = ("Restaurar perfil padrão S&S", candidate)
+            if st.session_state.pop("cfg_clear_import", False):
+                st.session_state.pop("import_v23", None)
             imported = st.file_uploader("Importar configuração JSON", type=["json"], key="import_v23")
-            if imported is not None:
+            pending = st.session_state.get("cfg_pending_restore")
+            if imported is not None and not pending:
                 try:
-                    raw_import = json.loads(imported.getvalue().decode("utf-8"))
-                    erros, avisos = validar_config_importada(raw_import)
-                    normalized_import = normalizar_config(raw_import) if not erros else None
-                    if normalized_import:
-                        total_profiles = len(normalized_import["profiles"])
-                        total_panels = sum(len(p["paineis"]) for p in normalized_import["profiles"].values())
-                        total_active = sum(len(perfil_ativos(p)) for p in normalized_import["profiles"].values())
-                        st.info(f"Prévia da importação: {total_profiles} perfil(is), {total_panels} painel(is), {total_active} painel(is) ativo(s) com URL válida.")
-                    for aviso in avisos[:8]:
-                        st.warning(aviso)
-                    for erro in erros[:8]:
-                        st.error(erro)
-                    if normalized_import and st.button("Confirmar importação", type="primary", use_container_width=True, key="confirm_import_v23"):
-                        st.session_state.config_v23 = normalized_import
-                        salvar_config(normalized_import, force=True)
-                        st.query_params["perfil"] = normalized_import["default_profile_id"]
-                        st.toast("Configuração importada.")
+                    raw_import = json.loads(imported.getvalue().decode("utf-8-sig"))
+                    errors, warnings = validar_config_importada(raw_import)
+                    for warning in warnings[:8]:
+                        st.warning(warning)
+                    for error in errors[:8]:
+                        st.error(error)
+                    if not errors:
+                        pending = ("Importar configuração", normalizar_config(raw_import))
+                except (UnicodeError, ValueError):
+                    st.error("O arquivo selecionado não é um JSON válido.")
+            if pending:
+                action, candidate = pending
+                st.subheader(action, anchor=False)
+                for label, entries in config_changes(config, candidate).items():
+                    if entries:
+                        with st.expander(f"{label} · {len(entries)}", expanded=True):
+                            for entry in entries:
+                                st.text(entry)
+                global_changes = [label for key, label in (
+                    ("default_profile_id", "perfil padrão"), ("ticker", "comunicação"),
+                    ("sim_alerts", "alertas SIM"),
+                ) if config.get(key) != candidate.get(key)]
+                if global_changes:
+                    st.caption("Também altera " + ", ".join(global_changes) + ".")
+                if config_hash(config) == config_hash(candidate):
+                    st.info("A prévia é igual à configuração atual.")
+                if st.button("Cancelar prévia"):
+                    st.session_state.pop("cfg_pending_restore", None)
+                    st.session_state["cfg_clear_import"] = True
+                    st.rerun()
+                if st.button(f"Confirmar: {action.lower()}", type="primary"):
+                    if salvar_config(candidate, force=True):
+                        st.session_state.config_v23 = candidate
+                        st.session_state.pop("cfg_pending_restore", None)
+                        st.session_state["cfg_clear_import"] = True
+                        st.query_params["perfil"] = (
+                            active_profile_id if active_profile_id in candidate["profiles"] else candidate["default_profile_id"]
+                        )
+                        st.toast("Configuração aplicada.")
                         st.rerun()
-                except Exception as exc:
-                    st.error(f"JSON inválido: {exc}")
 
-            st.markdown("**Diagnóstico da configuração**")
+        if active_section == "diagnostics":
+            st.markdown("**Ambiente e configuração**")
             st.write(f"Versão: `{APP_VERSION}` / esquema `{CONFIG_VERSION}`")
             st.write(f"Perfil desta tela: `{perfil['nome']}` (`{active_profile_id}`)")
             st.write(f"Perfil padrão global: `{config['profiles'][config['default_profile_id']]['nome']}`")
@@ -8392,18 +8214,17 @@ if not st.session_state.iniciado:
             st.write(f"URLs inválidas ativas: `{urls_invalidas}`")
             st.write(f"Painéis mantidos abertos: `{preservados}`")
             st.write(f"Persistência local: `{CONFIG_PATH.name}` com gravação atômica + backup")
+            if (render_ms := st.session_state.get("cfg_last_render_ms")) is not None:
+                st.caption(f"Última renderização da Central no servidor: {render_ms} ms.")
 
             st.markdown("**Rede do backend · IP de saída do servidor**")
             st.caption(
                 "Este é o IP público observado em uma requisição feita pelo Python do servidor. "
                 "É o endereço mais útil para o responsável pelo Consulta TCE localizar a chamada nos logs do WAF/firewall."
             )
-            if "outbound_ip_diag_v3162" not in st.session_state:
-                st.session_state.outbound_ip_diag_v3162 = consultar_ip_saida_servidor()
-
             ip_col1, ip_col2 = st.columns([3, 1])
             with ip_col2:
-                if st.button("Atualizar IP de saída", use_container_width=True, key="refresh_outbound_ip_v3162"):
+                if st.button("Consultar IP de saída", use_container_width=True, key="refresh_outbound_ip_v3162"):
                     st.session_state.outbound_ip_diag_v3162 = consultar_ip_saida_servidor()
             ip_diag = st.session_state.get("outbound_ip_diag_v3162", {})
             with ip_col1:
@@ -8413,7 +8234,7 @@ if not st.session_state.iniciado:
                         f"Consultado em {ip_diag.get('consultado_em', 'agora')} · "
                         f"fonte de diagnóstico: {ip_diag.get('fonte', 'serviço externo')}"
                     )
-                else:
+                elif ip_diag:
                     st.warning(f"Não foi possível consultar o IP de saída: {ip_diag.get('erro', 'erro não identificado')}")
             st.info(
                 "No Streamlit Community Cloud, o IP de saída pode variar entre instâncias ou reinícios. "
@@ -8477,463 +8298,27 @@ if not st.session_state.iniciado:
             )
 
 
-    st.markdown('<div id="config-top"></div>', unsafe_allow_html=True)
+        if not st.session_state.get("ultimo_erro_persistencia"):
+            salvar_config(config)
 
-    st.markdown(
-        f"""
-        <div class="cfg-hero cfg-hero-v315">
-            <div class="cfg-hero-main">
-                <div class="cfg-brand-box"><img src="https://www.ssinformatica.net/wp-content/uploads/2023/03/Grupo-SS.png" alt="Grupo S&S"></div>
-                <div>
-                    <div class="cfg-hero-title">Configurações do Painel de Monitoramento</div>
-                    <div class="cfg-hero-subtitle">Centralize painéis, integrações, comunicação e experiência de exibição em um único lugar.</div>
-                </div>
-            </div>
-            <div class="cfg-version-card">
-                <div class="cfg-version-icon">{_cfg_icon_svg('news')}</div>
-                <div><div class="cfg-version-title"><span class="cfg-dot"></span>v{APP_VERSION} · Estável</div><div class="cfg-version-sub">Último salvamento: {html.escape(last_saved_short)}</div></div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    def recarregar_configuracao():
+        for key in ("config_v23", "config_conflito", "ultimo_erro_persistencia", "ultima_gravacao", "cfg_pending_restore"):
+            st.session_state.pop(key, None)
+        for key in st.session_state.pop("cfg_workspace_widget_keys", set()):
+            st.session_state.pop(key, None)
+
+    settings_keys_before = set(st.session_state)
+    render_workspace(
+        config, active_profile_id, com_is_admin, render_config_section,
+        perfil_ativos, salvar_config, iniciar_monitoramento_ux24, recarregar_configuracao,
     )
-
-    with st.container(border=True, key="cfg_profile_card_v315"):
-        pc1, pc2, pc3 = st.columns([2.5, 1.05, 1.15])
-        with pc1:
-            st.markdown('<div class="cfg-profile-eyebrow">MONITOR ATUAL</div>', unsafe_allow_html=True)
-            profile_ids = list(config["profiles"].keys())
-            selected = st.selectbox(
-                "Perfil de monitoramento", options=profile_ids, index=profile_ids.index(active_profile_id),
-                format_func=lambda pid: config["profiles"][pid]["nome"], key="perfil_select_v315",
-                help="Cada TV ou monitor pode utilizar um perfil diferente.", label_visibility="visible",
-            )
-            if selected != active_profile_id:
-                st.query_params["perfil"] = selected
-                st.query_params["iniciado"] = "false"
-                st.session_state.iniciado = False
-                st.rerun()
-        with pc2:
-            st.markdown('<div class="cfg-profile-stat"><span class="cfg-status-dot ok"></span><strong>Salvamento</strong><span>Automático</span></div>', unsafe_allow_html=True)
-        with pc3:
-            default_label = "Padrão" if active_profile_id == config.get("default_profile_id") else "Personalizado"
-            st.markdown(f'<div class="cfg-profile-stat"><span class="cfg-profile-mini-icon">{_cfg_icon_svg("profiles")}</span><strong>{html.escape(default_label)}</strong><span>{len(ativos)} painel(is) ativo(s)</span></div>', unsafe_allow_html=True)
-
-    metric_payload = [
-        {"section":"profiles","icon":"profiles","value":profiles_count,"label":"Perfis ativos","sub":"de monitoramento","tone":"blue"},
-        {"section":"panels","icon":"panels","value":len(paineis),"label":"Painéis configurados","sub":f"{len(ativos)} ativo(s) na rotação","tone":"green"},
-        {"section":"ticker","icon":"ticker","value":faixas_ativas,"label":"Faixas corporativas","sub":"Atualizações + Agenda S&S","tone":"purple"},
-        {"section":"integration","icon":"integration","value":integracoes_ativas,"label":"Integrações ativas","sub":"Portal e Monitor SIM","tone":"orange"},
-        {"section":"sim_alert","icon":"sim_alert","value":alertas_ativos,"label":"Alertas ativos","sub":"Nova Entrega SIM","tone":"blue"},
-    ]
-
-    if hasattr(st.components, "v2"):
-        metric_component = st.components.v2.component(
-            "config_metrics_v315", html='<div class="cfg-metrics-v315"></div>',
-            css=r'''
-                :host{display:block;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.cfg-metrics-v315{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px;margin:9px 0 14px}.metric{appearance:none;border:1px solid #D9E5EF;background:#fff;border-radius:14px;min-height:84px;padding:11px 12px;display:grid;grid-template-columns:45px minmax(0,1fr) 18px;gap:11px;align-items:center;text-align:left;cursor:pointer;box-shadow:0 4px 15px rgba(14,82,133,.04);transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}.metric:hover{transform:translateY(-2px);border-color:#A8CBE3;box-shadow:0 9px 22px rgba(14,82,133,.09)}.metric:active{transform:translateY(0)}.mi{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}.mi svg{width:22px;height:22px}.blue{background:#E9F3FF;color:#0877E3}.green{background:#E7FBF1;color:#07945A}.purple{background:#F3EAFE;color:#7426E7}.orange{background:#FFF0E4;color:#F06A00}.red{background:#FFE9EC;color:#DC243D}.mv{font-size:23px;line-height:1;font-weight:850;color:#071A3B}.ml{font-size:12px;font-weight:800;color:#23415C;margin-top:4px}.ms{font-size:10.3px;color:#6E8194;margin-top:3px;line-height:1.25}.ma{color:#9AB1C4;font-size:18px;text-align:right;transition:transform .14s}.metric:hover .ma{transform:translateX(2px);color:#0877E3}@media(max-width:1050px){.cfg-metrics-v315{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:680px){.cfg-metrics-v315{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{min-height:82px}}
-            ''', isolate_styles=True,
-            js=r'''
-                export default function(component){
-                const {data,parentElement,setTriggerValue}=component;
-                const host=parentElement.querySelector('.cfg-metrics-v315');if(!host||!data)return;
-                const esc=(v)=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-                const icons={profiles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',panels:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',ticker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>',integration:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1 1"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1-1"/></svg>',sim_alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'};
-                const items=Array.isArray(data.items)?data.items:[];
-                host.innerHTML=items.map(x=>`<button class="metric" type="button" data-section="${esc(x.section)}"><span class="mi ${esc(x.tone)}">${icons[x.icon]||icons.panels}</span><span><div class="mv">${esc(x.value)}</div><div class="ml">${esc(x.label)}</div><div class="ms">${esc(x.sub)}</div></span><span class="ma">›</span></button>`).join('');
-                host.querySelectorAll('.metric').forEach(btn=>btn.onclick=()=>{const section=btn.dataset.section||'';try{sessionStorage.setItem('ss_cfg_scroll_pending_v315',section)}catch(e){}setTriggerValue('metric_event',JSON.stringify({section,sentAt:Date.now()}));});
-            }
-            ''')
-        metric_result = metric_component(data={"items": metric_payload}, key=f"config_metrics_{active_profile_id}", on_metric_event_change=lambda: None)
-        raw_metric_event = getattr(metric_result, "metric_event", None)
-        if raw_metric_event:
-            try:
-                metric_event = json.loads(raw_metric_event)
-                event_id = f"metric:{metric_event.get('section')}:{metric_event.get('sentAt')}"
-                if event_id != st.session_state.get("config_nav_last_event_v315"):
-                    st.session_state["config_nav_last_event_v315"] = event_id
-                    requested = str(metric_event.get("section") or "").strip().lower()
-                    if requested in valid_sections:
-                        st.session_state["config_active_section_v315"] = requested
-                        st.rerun()
-            except Exception:
-                pass
-
-    # v3.49.0: navegação rápida com âncoras reais, sem alterar o estado da seção aberta.
-    quick_targets = [
-        ("Monitoramento", "cfg-group-monitoramento", "panels"),
-        ("Comunicação", "cfg-group-comunicacao", "comunicados"),
-        ("Integrações", "cfg-group-integracoes", "integration"),
-        ("Alertas", "cfg-area-sim_alert", "sim_alert"),
-        ("Administração", "cfg-group-administracao", "profiles"),
-        ("Backup", "cfg-area-backup", "backup"),
-        ("Diagnóstico", "cfg-area-backup", "stability"),
-    ]
-    quick_html = ''.join(
-        f'<a class="cfg-quick-link {"primary" if i == 0 else ""}" '
-        f'href="#{anchor}" title="Ir para {html.escape(label)}">'
-        f'{_cfg_icon_svg(icon)}<span>{html.escape(label)}</span></a>'
-        for i, (label, anchor, icon) in enumerate(quick_targets)
-    )
-    qcol, scol = st.columns([3.4, 1.0], vertical_alignment="center", gap="medium")
-    with qcol:
-        st.markdown('<nav class="cfg-quick-nav" aria-label="Acesso rápido às áreas de configuração">'
-                    '<span class="cfg-quick-title">Acesso rápido:</span>' + quick_html + '</nav>',
-                    unsafe_allow_html=True)
-    with scol:
-        config_search = st.text_input("Buscar configuração", placeholder="⌕  Buscar configuração...",
-                                      label_visibility="collapsed", key="config_search_v315")
-
-    nav_items = [
-        {"key":"profiles","icon":"profiles","tone":"blue","group":"Monitoramento","title":"Perfis de monitoramento","desc":"Gerencie perfis e defina qual conjunto de painéis cada monitor utiliza.","status":f"{profiles_count} perfil(is)","state":"info","keywords":"perfil monitor tv"},
-        {"key":"panels","icon":"panels","tone":"green","group":"Monitoramento","title":"Painéis e ordem de exibição","desc":"Configure painéis, ordem, tempo, F5 e comportamento de cada tela.","status":f"{len(ativos)}/{len(paineis)} ativos","state":"ok","keywords":"painel ordem f5 tempo iframe sessão"},
-        {"key":"stability","icon":"stability","tone":"blue","group":"Monitoramento","title":"Estabilidade e operação","desc":"Parâmetros de desempenho, preservação de sessão e operação do painel.","status":"SIM · F5 OFF","state":"ok","keywords":"f5 estabilidade sessão desempenho watchdog"},
-        {"key":"visual","icon":"visual","tone":"purple","group":"Monitoramento","title":"Experiência e visual","desc":"Personalize escala, controles, transições, relógio e indicadores.","status":f"Escala {perfil.get('ui_scale',100)}%","state":"info","keywords":"visual escala tv relógio barra transição"},
-        {"key":"ticker","icon":"ticker","tone":"purple","group":"Comunicação","title":"Faixas corporativas · Atualizações + Agenda","desc":"Gerencie as faixas corporativas exibidas no rodapé do monitoramento.","status":f"{faixas_ativas} ativa(s)","state":"ok" if faixas_ativas else "muted","keywords":"ticker news faixa rodapé agenda atualizações"},
-        {"key":"updates","icon":"updates","tone":"blue","group":"Comunicação","title":"Atualizações S&S · conteúdo e prévia","desc":"Defina o conteúdo das atualizações e visualize como será apresentado na faixa.","status":f"{updates_count} ativa(s)","state":"info","keywords":"notícia atualização preview portal"},
-        {"key":"agenda","icon":"agenda","tone":"green","group":"Comunicação","title":"Agenda S&S","desc":"Ajuste compromissos, período de exibição e conteúdo da Agenda S&S.","status":f"{agenda_count} compromisso(s)","state":"info","keywords":"agenda compromisso visita reunião"},
-        {"key":"integration","icon":"integration","tone":"orange","group":"Integrações e alertas","title":"Integração automática · S&S Conecta","desc":"Configure a sincronização automática de atualizações e compromissos do portal.","status":f"{integracoes_ativas} ativa(s)","state":"ok" if integracoes_ativas else "warn","keywords":"portal conecta integração sincronizar"},
-        {"key":"sim_alert","icon":"sim_alert","tone":"blue","group":"Integrações e alertas","title":"Alerta de Nova Entrega SIM","desc":"Configure o alerta visual e sonoro para novas entregas do Monitor SIM.","status":"Ativo" if alertas_ativos else "Desativado","state":"ok" if alertas_ativos else "muted","keywords":"sim alerta som entrega tce api"},
-        {"key":"backup","icon":"backup","tone":"blue","group":"Administração","title":"Backup, restauração e diagnóstico","desc":"Exporte, restaure, importe configurações e consulte o diagnóstico do ambiente.","status":"Disponível","state":"info","keywords":"backup importar exportar restaurar diagnóstico json"},
-        {"key":"news","icon":"news","tone":"green","group":"Administração","title":"Novidades desta versão","desc":"Confira melhorias e mudanças implementadas na versão atual do painel.","status":f"NOVO · v{APP_VERSION}","state":"new","keywords":"versão novidade changelog novo"},
-    ]
-    nav_items.insert(-2, {"key":"releases","icon":"updates","tone":"blue","group":"Administração","title":"Downloads e Atualizações","desc":"Instaladores oficiais para Windows, novas versões e histórico de publicações.","status":"CENTRAL · v3.31","state":"new","keywords":"download atualizar windows exe release aplicativo robô instalador"})
-    if com_is_admin:
-        nav_items.insert(-2, {"key":"access", "icon":"profiles", "tone":"green", "group":"Administração",
-                              "title":"Usuários e Permissões", "desc":"Crie contas, gere senhas provisórias e gerencie perfis sem abrir o Supabase.",
-                              "status":"NOVO · v3.36", "state":"new", "keywords":"cadastrar usuário acesso senha provisória perfil bloquear"})
-        nav_items.insert(-2, {"key":"comunicados","icon":"comunicados","tone":"blue","group":"Administração","title":"Central de Comunicados","desc":"Publique avisos instantâneos, confira histórico e cancele mensagens nas telas conectadas.","status":"ADMIN · v3.24","state":"new","keywords":"mensagem comunicado megafone tv aviso sonoro administrador"})
-    q = (config_search or "").strip().lower()
-    if q:
-        nav_items = [item for item in nav_items if q in (item["title"] + " " + item["desc"] + " " + item["status"] + " " + item["group"] + " " + item["keywords"]).lower()]
-
-    st.markdown('<div class="cfg-section-heading cfg-section-heading-v349">'
-                '<div class="cfg-section-grid-icon">' + _cfg_icon_svg('panels') + '</div>'
-                '<div><div class="cfg-section-title">Áreas de configuração</div>'
-                '<div class="cfg-section-sub">Selecione uma área para ajustar as configurações do monitor.</div>'
-                '</div></div>', unsafe_allow_html=True)
-
-    if hasattr(st.components, "v2"):
-        nav_row_component = st.components.v2.component(
-            "config_nav_row_v315", html='<div class="cfg-row"></div>',
-            css=r'''
-                :host{display:block;width:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.cfg-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px;margin-bottom:12px}.card{appearance:none;position:relative;width:100%;min-height:89px;border:1px solid #D7E3EE;border-radius:14px;background:#fff;display:grid;grid-template-columns:46px minmax(0,1fr) auto 28px;align-items:center;gap:11px;padding:13px;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(14,82,133,.035);transition:border-color .15s ease,box-shadow .15s ease,transform .14s ease,background .15s ease;overflow:hidden;color:#0A1D3A}.card:hover{border-color:#9EC8E5;box-shadow:0 8px 22px rgba(14,82,133,.09);transform:translateY(-2px)}.card:active{transform:translateY(0)}.card.active{border-color:#1987D1;background:linear-gradient(90deg,#F5FAFE 0%,#fff 55%);box-shadow:0 0 0 1px rgba(25,135,209,.09),0 8px 22px rgba(14,82,133,.07)}.card.active:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:#1685D1}.icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}.icon svg{width:22px;height:22px}.blue{background:#E9F3FF;color:#0877E3}.green{background:#E7FBF1;color:#07945A}.purple{background:#F3EAFE;color:#7426E7}.orange{background:#FFF0E4;color:#F06A00}.red{background:#FFE9EC;color:#DC243D}.title{font-size:14px;font-weight:830;line-height:1.22;color:#071B37;margin-bottom:4px}.desc{font-size:11.6px;line-height:1.35;color:#60758A}.badge{white-space:nowrap;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;border:1px solid #D7E4EE;background:#F5F9FC;color:#577086}.badge.ok{background:#ECFDF3;border-color:#C5F2D5;color:#087A44}.badge.warn{background:#FFF7E8;border-color:#F6DEAF;color:#9A5A00}.badge.new{background:#EDF9F2;border-color:#BFE9D0;color:#087A44}.badge.muted{background:#F5F6F8;color:#8A96A4}.arrow{width:28px;height:28px;border-radius:50%;background:#F1F7FC;color:#0876D1;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;transition:transform .15s,background .15s}.card:hover .arrow{transform:translateX(2px);background:#E7F3FC}.card.active .arrow{transform:rotate(90deg)}@media(max-width:1250px){.cfg-row{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:780px){.cfg-row{grid-template-columns:1fr}.badge{display:none}}@media(prefers-reduced-motion:reduce){.card,.arrow{transition:none!important}.card:hover{transform:none!important}}
-            ''', isolate_styles=True,
-            js=r'''
-                export default function(component){
-                const {data,parentElement,setTriggerValue}=component;
-                const host=parentElement.querySelector('.cfg-row');if(!host||!data)return;
-                const esc=(v)=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-                const icons={profiles:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',panels:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',ticker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>',integration:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1 1"/><path d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1-1"/></svg>',updates:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>',agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',sim_alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/></svg>',stability:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',visual:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',backup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>',news:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9L12 3Z"/></svg>'};
-                const items=Array.isArray(data.items)?data.items:[];
-                const active=String(data.active||'');
-                host.innerHTML=items.map(x=>`<button type="button" class="card ${x.key===active?'active':''}" data-section="${esc(x.key)}"><span class="icon ${esc(x.tone)}">${icons[x.icon]||icons.panels}</span><span><div class="title">${esc(x.title)}</div><div class="desc">${esc(x.desc)}</div></span><span class="badge ${esc(x.state)}">${esc(x.status)}</span><span class="arrow">›</span></button>`).join('');
-                host.querySelectorAll('.card').forEach(btn=>btn.onclick=()=>{const section=btn.dataset.section||'';try{sessionStorage.setItem('ss_cfg_scroll_pending_v315',section)}catch(e){}setTriggerValue('nav_event',JSON.stringify({section,sentAt:Date.now()}));});
-                let pending='';
-                try{pending=sessionStorage.getItem('ss_cfg_scroll_pending_v315')||''}catch(e){}if(pending&&pending===active){try{sessionStorage.removeItem('ss_cfg_scroll_pending_v315')}catch(e){};const go=()=>{const t=document.getElementById('config-content-'+active);if(t)t.scrollIntoView({behavior:'smooth',block:'center'});else setTimeout(go,70)};
-                    setTimeout(go,90)
-                }
-            }
-            ''')
-    else:
-        nav_row_component = None
-
-    section_meta = {item["key"]: item for item in nav_items}
-    group_order = ["Monitoramento", "Comunicação", "Integrações e alertas", "Administração"]
-    any_rendered = False
-    for group_name in group_order:
-        group_items = [item for item in nav_items if item["group"] == group_name]
-        if not group_items:
-            continue
-        any_rendered = True
-        group_anchor = {"Monitoramento":"cfg-group-monitoramento",
-                        "Comunicação":"cfg-group-comunicacao",
-                        "Integrações e alertas":"cfg-group-integracoes",
-                        "Administração":"cfg-group-administracao"}.get(group_name, "cfg-group-outros")
-        st.markdown(f'<span class="cfg-quick-anchor" id="{group_anchor}"></span>'
-                    f'<div class="cfg-group-label"><span>{html.escape(group_name)}</span></div>',
-                    unsafe_allow_html=True)
-        for row_index in range(0, len(group_items), 3):
-            row_items = group_items[row_index:row_index + 3]
-            # Âncoras para os atalhos de Alerta e Backup, mesmo em uma linha de 3 cards.
-            for item in row_items:
-                if item["key"] in {"sim_alert", "backup"}:
-                    st.markdown(f'<span class="cfg-quick-anchor" id="cfg-area-{item["key"]}"></span>',
-                                unsafe_allow_html=True)
-            # v3.49.4: os dois cards continuam como botoes nativos (clicaveis),
-            # mas usam a mesma hierarquia visual dos cards restantes:
-            # icone / titulo + descricao / badge / seta.
-            if group_name == "Integrações e alertas":
-                # O badge e a descricao refletem os dados atuais; nao ficam
-                # congelados em um texto de CSS e nao exigem botoes sobrepostos.
-                palette = {
-                    "ok": ("#ECFDF3", "#C5F2D5", "#087A44"),
-                    "warn": ("#FFF7E8", "#F6DEAF", "#9A5A00"),
-                    "muted": ("#F5F6F8", "#E1E5EA", "#7A8795"),
-                }
-                extra_css = []
-                for native_item in row_items:
-                    code = native_item["key"]
-                    badge_bg, badge_border, badge_fg = palette.get(
-                        native_item["state"], ("#F5F9FC", "#D7E4EE", "#577086")
-                    )
-                    # JSON produz aspas CSS com o escape necessario para os textos.
-                    badge_text = json.dumps(str(native_item["status"]), ensure_ascii=False)
-                    desc_text = json.dumps(str(native_item["desc"]), ensure_ascii=False)
-                    item_selector = f'div[class*="st-key-cfg_integracoes_native_{code}"]'
-                    extra_css.append(f"""
-                        {item_selector} .stButton button::after {{
-                            content: {badge_text} !important;
-                            background: {badge_bg} !important;
-                            border-color: {badge_border} !important;
-                            color: {badge_fg} !important;
-                        }}
-                        {item_selector} .stButton button [data-testid="stMarkdownContainer"]::after {{
-                            content: {desc_text} !important;
-                        }}
-                    """)
-                    if active_section == code:
-                        extra_css.append(f"""
-                            {item_selector} .stButton button {{
-                                border-color: #1987D1 !important;
-                                background-color: #F7FBFF !important;
-                                box-shadow: 0 0 0 1px rgba(25,135,209,.10),
-                                            0 8px 22px rgba(14,82,133,.07) !important;
-                            }}
-                        """)
-
-                native_styles = r"""
-                <style>
-                /* Escopo restrito a Integracao e Alerta SIM. Sem camadas invisiveis. */
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button {
-                    box-sizing: border-box !important;
-                    display: grid !important;
-                    grid-template-columns: 44px minmax(0,1fr) max-content 28px !important;
-                    align-items: center !important;
-                    justify-content: stretch !important;
-                    column-gap: 11px !important;
-                    position: relative !important;
-                    width: 100% !important;
-                    min-height: 89px !important;
-                    height: auto !important;
-                    margin: 0 !important;
-                    padding: 13px !important;
-                    border: 1px solid #D7E3EE !important;
-                    border-radius: 14px !important;
-                    background-color: #fff !important;
-                    background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"%3E%3Ccircle cx="14" cy="14" r="14" fill="%23F1F7FC"/%3E%3Cpath d="m12 9 5 5-5 5" stroke="%230876D1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/%3E%3C/svg%3E') !important;
-                    background-repeat: no-repeat !important;
-                    background-position: right 13px center !important;
-                    background-size: 28px 28px !important;
-                    box-shadow: 0 2px 8px rgba(14,82,133,.035) !important;
-                    color: #071B37 !important;
-                    text-align: left !important;
-                    white-space: normal !important;
-                    cursor: pointer !important;
-                    pointer-events: auto !important;
-                    opacity: 1 !important;
-                    transition: border-color .15s ease, box-shadow .15s ease,
-                                transform .14s ease !important;
-                }
-                /* Icone de 44px = mesma proporcao dos outros cards. */
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button::before {
-                    content: "" !important;
-                    grid-column: 1 !important;
-                    grid-row: 1 !important;
-                    width: 44px !important;
-                    height: 44px !important;
-                    display: block !important;
-                    border-radius: 12px !important;
-                    background-position: center !important;
-                    background-repeat: no-repeat !important;
-                    background-size: 22px 22px !important;
-                    pointer-events: none !important;
-                }
-                div[class*="st-key-cfg_integracoes_native_integration"] .stButton button::before {
-                    background-color: #FFF0E4 !important;
-                    background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23F06A00" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M10 13a5 5 0 0 0 7.07.07l2-2A5 5 0 0 0 12 4l-1 1"/%3E%3Cpath d="M14 11a5 5 0 0 0-7.07-.07l-2 2A5 5 0 0 0 12 20l1-1"/%3E%3C/svg%3E') !important;
-                }
-                div[class*="st-key-cfg_integracoes_native_sim_alert"] .stButton button::before {
-                    background-color: #E9F3FF !important;
-                    background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%230877E3" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/%3E%3Cpath d="M13.73 21a2 2 0 0 1-3.46 0"/%3E%3C/svg%3E') !important;
-                }
-                /* O texto real do botao ocupa SOMENTE a segunda coluna. */
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button [data-testid="stMarkdownContainer"] {
-                    grid-column: 2 !important;
-                    grid-row: 1 !important;
-                    width: 100% !important;
-                    min-width: 0 !important;
-                    text-align: left !important;
-                    align-self: center !important;
-                }
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button [data-testid="stMarkdownContainer"] p {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
-                    font-size: 14px !important;
-                    font-weight: 800 !important;
-                    line-height: 1.22 !important;
-                    letter-spacing: 0 !important;
-                    color: #071B37 !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    text-align: left !important;
-                    white-space: normal !important;
-                    overflow-wrap: break-word !important;
-                }
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button [data-testid="stMarkdownContainer"]::after {
-                    content: "";
-                    display: block !important;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
-                    font-size: 11.6px !important;
-                    line-height: 1.35 !important;
-                    font-weight: 400 !important;
-                    color: #60758A !important;
-                    margin-top: 4px !important;
-                    text-align: left !important;
-                    white-space: normal !important;
-                    overflow-wrap: break-word !important;
-                    pointer-events: none !important;
-                }
-                /* Badge separado do titulo, nao anexado a ele. */
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button::after {
-                    content: "";
-                    grid-column: 3 !important;
-                    grid-row: 1 !important;
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    white-space: nowrap !important;
-                    justify-content: center !important;
-                    width: max-content !important;
-                    min-width: 0 !important;
-                    padding: 4px 8px !important;
-                    border-radius: 999px !important;
-                    border: 1px solid #D7E4EE !important;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
-                    font-size: 9px !important;
-                    font-weight: 800 !important;
-                    line-height: 1 !important;
-                    pointer-events: none !important;
-                }
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button:hover {
-                    border-color: #9EC8E5 !important;
-                    box-shadow: 0 8px 22px rgba(14,82,133,.09) !important;
-                    transform: translateY(-2px) !important;
-                }
-                div[class*="st-key-cfg_integracoes_native_"] .stButton button:focus-visible {
-                    outline: 3px solid #1987D1 !important;
-                    outline-offset: 2px !important;
-                }
-                @media(max-width:780px){
-                    div[class*="st-key-cfg_integracoes_native_"] .stButton button {
-                        grid-template-columns: 44px minmax(0,1fr) 28px !important;
-                    }
-                    div[class*="st-key-cfg_integracoes_native_"] .stButton button::after {
-                        display: none !important;
-                    }
-                }
-                @media(prefers-reduced-motion:reduce){
-                    div[class*="st-key-cfg_integracoes_native_"] .stButton button {
-                        transform: none !important;
-                        transition: none !important;
-                    }
-                }
-                </style>
-                """
-                st.markdown(native_styles.replace("</style>", "\n".join(extra_css) + "</style>"),
-                            unsafe_allow_html=True)
-                native_cols = st.columns(3, gap="medium")
-                for native_col, native_item in zip(native_cols, row_items):
-                    with native_col:
-                        with st.container(key=f"cfg_integracoes_native_{native_item['key']}"):
-                            if st.button(
-                                native_item["title"],
-                                key=f"cfg_integracoes_abrir_{native_item['key']}",
-                                use_container_width=True,
-                                help=(f"{native_item['title']} · {native_item['status']}. "
-                                      f"{native_item['desc']} Clique para abrir as configurações."),
-                                type="secondary",
-                            ):
-                                requested = native_item["key"]
-                                st.session_state["config_active_section_v315"] = (
-                                    "" if requested == active_section else requested
-                                )
-                                st.rerun()
-            elif nav_row_component is not None:
-                nav_result = nav_row_component(data={"items": row_items, "active": active_section}, key=f"config_nav_{active_profile_id}_{group_name}_{row_index}", on_nav_event_change=lambda: None)
-                raw_event = getattr(nav_result, "nav_event", None)
-                if raw_event:
-                    try:
-                        evt = json.loads(raw_event)
-                        event_id = f"nav:{evt.get('section')}:{evt.get('sentAt')}"
-                        if event_id != st.session_state.get("config_nav_last_event_v315"):
-                            st.session_state["config_nav_last_event_v315"] = event_id
-                            requested = str(evt.get("section") or "").strip().lower()
-                            if requested in valid_sections:
-                                st.session_state["config_active_section_v315"] = "" if requested == active_section else requested
-                                st.rerun()
-                    except Exception:
-                        pass
-            else:
-                cols = st.columns(len(row_items))
-                for col, item in zip(cols, row_items):
-                    with col:
-                        if st.button(item["title"], use_container_width=True, key=f"fallback_nav_{item['key']}"):
-                            st.session_state["config_active_section_v315"] = "" if item["key"] == active_section else item["key"]
-                            st.rerun()
-
-            row_keys = {item["key"] for item in row_items}
-            if active_section in row_keys:
-                item = section_meta[active_section]
-                status_badge = f'<span class="cfg-active-status {html.escape(item["state"])}">{html.escape(item["status"])}</span>'
-                st.markdown(f'<div id="config-content-{html.escape(active_section)}" class="cfg-active-head cfg-active-head-v315"><div class="cfg-active-head-icon">{_cfg_icon_svg(item["icon"])}</div><div class="cfg-active-copy"><div class="cfg-active-title-line"><div class="cfg-active-head-title">{html.escape(item["title"])}</div>{status_badge}</div><div class="cfg-active-head-desc">{html.escape(item["desc"])}</div></div></div>', unsafe_allow_html=True)
-                render_config_section(active_section)
-
-    if not any_rendered:
-        st.info("Nenhuma área de configuração corresponde à busca. Tente outro termo.")
-    if not active_section:
-        st.markdown('<div class="cfg-home-hint cfg-home-hint-v315">Selecione uma área para configurar. Os cards exibem o estado atual sem precisar abrir cada seção.</div>', unsafe_allow_html=True)
-
-    fixed_ativos = perfil_ativos(perfil)
-    fixed_invalid = [p for p in perfil.get("paineis", []) if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", ""))]
-    perfil_nome_safe = html.escape(str(perfil.get("nome", "Perfil")))
-    if fixed_ativos and not fixed_invalid:
-        footer_cta = f'<a class="cfg-footer-start" data-ss-fast-start="1" href="?perfil={html.escape(active_profile_id, quote=True)}&amp;iniciado=true" target="_self"><span class="cfg-footer-play">▶</span><span>Iniciar monitoramento</span></a>'
-    else:
-        footer_cta = '<span class="cfg-footer-start disabled" title="Corrija os painéis antes de iniciar"><span class="cfg-footer-play">▶</span><span>Iniciar monitoramento</span></span>'
-
-    st.markdown(f'''<a class="cfg-back-top" href="#config-top" title="Voltar ao topo">↑</a><div class="ux24-fixed-bar cfg-footer-v315"><div class="ux24-fixed-inner cfg-footer-inner-v315"><div class="cfg-footer-indicators"><span class="cfg-footer-pill ok"><b>✓</b> Salvo automaticamente</span><span class="cfg-footer-pill"><b>Perfil</b> {perfil_nome_safe}</span><span class="cfg-footer-pill"><b>{len(fixed_ativos)}</b> painéis ativos</span></div>{footer_cta}</div></div>''', unsafe_allow_html=True)
-
-    # Ponte no DOM principal, preservando a sessão. O href segue como fallback.
-    if fixed_ativos and not fixed_invalid and hasattr(st.components, "v2"):
-        start_bridge = st.components.v2.component(
-            "ss_monitor_fast_start_v352",
-            html='<span aria-hidden="true"></span>',
-            css=":host{display:none!important;height:0!important}",
-            js=r"""
-            export default function(component) {
-                const {setTriggerValue} = component;
-                const onStart = (event) => {
-                    const target = event.target;
-                    const link = target && target.closest
-                        ? target.closest('a[data-ss-fast-start="1"]') : null;
-                    if (!link) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setTriggerValue('start', String(Date.now()) + ':' +
-                        Math.random().toString(36).slice(2));
-                };
-                document.addEventListener('click', onStart, true);
-                return () => document.removeEventListener('click', onStart, true);
-            }
-            """,
-        )
-        start_result = start_bridge(
-            key="ss_monitor_fast_start_bridge_v352",
-            on_start_change=lambda: None,
-        )
-        start_event = str(getattr(start_result, "start", "") or "")
-        if start_event and start_event != st.session_state.get("_monitor_last_fast_start_v352"):
-            st.session_state["_monitor_last_fast_start_v352"] = start_event
-            iniciar_monitoramento_ux24()
+    # Reload only widget state belonging to the workspace, preserving authentication.
+    settings_keys = {
+        key for key in set(st.session_state) - settings_keys_before
+        if not key.startswith(("_", "config_", "ultimo_", "ultima_", "cfg_pending", "outbound_ip"))
+    }
+    st.session_state.setdefault("cfg_workspace_widget_keys", set()).update(settings_keys)
+    st.session_state["cfg_last_render_ms"] = round((time.perf_counter() - _config_render_started) * 1000)
 # =========================================================
 # TELA 2 - APRESENTAÇÃO
 # =========================================================
