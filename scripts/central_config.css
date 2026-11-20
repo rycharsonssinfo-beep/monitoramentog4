@@ -78,6 +78,17 @@ body:has(.st-key-cfg_workspace) [data-baseweb="popover"] [role="option"]:is(:hov
   outline-offset: 2px !important;
 }
 .cfg-workspace-saved { color: #166534; font-weight: 650; }
+.cfg-revision-notice {
+  background: #fff4dc;
+  color: #653707;
+  border: 1px solid #dab46c;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.st-key-cfg_workspace [data-testid="stAlert"] :is([role="alert"], [data-testid="stAlertContainer"], [data-baseweb="notification"]) {
+  background: #eef5fb !important;
+  color: #16324a !important;
+}
 .cfg-panel-summary {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
