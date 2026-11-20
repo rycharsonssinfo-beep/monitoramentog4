@@ -76,10 +76,12 @@ def _render_nav(groups, sections, section):
 
     with st.container(key="cfg_workspace_desktop_nav"):
         for group, items in groups.items():
-            st.markdown(f'<div class="cfg-nav-group">{html.escape(group)}</div>', unsafe_allow_html=True)
-            for key, title, _ in items:
-                st.button(title, key=f"cfg_link_{key}", use_container_width=True,
-                          type="primary" if key == section else "secondary", on_click=_select_section, args=(key,))
+            group_key = items[0][0]
+            with st.container(key=f"cfg_nav_group_{group_key}"):
+                st.html(f'<div class="cfg-nav-group" role="heading" aria-level="3">{html.escape(group)}</div>')
+                for key, title, _ in items:
+                    st.button(title, key=f"cfg_link_{key}", use_container_width=True,
+                              type="primary" if key == section else "secondary", on_click=_select_section, args=(key,))
     with st.container(key="cfg_workspace_mobile_nav"):
         mobile_key = f"cfg_mobile_{section}"
 
