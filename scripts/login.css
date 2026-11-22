@@ -204,7 +204,12 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
 .st-key-monitor_login_layout .auth-brand .auth-brand-logo {
   width: clamp(145px, 47%, 265px);
   margin-bottom: clamp(10px, 2vh, 21px);
-  filter: brightness(0) invert(1);
+  box-sizing: border-box;
+  padding: 9px 13px;
+  background: #f5fbff;
+  border: 1px solid #d5eff7;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px #021a3b36;
 }
 .stApp .st-key-monitor_login_layout .auth-brand h1 {
   color: #fff !important;
@@ -322,7 +327,12 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
   .st-key-monitor_login_layout .auth-brand { padding: 0 2px; gap: 12px; container-type: normal; }
   .st-key-monitor_login_layout .auth-brand-copy { min-width: 0; }
   .st-key-monitor_login_layout .auth-brand picture { margin: 0; }
-  .st-key-monitor_login_layout .auth-brand .auth-brand-logo { width: 116px; margin-bottom: 5px; }
+  .st-key-monitor_login_layout .auth-brand .auth-brand-logo {
+    width: min(142px, 100%);
+    margin-bottom: 5px;
+    padding: 5px 7px;
+    border-radius: 8px;
+  }
   .stApp .st-key-monitor_login_layout .auth-brand h1 { font-size: clamp(18px, 4.1vw, 26px); line-height: 1.15; }
   .st-key-monitor_login_card { padding: 18px !important; }
 }
