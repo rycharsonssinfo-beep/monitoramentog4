@@ -2393,25 +2393,45 @@ def _auth_login_css():
     st.markdown(f"<style>{stylesheet}</style>", unsafe_allow_html=True)
 
 
-def _render_auth_brand(subtitle=""):
+def _render_auth_brand(subtitle="", *, premium=False):
     subtitle_html = f'<p class="auth-brand-subtitle">{html.escape(subtitle)}</p>' if subtitle else ""
-    st.markdown(
+    logo = '<img class="auth-brand-logo" src="app/static/grupo-ss-login-teal.png" alt="Grupo S&amp;S" width="2172" height="724">'
+    features_html = ""
+    if premium:
+        subtitle_html = (
+            '<p class="auth-brand-subtitle">Acompanhe a disponibilidade dos sistemas, '
+            'ocorrências e o status dos municípios em tempo real.</p>'
+        )
+        features = (
+            ("desktop_windows", "Monitoramento em tempo real"),
+            ("notifications", "Alertas automáticos"),
+            ("bar_chart", "Indicadores de disponibilidade"),
+            ("location_on", "Cobertura por município"),
+        )
+        features_html = '<ul class="auth-brand-features">' + "".join(
+            f'<li><span class="auth-icon" aria-hidden="true">{icon}</span><span>{label}</span></li>'
+            for icon, label in features
+        ) + '</ul>'
+
+    st.html(
         f"""
         <div class="auth-brand">
+          {logo if premium else ""}
           <picture>
             <source media="(max-width:780px)" srcset="app/static/login-mascote-160.webp">
             <img src="app/static/login-mascote-640.webp"
                  srcset="app/static/login-mascote-640.webp 640w, app/static/login-mascote-960.webp 960w"
-                 sizes="(min-width: 1450px) 690px, 46vw" width="640" height="360" alt="" decoding="async">
+                 sizes="{('(min-width: 1560px) 690px, 46vw' if premium else '450px')}"
+                 width="640" height="360" alt="" decoding="async">
           </picture>
           <div class="auth-brand-copy">
-            <img class="auth-brand-logo" src="app/static/grupo-ss-login-teal.png" alt="Grupo S&amp;S" width="2172" height="724">
+            {"" if premium else logo}
             <h1>Painel de <span>Monitoramento</span></h1>
             {subtitle_html}
           </div>
+          {features_html}
         </div>
         """,
-        unsafe_allow_html=True,
     )
 
 
@@ -2603,7 +2623,7 @@ def _render_login_gate():
     with st.container(key="monitor_login_layout"):
         login_hero_col, login_form_col = st.columns([1.08, 1], gap="large", vertical_alignment="center")
     with login_hero_col:
-        _render_auth_brand()
+        _render_auth_brand(premium=True)
 
     with login_form_col:
         notice = st.session_state.pop(f"{AUTH_SESSION_PREFIX}notice", None)
@@ -2665,7 +2685,7 @@ def _render_login_gate():
                 st.stop()
 
             st.markdown('<h2 class="auth-reset-title">Entrar</h2>', unsafe_allow_html=True)
-            st.caption("Use o e-mail e a senha cadastrados pelo administrador do painel.")
+            st.html('<p class="auth-login-intro">Use o e-mail e a senha cadastrados pelo administrador do painel.</p>')
             if st.session_state.get("_monitor_auth_browser_unavailable_v342"):
                 st.warning("Este navegador não permite salvar a sessão. O acesso continuará funcionando, mas poderá exigir novo login após fechar a página.")
             with st.form("monitor_auth_login", clear_on_submit=False, border=False):
@@ -2681,10 +2701,8 @@ def _render_login_gate():
                 )
                 feedback = st.empty()
                 with st.container(key="monitor_login_actions"):
-                    enter_col, recovery_col = st.columns(2)
-                    with enter_col:
-                        submit = st.form_submit_button("Entrar no painel", icon=":material/login:", type="primary", use_container_width=True)
-                    with recovery_col, st.container(key="monitor_recovery_action"):
+                    submit = st.form_submit_button("Entrar no painel", icon=":material/login:", type="primary", use_container_width=True)
+                    with st.container(key="monitor_recovery_action"):
                         st.form_submit_button(
                             "Esqueci minha senha", icon=":material/key:", on_click=_open_password_recovery, use_container_width=True,
                         )
