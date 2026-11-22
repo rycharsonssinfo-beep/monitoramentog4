@@ -391,3 +391,67 @@ body:has(.st-key-cfg_workspace) [data-baseweb="popover"] [role="option"]:is(:hov
 @media (max-width: 480px) {
   .cfg-header-title { border-inline-start: 0; padding-inline-start: 0; }
 }
+
+/* A abertura da Central separa a sequência e os atalhos em dois cartões. */
+.st-key-cfg_workspace .st-key-cfg_workspace_content:has(.st-key-cfg_overview_order) {
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.st-key-cfg_overview_order,
+.st-key-cfg_overview_shortcuts {
+  padding: clamp(12px, 2vw, 25px);
+  border: 1px solid #f5fdff;
+  border-radius: clamp(14px, 1.7vw, 24px);
+  background: linear-gradient(150deg, #fcfefff2, #e6f5fcbf);
+  box-shadow: var(--cfg-shadow);
+}
+.st-key-cfg_overview_shortcuts .cfg-section-heading h2 { font-size: clamp(1.2rem, 2.1vw, 1.85rem); }
+.cfg-overview-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0 !important;
+  list-style: none;
+}
+.cfg-overview-list li {
+  display: grid;
+  grid-template-columns: 2.45rem minmax(0, 1fr) minmax(3.5rem, 12%) max-content;
+  align-items: center;
+  gap: clamp(5px, 1vw, 13px);
+  padding: 9px clamp(8px, 1.3vw, 16px);
+  border: 1px solid #c5def0;
+  border-radius: 11px;
+  background: #f0f8fcbb;
+  color: var(--cfg-ink);
+}
+.cfg-overview-list strong { overflow-wrap: anywhere; }
+.cfg-overview-position {
+  display: grid;
+  place-items: center;
+  min-height: 2rem;
+  border-radius: 8px;
+  background: #ccecf5;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cfg-overview-duration { color: #385a76; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cfg-overview-active {
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: #d6f5e4;
+  color: #07693d;
+  font-size: .84rem;
+  font-weight: 750;
+}
+.st-key-cfg_overview_shortcuts button { min-height: 58px; }
+@media (max-width: 720px) {
+  .st-key-cfg_overview_order [data-testid="stHorizontalBlock"] { flex-direction: column; align-items: stretch; }
+  .st-key-cfg_overview_order [data-testid="stColumn"] { width: 100%; min-width: 0; }
+  .st-key-cfg_overview_shortcuts [data-testid="stHorizontalBlock"] { flex-wrap: wrap; gap: 8px; }
+  .st-key-cfg_overview_shortcuts [data-testid="stColumn"] { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .cfg-overview-list li { grid-template-columns: 1.6rem minmax(0, 1fr) max-content max-content; }
+  .cfg-overview-position { min-height: 1.6rem; }
+  .cfg-overview-active { padding-inline: 5px; }
+}

@@ -11,6 +11,7 @@ from config_settings import matches_search
 
 GROUPS = {
     "Monitoramento": (
+        ("overview", "Visão geral", "resumo perfil dashboard início"),
         ("panels", "Painéis e ordem de exibição", "tv ordem tempo duração iframe reload recarregar f5"),
         ("profiles", "Perfis de monitoramento", "tv padrão criar duplicar renomear"),
         ("stability", "Estabilidade e operação", "desempenho sessão recarregar watchdog f5"),
@@ -36,6 +37,7 @@ GROUPS = {
 }
 
 SECTION_ICONS = {
+    "overview": "dashboard",
     "panels": "layers", "profiles": "group", "stability": "monitor_heart", "visual": "desktop_windows",
     "ticker": "sell", "updates": "sync", "agenda": "event", "comunicados": "campaign",
     "integration": "hub", "sim_alert": "notifications", "access": "manage_accounts",
@@ -109,13 +111,46 @@ def _render_nav(groups, sections, section):
                      format_func=sections.get, key=mobile_key, on_change=change_mobile_section)
 
 
+def _render_overview(panels, sections):
+    with st.container(key="cfg_overview_order"):
+        heading, action = st.columns([3, 1], vertical_alignment="center")
+        with heading:
+            st.html(f'<div class="cfg-section-heading"><span class="cfg-title-tile">{_icon("layers")}</span>'
+                    '<h2>Ordem de exibição</h2></div>')
+        with action:
+            st.button("Editar painéis", icon=":material/edit:", key="cfg_overview_edit",
+                      use_container_width=True, on_click=_select_section, args=("panels",))
+        if panels:
+            rows = "".join(
+                f'<li><span class="cfg-overview-position">{position}</span>'
+                f'<strong>{html.escape(panel["nome"])}</strong>'
+                f'<span class="cfg-overview-duration">{html.escape(str(panel["tempo"]))} s</span>'
+                '<span class="cfg-overview-active">✓ Ativo</span></li>'
+                for position, panel in enumerate(panels, start=1)
+            )
+            st.html(f'<ol class="cfg-overview-list" aria-label="Sequência dos painéis ativos">{rows}</ol>')
+        else:
+            st.info("Nenhum painel está pronto para exibição neste perfil.")
+
+    with st.container(key="cfg_overview_shortcuts"):
+        st.html(f'<div class="cfg-section-heading"><span class="cfg-title-tile">{_icon("bolt")}</span>'
+                '<h2>Acessos rápidos</h2></div>')
+        shortcuts = (("profiles", "Perfis"), ("comunicados", "Comunicados"),
+                     ("integration", "Integrações"), ("diagnostics", "Diagnóstico"))
+        visible = [(key, label) for key, label in shortcuts if key in sections]
+        for column, (key, label) in zip(st.columns(len(visible)), visible):
+            with column:
+                st.button(label, icon=f":material/{SECTION_ICONS[key]}:", key=f"cfg_overview_{key}",
+                          use_container_width=True, on_click=_select_section, args=(key,))
+
+
 def render_workspace(config, profile_id, is_admin, render_section, active_panels, save, start, reload_revision):
     groups = {group: [item for item in items if is_admin or item[0] not in {"access", "comunicados"}]
               for group, items in GROUPS.items()}
     sections = {key: title for items in groups.values() for key, title, _ in items}
-    section = st.query_params.get("sec", "panels")
+    section = st.query_params.get("sec", "overview")
     if section not in sections:
-        section = "panels"
+        section = "overview"
     profile = config["profiles"][profile_id]
     css = (Path(__file__).parent / "scripts" / "central_config.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
@@ -124,14 +159,15 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
             '<div class="cfg-workspace-header"><img src="app/static/grupo-ss-oficial.png" '
             'alt="Grupo S&S" width="225" height="58">'
             f'<div class="cfg-header-title"><span class="cfg-title-tile">{_icon("settings")}</span>'
-            '<h1>Configurações</h1></div></div>',
+            f'<h1>{"Visão geral" if section == "overview" else "Configurações"}</h1></div></div>',
         )
         with st.container(key="cfg_workspace_profile"):
             profile_col, summary_col, launch_col = st.columns([1.45, 1.2, 1.1], vertical_alignment="center")
             with profile_col:
                 ids = list(config["profiles"])
                 selected = st.selectbox(
-                    ":material/person: Perfil em edição", ids, index=ids.index(profile_id),
+                    ":material/person: Perfil de monitoramento" if section == "overview" else ":material/person: Perfil em edição",
+                    ids, index=ids.index(profile_id),
                     format_func=lambda pid: config["profiles"][pid]["nome"], key=f"cfg_workspace_profile_{profile_id}",
                 )
                 if selected != profile_id:
@@ -151,15 +187,18 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
         with menu_col, st.container(key="cfg_workspace_nav"):
             _render_nav(groups, sections, section)
         with content_col, st.container(key="cfg_workspace_content"):
-            scope = ""
-            if section in {"panels", "stability", "visual"}:
-                scope = f"Perfil: {profile['nome']}"
-            elif section in {"ticker", "updates", "agenda", "integration", "sim_alert", "comunicados", "access"}:
-                scope = "Configuração global"
-            scope_html = f'<p class="cfg-section-scope">{html.escape(scope)}</p>' if scope else ""
-            st.html(f'<div class="cfg-section-heading"><span class="cfg-title-tile">{_icon(SECTION_ICONS[section])}</span>'
-                    f'<div><h2>{html.escape(sections[section])}</h2>{scope_html}</div></div>')
-            render_section(section)
+            if section == "overview":
+                _render_overview(active_panels(profile), sections)
+            else:
+                scope = ""
+                if section in {"panels", "stability", "visual"}:
+                    scope = f"Perfil: {profile['nome']}"
+                elif section in {"ticker", "updates", "agenda", "integration", "sim_alert", "comunicados", "access"}:
+                    scope = "Configuração global"
+                scope_html = f'<p class="cfg-section-scope">{html.escape(scope)}</p>' if scope else ""
+                st.html(f'<div class="cfg-section-heading"><span class="cfg-title-tile">{_icon(SECTION_ICONS[section])}</span>'
+                        f'<div><h2>{html.escape(sections[section])}</h2>{scope_html}</div></div>')
+                render_section(section)
         _focus_section(section)
 
         if launch:
