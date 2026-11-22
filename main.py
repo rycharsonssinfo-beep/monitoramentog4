@@ -2413,17 +2413,27 @@ def _render_auth_brand(subtitle="", *, premium=False):
             for icon, label in features
         ) + '</ul>'
 
+    if premium:
+        artwork = (
+            '<img class="auth-brand-art" src="app/static/login-monitor-orbitas-1080.webp" '
+            'srcset="app/static/login-monitor-orbitas-480.webp 480w, app/static/login-monitor-orbitas-1080.webp 1080w" '
+            'sizes="(max-width: 780px) 225px, (max-width: 1560px) 46vw, 690px" '
+            'width="1080" height="720" alt="Monitor Grupo S&amp;S com órbitas em turquesa" decoding="async">'
+        )
+    else:
+        artwork = """
+            <picture>
+              <source media="(max-width:780px)" srcset="app/static/login-mascote-160.webp">
+              <img src="app/static/login-mascote-640.webp"
+                   srcset="app/static/login-mascote-640.webp 640w, app/static/login-mascote-960.webp 960w"
+                   sizes="450px" width="640" height="360" alt="" decoding="async">
+            </picture>
+        """
+
     st.html(
         f"""
         <div class="auth-brand">
-          {logo if premium else ""}
-          <picture>
-            <source media="(max-width:780px)" srcset="app/static/login-mascote-160.webp">
-            <img src="app/static/login-mascote-640.webp"
-                 srcset="app/static/login-mascote-640.webp 640w, app/static/login-mascote-960.webp 960w"
-                 sizes="{('(min-width: 1560px) 690px, 46vw' if premium else '450px')}"
-                 width="640" height="360" alt="" decoding="async">
-          </picture>
+          {artwork}
           <div class="auth-brand-copy">
             {"" if premium else logo}
             <h1>Painel de <span>Monitoramento</span></h1>
