@@ -125,12 +125,6 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
 }
 .stApp .auth-brand h1 { color: #0b315e !important; }
 .auth-brand h1 span { display: block; color: #0767b6; }
-.stApp .auth-brand .auth-brand-name {
-  color: #07539e !important;
-  font-size: 15px;
-  font-weight: 650;
-  margin: 0 0 8px;
-}
 .stApp .auth-brand .auth-brand-subtitle { color: #465d74 !important; font-size: 15px; margin: 10px 0 0; }
 .auth-brand-copy::after {
   content: "";
@@ -152,7 +146,21 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
   .auth-brand picture { flex: 0 0 64px; margin: 0; }
   .auth-brand h1 { font-size: clamp(19px, 4.5vw, 26px); }
   .auth-brand h1 span { display: inline; }
-  .stApp .auth-brand .auth-brand-name { margin-bottom: 4px; font-size: 13px; }
   .stApp .auth-brand .auth-brand-subtitle { margin-top: 5px; font-size: 13px; }
   .auth-brand-copy::after { display: none; }
+}
+
+.auth-brand .auth-brand-logo { width: clamp(130px, 36%, 175px); height: auto; margin-bottom: 12px; }
+.st-key-monitor_login_card .st-key-monitor_recovery_action button {
+  border-color: #a6c1d8;
+  background: #f3f8fd;
+}
+.st-key-monitor_login_card .st-key-monitor_recovery_action button:hover {
+  background: #e3f1fb;
+  border-color: #74a6cb;
+}
+@media (max-width: 780px) {
+  .auth-brand .auth-brand-logo { width: 114px; margin-bottom: 5px; }
+  .st-key-monitor_login_actions [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+  .st-key-monitor_login_actions [data-testid="stColumn"] { min-width: min(155px, 100%); }
 }

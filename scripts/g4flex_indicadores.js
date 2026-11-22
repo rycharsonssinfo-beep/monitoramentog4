@@ -36,17 +36,17 @@ function g4fReportPlot(hours){
  if(!hours.length)return '<div class="g4f-report-empty">A matriz horária ainda não foi enviada pelo robô G4Flex. Os números históricos serão exibidos aqui quando a coleta estiver integrada.</div>';
  const maximum=Math.max(1,...hours.map(x=>Math.max(g4fReportNumber(x.abertas),g4fReportNumber(x.atendidas))));
  return `<div class="g4f-report-chart-legend"><i class="open"></i>Abertas <i class="answered"></i>Atendidas</div>
- <div class="g4f-report-plot" role="img" aria-label="Comparação de conversas abertas e atendidas por horário">
+ <div class="g4f-report-plot" tabindex="0" role="img" aria-label="Comparação de conversas abertas e atendidas por horário">
  ${hours.map(x=>`<div class="g4f-report-plot-column" title="${g4fText(x.horario||'')}">
-    <div class="g4f-report-bars"><div class="open" style="height:${Math.max(2,g4fReportNumber(x.abertas)/maximum*100)}%"></div>
-    <div class="answered" style="height:${Math.max(2,g4fReportNumber(x.atendidas)/maximum*100)}%"></div></div>
+    <div class="g4f-report-bars"><div class="open" style="height:${Math.max(0,g4fReportNumber(x.abertas)/maximum*100)}%"></div>
+    <div class="answered" style="height:${Math.max(0,g4fReportNumber(x.atendidas)/maximum*100)}%"></div></div>
     <small>${g4fText(x.horario||'—')}</small></div>`).join('')}</div>`;
 }
 function g4fReportTable(hours){
  if(!hours.length)return '<div class="g4f-report-empty">Nenhum indicador por horário disponível nesta coleta.</div>';
  return `<div class="g4f-report-table-scroll" role="region" aria-label="Matriz horária de indicadores" tabindex="0">
  <table class="g4f-report-table"><thead><tr>${g4fReportCols.map(([key,name])=>`<th scope="col" title="${g4fText(name)}">${g4fText(name)}</th>`).join('')}</tr></thead>
- <tbody>${hours.map(row=>`<tr>${g4fReportCols.map(([key])=>`<td>${g4fText(row[key]??'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ <tbody>${hours.map(row=>`<tr>${g4fReportCols.map(([key])=>`<${key==='horario'?'th scope="row"':'td'}>${g4fText(row[key]??'—')}</${key==='horario'?'th':'td'}>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function g4fReportRanking(reasons){
  if(!reasons.length)return '<div class="g4f-report-empty">O ranking de filas ainda não está disponível na coleta do robô.</div>';

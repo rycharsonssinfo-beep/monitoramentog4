@@ -2405,7 +2405,7 @@ def _render_auth_brand(subtitle=""):
                  sizes="450px" width="640" height="360" alt="" decoding="async">
           </picture>
           <div class="auth-brand-copy">
-            <p class="auth-brand-name">Grupo S&amp;S</p>
+            <img class="auth-brand-logo" src="app/static/grupo-ss-oficial.png" alt="Grupo S&amp;S" width="225" height="58">
             <h1>Painel de <span>Monitoramento</span></h1>
             {subtitle_html}
           </div>
@@ -6149,7 +6149,21 @@ def render_monitor_user_management():
     .ss-users-coltitle {font-size:.78rem;color:#58738d;font-weight:750;letter-spacing:.025em}
     .ss-users-item {padding:5px 0;line-height:1.15}
     .ss-users-item strong {font-size:.93rem;color:#0b315c}
-    .ss-users-item small {font-size:.78rem;color:#69839e;overflow-wrap:anywhere}
+    .ss-users-item small {font-size:.78rem;color:#49637d;overflow-wrap:anywhere}
+    [class*="st-key-ss_users_row_"] {
+      border:1px solid #cbdfef;border-radius:12px;background:#f7fbff;padding:9px 12px;
+    }
+    [class*="st-key-ss_users_row_"]:has(button[kind="primary"],button[data-testid="stBaseButton-primary"]) {
+      border-color:#4b91c8;background:#e8f5ff;box-shadow:inset 3px 0 #0e5285;
+    }
+    .ss-users-field {font-size:.85rem;color:#16324a;overflow-wrap:anywhere}
+    .ss-users-field small {display:none}
+    @media(max-width:900px){
+      .ss-users-coltitle {display:none}
+      .ss-users-field small {display:block;font-size:.7rem;color:#49637d}
+      [class*="st-key-ss_users_row_"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap;gap:8px}
+      [class*="st-key-ss_users_row_"] [data-testid="stColumn"]{min-width:min(125px,100%)}
+    }
     .ss-users-pill {display:inline-block;border-radius:999px;padding:5px 11px;font-size:.78rem;font-weight:700}
     .ss-users-pill-ok {background:#ddf7e8;color:#087842}
     .ss-users-pill-warn {background:#fff0ca;color:#925d05}
@@ -6297,21 +6311,23 @@ def render_monitor_user_management():
                "ss-users-pill-warn" if status == "Pendente" else "ss-users-pill-neutral")
         name = html.escape(_monitor_useradmin_name(user))
         mail = html.escape(str(user.get("email") or "Sem e-mail"))
-        a,b,c,d,e = st.columns([3.6, 1.8, 1.3, 1.6, 1])
-        with a:
-            st.markdown(f'<div class="ss-users-item"><strong>{name}</strong><div><small>{mail}</small></div></div>',
-                        unsafe_allow_html=True)
-        with b:
-            st.write(_monitor_profile_label(role))
-        with c:
-            st.markdown(f'<span class="ss-users-pill {cls}">{status}</span>', unsafe_allow_html=True)
-        with d:
-            st.caption(_monitor_useradmin_datetime(user.get("last_sign_in_at")))
-        with e:
-            if st.button("Gerenciar", key=f"ss_users_manage_{uid}", use_container_width=True):
-                st.session_state["ss_users_selected_v351"] = uid
-                st.rerun()
-        st.divider()
+        is_selected = st.session_state.get("ss_users_selected_v351") == uid
+        with st.container(key=f"ss_users_row_{uid}"):
+            a,b,c,d,e = st.columns([3.4, 1.6, 1.4, 1.5, 1.15], vertical_alignment='center')
+            with a:
+                st.markdown(f'<div class="ss-users-item"><strong>{name}</strong><div><small>{mail}</small></div></div>',
+                            unsafe_allow_html=True)
+            with b:
+                st.markdown(f'<span class="ss-users-field"><small>Perfil</small>{html.escape(_monitor_profile_label(role))}</span>', unsafe_allow_html=True)
+            with c:
+                st.markdown(f'<span class="ss-users-pill {cls}">{status}</span>', unsafe_allow_html=True)
+            with d:
+                last_access = html.escape(_monitor_useradmin_datetime(user.get("last_sign_in_at")))
+                st.markdown(f'<span class="ss-users-field"><small>Último acesso</small>{last_access}</span>', unsafe_allow_html=True)
+            with e:
+                if st.button("Selecionado" if is_selected else "Gerenciar", type="primary" if is_selected else "secondary", key=f"ss_users_manage_{uid}", use_container_width=True):
+                    st.session_state["ss_users_selected_v351"] = uid
+                    st.rerun()
     p1,p2,p3 = st.columns([1.2,3,1.2])
     with p1:
         if st.button("← Anterior", key="ss_users_prev_v351", disabled=current_page==1):
@@ -8669,23 +8685,10 @@ else:
         """,
     )
 
-    sim_panel_for_server = next((p for p in paineis_ativos if _is_sim_panel_config(p)), None)
     sim_poll_cfg = normalizar_sim_alerts(config.get("sim_alerts"))
-    sim_server_interval = max(5, min(120, int(sim_poll_cfg.get("poll_seconds", 15))))
 
-    # v3.18: alertas SIM são alimentados exclusivamente pelo robô via Supabase.
-    # Não fazemos login backend no Consulta TCE, eliminando o HTTP 403.
-    _sim_initial_error = ""
-    _sim_initial_latest = None
-    _sim_initial_grouped = {"states": [], "ano": None, "mes": None}
-    _robot_initial = buscar_ultimo_evento_robo_supabase() if bool(sim_poll_cfg.get("enabled", True)) else {"ok": True, "event": None}
-    if _robot_initial.get("ok") and _robot_initial.get("event"):
-        _sim_initial_latest = dict(_robot_initial["event"])
-        st.session_state[f"_sim_latest_delivery_v390_{active_profile_id}"] = _sim_initial_latest
-    elif not _robot_initial.get("ok"):
-        _sim_initial_error = str(_robot_initial.get("error") or "Falha ao ler eventos do robô")[:180]
-
-
+    # O navegador consulta o robô após montar o primeiro painel. A abertura
+    # não espera o Supabase e a primeira leitura apenas estabelece referência.
     # v3.16.3: não executar polling periódico com st.fragment durante a apresentação.
     # Qualquer rerun periódico do Streamlit pode desmontar o componente principal,
     # fazendo o navegador sair da tela cheia e reiniciando pausa/temporizadores.
@@ -8723,7 +8726,7 @@ else:
         "panels": paineis_payload,
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
-        "simAlerts": {**copy.deepcopy(normalizar_sim_alerts(config.get("sim_alerts"))), "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "municipality_maps": _sim_mapas_municipais_ipece_2026(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "server_error": _sim_initial_error, "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": False, "supabase_url": SUPABASE_URL, "supabase_publishable_key": SUPABASE_PUBLISHABLE_KEY, "event_source": "robot_supabase", "monitor_id": "monitor-sim-principal"},
+        "simAlerts": {**sim_poll_cfg, "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "municipality_maps": _sim_mapas_municipais_ipece_2026(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": False, "supabase_url": SUPABASE_URL, "supabase_publishable_key": SUPABASE_PUBLISHABLE_KEY, "event_source": "robot_supabase", "monitor_id": "monitor-sim-principal"},
         "g4flex": {"monitor_id": "g4flex-principal", "logo": G4FLEX_LOGO_DATA_URI, "ss_official_logo": SS_OFFICIAL_LOGO_DATA_URI, "auto_fit": bool(perfil.get("g4flex_auto_fit", True)), "attribution_alert": bool(perfil.get("g4flex_attribution_alert", True))},
         "portais": {"logo": SS_OFFICIAL_LOGO_DATA_URI, "poll_seconds": 15, "stale_seconds": 180},
         "auth_bridge_nonce": st.session_state.get("_monitor_auth_browser_nonce_v342", ""),
@@ -9551,6 +9554,15 @@ else:
  .g4f-insights .g4f-report-head-actions{gap:6px}
  .g4f-insights .g4f-report-daily-btn{font-size:10px;padding:8px 9px;min-height:32px}
 }
+
+/* A coluna de horário permanece visível durante a leitura das métricas. */
+.g4f-insights .g4f-report-table :is(th,td):first-child{
+ position:sticky;inset-inline-start:0;background:#edf5fd;
+ color:#123c68;box-shadow:1px 0 #cbdbeb;z-index:1
+}
+.g4f-insights .g4f-report-table-scroll:focus-visible,
+.g4f-insights .g4f-report-plot:focus-visible{outline:2px solid #1477ba;outline-offset:2px}
+.g4f-insights .g4f-report-bars div[style="height:0%"]{min-height:0}
         .g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.has-assignment):not(.is-calling){background:#f4f8ff}
 
 /* G4Flex: estado da linha e do card, com barra lateral junto à foto.
@@ -9983,7 +9995,7 @@ else:
                 <div class="toolbar-right">
                     <button class="btn toolbar-desktop-action" type="button" onclick="alternarTelaCheia()" aria-label="Tela cheia" title="Tela cheia (F)">⛶</button>
                     <div class="more-wrap">
-                        <button class="btn" id="more-btn" type="button" onclick="toggleMoreMenu(event)" aria-label="Mais opções" aria-expanded="false" aria-controls="more-menu" title="Mais opções">⋮</button>
+                        <button class="btn" id="more-btn" type="button" onclick="toggleMoreMenu(event)" aria-label="Ir para painel e abrir controles" aria-expanded="false" aria-controls="more-menu" title="Ir para painel e abrir controles">⋮</button>
                         <div class="more-menu" id="more-menu">
                             <div class="toolbar-menu-heading" id="jump-heading">Ir para painel</div>
                             <div id="panel-jump" role="group" aria-labelledby="jump-heading"></div>
@@ -10148,6 +10160,9 @@ else:
             let comExpiresMs = Number(comSettings.expires_at || 0) * 1000;
             let comRefreshPromise = null;
             let comPollLoggedError = "";
+            let comPollRunning = false;
+            let comPollFailures = 0;
+            let comPollRetryAt = 0;
             const comSeenKey = "monitor_comunicados_seen_v322";
             let comSeen = new Set();
             try { comSeen=new Set(JSON.parse(sessionStorage.getItem(comSeenKey)||"[]")); } catch(e) {}
@@ -10568,7 +10583,7 @@ else:
                 const base=String(comSettings.supabase_url||'').replace(/\/+$/,'');
                 comRefreshPromise=(async()=>{
                     const resp=await fetch(`${base}/auth/v1/token?grant_type=refresh_token`,{
-                        method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','apikey':String(comSettings.publishable_key||'')},
+                        method:'POST',cache:'no-store',signal:AbortSignal.timeout(12000),headers:{'Content-Type':'application/json','apikey':String(comSettings.publishable_key||'')},
                         body:JSON.stringify({refresh_token:comRefreshToken})
                     });
                     if(!resp.ok)throw new Error(`Sessão do monitor expirada (HTTP ${resp.status})`);
@@ -10594,10 +10609,10 @@ else:
                 if(!base||!apiKey||!comAccessToken)return [];
                 if(comExpiresMs && Date.now() > comExpiresMs-90000)await comRenovarToken();
                 const url=`${base}/rest/v1/sim_comunicados?select=id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,cancelled_at,imagens,audio_path&order=created_at.desc&limit=100`;
-                let resp=await fetch(url,{method:'GET',cache:'no-store',headers:{'Accept':'application/json','apikey':apiKey,'Authorization':`Bearer ${comAccessToken}`}});
+                let resp=await fetch(url,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(12000),headers:{'Accept':'application/json','apikey':apiKey,'Authorization':`Bearer ${comAccessToken}`}});
                 if(resp.status===401){
                     await comRenovarToken();
-                    resp=await fetch(url,{method:'GET',cache:'no-store',headers:{'Accept':'application/json','apikey':apiKey,'Authorization':`Bearer ${comAccessToken}`}});
+                    resp=await fetch(url,{method:'GET',cache:'no-store',signal:AbortSignal.timeout(12000),headers:{'Accept':'application/json','apikey':apiKey,'Authorization':`Bearer ${comAccessToken}`}});
                 }
                 if(!resp.ok)throw new Error(`Supabase comunicados HTTP ${resp.status}`);
                 const rows=await resp.json();
@@ -10773,8 +10788,12 @@ else:
             comAudioBtn.addEventListener('click',habilitarSomComunicados);
             document.getElementById('com-close').addEventListener('click',()=>comFechar('fechado nesta tela'));
             async function comPolling(){
+                if(comPollRunning || Date.now()<comPollRetryAt)return;
+                comPollRunning=true;
                 try{
                     const rows=await comBuscarRecentes();
+                    comPollFailures=0;
+                    comPollRetryAt=0;
                     if(comPollLoggedError){log('Central de Comunicados: conexão restabelecida');comPollLoggedError='';}
                     const estado=new Map(rows.map(r=>[String(r.id),r]));
                     comQueue=comQueue.filter(item=>{
@@ -10803,7 +10822,9 @@ else:
                 }catch(e){
                     const msg=String(e?.message||e);
                     if(msg!==comPollLoggedError){comPollLoggedError=msg;log(`Central de Comunicados: ${msg}`);}
-                }
+                    comPollFailures=Math.min(comPollFailures+1,4);
+                    comPollRetryAt=Date.now()+3000*2**comPollFailures;
+                }finally{comPollRunning=false;}
             }
             function iniciarComPolling(){
                 clearInterval(comPollTimer);
@@ -11848,17 +11869,17 @@ function g4fReportPlot(hours){
  if(!hours.length)return '<div class="g4f-report-empty">A matriz horária ainda não foi enviada pelo robô G4Flex. Os números históricos serão exibidos aqui quando a coleta estiver integrada.</div>';
  const maximum=Math.max(1,...hours.map(x=>Math.max(g4fReportNumber(x.abertas),g4fReportNumber(x.atendidas))));
  return `<div class="g4f-report-chart-legend"><i class="open"></i>Abertas <i class="answered"></i>Atendidas</div>
- <div class="g4f-report-plot" role="img" aria-label="Comparação de conversas abertas e atendidas por horário">
+ <div class="g4f-report-plot" tabindex="0" role="img" aria-label="Comparação de conversas abertas e atendidas por horário">
  ${hours.map(x=>`<div class="g4f-report-plot-column" title="${g4fText(x.horario||'')}">
-    <div class="g4f-report-bars"><div class="open" style="height:${Math.max(2,g4fReportNumber(x.abertas)/maximum*100)}%"></div>
-    <div class="answered" style="height:${Math.max(2,g4fReportNumber(x.atendidas)/maximum*100)}%"></div></div>
+    <div class="g4f-report-bars"><div class="open" style="height:${Math.max(0,g4fReportNumber(x.abertas)/maximum*100)}%"></div>
+    <div class="answered" style="height:${Math.max(0,g4fReportNumber(x.atendidas)/maximum*100)}%"></div></div>
     <small>${g4fText(x.horario||'—')}</small></div>`).join('')}</div>`;
 }
 function g4fReportTable(hours){
  if(!hours.length)return '<div class="g4f-report-empty">Nenhum indicador por horário disponível nesta coleta.</div>';
  return `<div class="g4f-report-table-scroll" role="region" aria-label="Matriz horária de indicadores" tabindex="0">
  <table class="g4f-report-table"><thead><tr>${g4fReportCols.map(([key,name])=>`<th scope="col" title="${g4fText(name)}">${g4fText(name)}</th>`).join('')}</tr></thead>
- <tbody>${hours.map(row=>`<tr>${g4fReportCols.map(([key])=>`<td>${g4fText(row[key]??'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ <tbody>${hours.map(row=>`<tr>${g4fReportCols.map(([key])=>`<${key==='horario'?'th scope="row"':'td'}>${g4fText(row[key]??'—')}</${key==='horario'?'th':'td'}>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function g4fReportRanking(reasons){
  if(!reasons.length)return '<div class="g4f-report-empty">O ranking de filas ainda não está disponível na coleta do robô.</div>';
@@ -12103,7 +12124,10 @@ function g4fDailyReportHTML(row){
     .summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     h2{font-size:13px;margin:16px 0 8px}
     table.matrix{font-size:7.8px;border-radius:0}
+    .matrix-scroll{overflow:visible}
     .matrix th{font-size:7.2px;padding:7px 2px}
+    .matrix tbody tr:nth-child(even) td{background:#f3f5f7}
+    .rank .bar{border:1px solid #76849a}
     .matrix td{padding:6px 2px}
     .rank{grid-template-columns:18px 130px minmax(60px,1fr) 25px;gap:8px;padding:4px 0}
     .bar{height:11px}
@@ -12111,6 +12135,11 @@ function g4fDailyReportHTML(row){
     .rank b{font-size:10px}
     .note,footer{font-size:9px}
     footer{break-inside:avoid}
+  }
+  @media screen{
+    .matrix-scroll{overflow-x:auto}
+    .matrix-scroll .matrix{min-width:760px}
+    .matrix-scroll:focus-visible{outline:2px solid #0e5285;outline-offset:2px}
   }
  `;
  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
@@ -12124,7 +12153,7 @@ function g4fDailyReportHTML(row){
   '<div><strong>Emissão:</strong> '+g4fDailyEscape(emitted.datetime)+'</div>'+
   '<div style="margin-top:7px"><span class="chip">Dados parciais até a última coleta</span></div></div></header>'+
   '<h2>Resumo dos atendimentos</h2><div class="summary">'+statsHTML+'</div>'+
-  '<h2>Matriz horária de indicadores</h2>'+matrixHTML+
+  '<h2>Matriz horária de indicadores</h2><div class="matrix-scroll" role="region" aria-label="Matriz horária" tabindex="0">'+matrixHTML+'</div>'+
   '<h2>Ranking de filas — Top 10</h2>'+rankingHTML+
   '<p class="note">'+g4fDailyEscape(note)+'</p>'+
   '<footer><span>Fonte: coleta automatizada do G4Flex. Os indicadores históricos podem abranger toda a operação, não apenas os atendentes exibidos no Monitor S&amp;S.</span>'+
@@ -12551,7 +12580,7 @@ async function portalFetchTable(table,select,extra){
   if(!portalBase||!portalKey)throw new Error('Conexão Supabase não configurada no monitor.');
   if(!comAccessToken||(comExpiresMs&&Date.now()+60000>=comExpiresMs))await comRenovarToken();
   const url=`${portalBase}/rest/v1/${table}?select=${encodeURIComponent(select)}&${extra}`;
-  const get=()=>fetch(url,{cache:'no-store',headers:{'apikey':portalKey,'Authorization':`Bearer ${comAccessToken}`,'Accept':'application/json'}});
+  const get=()=>fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000),headers:{'apikey':portalKey,'Authorization':`Bearer ${comAccessToken}`,'Accept':'application/json'}});
   let resp=await get();
   if(resp.status===401){await comRenovarToken();resp=await get();}
   if(!resp.ok)throw new Error(`Consulta de portais: HTTP ${resp.status}. Confirme a tabela e as permissões.`);
@@ -12559,20 +12588,41 @@ async function portalFetchTable(table,select,extra){
   if(!Array.isArray(result))throw new Error('Formato inesperado na consulta de portais.');
   return result;
 }
+const portalCurrentRequests=new Map();
+function portalReadCurrent(mode){
+  const existing=portalCurrentRequests.get(mode);
+  if(existing && (!existing.finishedAt || Date.now()-existing.finishedAt<12000))return existing.promise;
+  const selected='id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em'+(mode==='veiculos'?',cidade,entidade,categoria':'');
+  // O painel e o alerta global compartilham a leitura dentro da mesma aba.
+  const entry={finishedAt:0};
+  entry.promise=portalFetchTable(portalServices[mode].current,selected,'order=municipio.asc&limit=500').then(rows=>{
+    entry.finishedAt=Date.now();
+    return rows;
+  }).catch(error=>{
+    portalCurrentRequests.delete(mode);
+    throw error;
+  });
+  portalCurrentRequests.set(mode,entry);
+  return entry.promise;
+}
 async function portalPoll(){
   if(portalBusy||!portalHosts.size)return;
   portalBusy=true;
+  const mode=portalMode;
+  const service=portalServices[mode];
   try{
-    const mode=portalMode;const service=portalServices[mode];
-    const selected='id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em'+(mode==='veiculos'?',cidade,entidade,categoria':'');
-    const data=await portalFetchTable(service.current,selected,'order=municipio.asc&limit=500');
+    const data=await portalReadCurrent(mode);
     portalDatas[mode]=data;
     if(mode==='portais')window.ssPortalAlerts353?.receive(data);
     try{portalEventsByService[mode]=await portalFetchTable(service.events,'municipio,estado_anterior,estado_atual,ocorrido_em','order=ocorrido_em.desc&limit=20');}catch(e){portalEventsByService[mode]=[];}
     portalLastSuccessMs=Date.now();
     portalErrors[mode]=data.length?'':'Nenhuma leitura publicada para '+service.label+'. Verifique o coletor.';
-  }catch(err){portalErrors[portalMode]=String(err?.message||err||'Erro desconhecido').slice(0,180);}
-  finally{portalBusy=false;portalDrawAll();}
+  }catch(err){portalErrors[mode]=String(err?.message||err||'Erro desconhecido').slice(0,180);}
+  finally{
+    portalBusy=false;
+    portalDrawAll();
+    if(portalMode!==mode)portalPoll();
+  }
 }
 function portalChooseService(mode){
   if(!portalServices[mode])return;
@@ -12862,7 +12912,14 @@ async function portalGenerateReport(host){
 .ss-map-svg{height:min(67vh,660px);min-height:485px;background:radial-gradient(ellipse at 48% 40%,rgba(18,73,117,.2),transparent 70%),#081b32;border-radius:12px}
 .ss-map-svg path{stroke:#c3dbed;stroke-width:.9;fill-opacity:.96;transition:fill-opacity .15s ease,filter .15s ease}
 .ss-map-svg path:hover{stroke:#fff;stroke-width:2.1;filter:drop-shadow(0 0 4px #a2dbff)}
-.ss-map-svg path.picked{stroke:#fff;stroke-width:2.9;filter:drop-shadow(0 0 7px rgba(106,197,255,.75))}
+.ss-map-svg path.picked{stroke:#fff;stroke-width:2.9;vector-effect:non-scaling-stroke}
+.ss-map-legend{flex-wrap:wrap}
+.ss-map-layer [data-sm-search-feedback].has-selection{
+ background:#123f58;border-inline-start:3px solid #56dfc8;border-radius:6px;padding:7px 9px;color:#e2faf7
+}
+.ss-map-layer :is(button,a,input,select,summary):focus-visible{
+ outline:2px solid #87e7d8;outline-offset:2px
+}
 .ss-map-detail{padding:0;overflow:hidden;background:linear-gradient(145deg,#102d4e,#0c213c)}
 .ss-map-detail>.ss-map-city{margin:0;padding:27px 19px 3px;background:radial-gradient(circle at 85% 15%,#2477aa77,transparent 47%),linear-gradient(120deg,#0c456f,#173e67);font-size:26px;letter-spacing:-.5px}
 .ss-map-detail>.ss-map-city:before{content:"●";color:#62bcff;font-size:17px;margin-right:9px;vertical-align:3px}
@@ -12993,7 +13050,10 @@ async function portalGenerateReport(host){
       function select(c,focus=false){
         selected=c.key;update();
         const selectedFeedback=layer.querySelector("[data-sm-search-feedback]");
-        if(selectedFeedback)selectedFeedback.textContent="Município selecionado: "+c.name;
+        if(selectedFeedback){
+          selectedFeedback.textContent="Município selecionado: "+c.name;
+          selectedFeedback.classList.add("has-selection");
+        }
         const safe=portalEscape;
         let html='<div class="ss-map-city">'+safe(c.name)+' — CE</div><div class="ss-map-note">Código IBGE: '+safe(c.code||"não informado")+'</div><h3>Sistemas cadastrados</h3>';
         for(const mode of modes){
@@ -13039,12 +13099,19 @@ async function portalGenerateReport(host){
       };
       function runSearch(allowPartial=false){
         const raw=input.value.trim();
-        if(!raw){feedback.textContent="Digite um município para localizar.";return}
+        if(!raw){
+          feedback.classList.remove("has-selection");
+          feedback.textContent="Digite um município para localizar.";
+          return;
+        }
         const key=norm(raw),exact=keyMap.get(key);
         const city=exact||(allowPartial?findCity(raw):null);
         if(city){
           select(city,true);
-        }else if(allowPartial)feedback.textContent="Município não encontrado na malha do Ceará.";
+        }else if(allowPartial){
+          feedback.classList.remove("has-selection");
+          feedback.textContent="Município não encontrado na malha do Ceará.";
+        }
       }
       input.addEventListener("input",()=>{
         if(keyMap.has(norm(input.value)))runSearch(false);
@@ -15087,7 +15154,15 @@ function portalStart(host){
                             button.className=host===dots?'dot':'menu-item';
                             button.title=panel.nome;
                             button.setAttribute('aria-label',`Ir para painel ${i+1}: ${panel.nome}`);
-                            if(host===jump)button.textContent=`${i+1}. ${panel.nome}`;
+                            if(host===jump){
+                                const number=document.createElement('span');
+                                number.className='panel-jump-position';
+                                number.setAttribute('aria-hidden','true');
+                                number.textContent=String(i+1);
+                                const label=document.createElement('span');
+                                label.textContent=panel.nome;
+                                button.append(number,label);
+                            }
                             button.onclick=()=>{
                                 if(host===jump){closeMoreMenu();moreBtn.focus();}
                                 index=i;
@@ -15351,7 +15426,7 @@ function portalStart(host){
                 const url=`${base}/rest/v1/sim_monitor_status?select=monitor_id,last_heartbeat,status,tce_authenticated,tce_municipio,tce_orgao,last_event_id,last_error,version,queue_pending,session_started_at&monitor_id=eq.${encodeURIComponent(monitorId)}&limit=1`;
                 const resp=await fetch(url,{
                     method:'GET',
-                    cache:'no-store',
+                    cache:'no-store',signal:AbortSignal.timeout(12000),
                     headers:{'Accept':'application/json','apikey':apiKey}
                 });
                 if(!resp.ok)throw new Error(`Status do robô HTTP ${resp.status}`);
@@ -15393,74 +15468,123 @@ function portalStart(host){
                 }
             }
 
-            async function fetchLatestRobotEvent(){
+            const simReferenceKey=`monitor_sim_robot_event_v318_${profile.id}`;
+            const simCursorKey=`monitor_sim_robot_cursor_${profile.id}`;
+            let simCursor=null;
+            let simLegacyId='';
+            let simPollRunning=false;
+            let simReferenceGeneration=0;
+            let simLatestRequest=null;
+            try{
+                simCursor=JSON.parse(localStorage.getItem(simCursorKey)||'null');
+                if(!simCursor?.event_id || !Number.isFinite(Date.parse(simCursor.detectado_em)))simCursor=null;
+                simLegacyId=localStorage.getItem(simReferenceKey)||'';
+            }catch(_){}
+
+            function simFilterValue(value){
+                return '"'+String(value).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
+            }
+
+            async function fetchRobotEvents(filters){
                 const base=String(simAlertSettings.supabase_url||'').replace(/\/+$/,'');
                 const apiKey=String(simAlertSettings.supabase_publishable_key||'').trim();
                 if(!base || !apiKey)throw new Error('Supabase do Monitor SIM não configurado');
-                const url=`${base}/rest/v1/sim_monitor_events?select=event_id,municipio,orgao,detectado_em,origem&order=detectado_em.desc&limit=1`;
-                const resp=await fetch(url,{
-                    method:'GET',cache:'no-store',
+                const query=new URLSearchParams({select:'event_id,municipio,orgao,detectado_em,origem',...filters});
+                const resp=await fetch(`${base}/rest/v1/sim_monitor_events?${query}`,{
+                    cache:'no-store',signal:AbortSignal.timeout(12000),
                     headers:{'Accept':'application/json','apikey':apiKey}
                 });
                 if(!resp.ok)throw new Error(`Supabase HTTP ${resp.status}`);
                 const rows=await resp.json();
-                if(!Array.isArray(rows)||!rows.length)return null;
-                const row=rows[0]||{};
-                const municipio=String(row.municipio||'').replace(/\s+/g,' ').trim();
-                const orgao=String(row.orgao||'').replace(/\s+/g,' ').trim();
-                const eventId=String(row.event_id||'').trim();
-                if(!eventId || !municipio)return null;
-                return {
-                    alert_type:'complete',
-                    alert_key:`robot-${eventId}`,
-                    event_id:eventId,
-                    title:`SIM de ${municipio} entregue`,
-                    municipio,
-                    entidade:orgao,
-                    entity_description:orgao,
-                    detectado_em:String(row.detectado_em||''),
-                    origem:String(row.origem||'monitor_sim'),
-                    source_kind:'robot_supabase'
-                };
+                if(!Array.isArray(rows))throw new Error('Formato inesperado dos eventos SIM');
+                return rows.flatMap(row=>{
+                    const municipio=String(row?.municipio||'').replace(/\s+/g,' ').trim();
+                    const orgao=String(row?.orgao||'').replace(/\s+/g,' ').trim();
+                    const eventId=String(row?.event_id||'').trim();
+                    const timestamp=String(row?.detectado_em||'');
+                    if(!eventId || !municipio || !Number.isFinite(Date.parse(timestamp)))return [];
+                    return [{
+                        alert_type:'complete',alert_key:`robot-${eventId}`,event_id:eventId,
+                        title:`SIM de ${municipio} entregue`,municipio,entidade:orgao,
+                        entity_description:orgao,detectado_em:timestamp,
+                        origem:String(row.origem||'monitor_sim'),source_kind:'robot_supabase'
+                    }];
+                });
+            }
+
+            function fetchLatestRobotEvent(){
+                if(!simLatestRequest){
+                    simLatestRequest=fetchRobotEvents({order:'detectado_em.desc,event_id.desc',limit:'1'})
+                        .then(rows=>rows[0]||null).finally(()=>{simLatestRequest=null;});
+                }
+                return simLatestRequest;
+            }
+
+            function rememberSimDelivery(event){
+                simCursor={event_id:event.event_id,detectado_em:event.detectado_em};
+                simLegacyId='';
+                simAlertSettings.latest_delivery=event;
+                try{
+                    localStorage.setItem(simCursorKey,JSON.stringify(simCursor));
+                    localStorage.setItem(simReferenceKey,event.event_id);
+                }catch(_){}
             }
 
             pollSimDeliveries=async function(){
-                if(!simAlertSettings.enabled)return;
+                if(!simAlertSettings.enabled || simPollRunning)return;
+                simPollRunning=true;
+                const generation=simReferenceGeneration;
                 try{
-                    const heartbeat=await fetchRobotStatus();
-                    renderRobotHeartbeat(heartbeat);
-                    const latest=await fetchLatestRobotEvent();
-                    if(!latest){setSimPollStatus('aguardando','robô · nenhum evento publicado');return;}
-                    simAlertSettings.latest_delivery=latest;
-                    const storageKey=`monitor_sim_robot_event_v318_${profile.id}`;
-                    const ref=String(latest.event_id||'').trim();
-                    let prev=''; try{prev=localStorage.getItem(storageKey)||'';}catch(e){}
-                    if(!prev){
-                        try{localStorage.setItem(storageKey,ref);}catch(e){}
-                        if(!robotHeartbeatStatus) setSimPollStatus('ativo','robô · Supabase · referência criada');
+                    try{renderRobotHeartbeat(await fetchRobotStatus());}
+                    catch(error){setSimPollStatus('erro',String(error?.message||error).slice(0,150));}
+                    if(generation!==simReferenceGeneration)return;
+
+                    if(!simCursor && simLegacyId){
+                        const [previous]=await fetchRobotEvents({event_id:'eq.'+simFilterValue(simLegacyId),limit:'1'});
+                        if(generation!==simReferenceGeneration)return;
+                        if(previous)rememberSimDelivery(previous);
+                    }
+                    if(!simCursor){
+                        const latest=await fetchLatestRobotEvent();
+                        if(generation!==simReferenceGeneration)return;
+                        if(!latest){
+                            if(!robotHeartbeatStatus)setSimPollStatus('aguardando','robô · nenhum evento publicado');
+                            return;
+                        }
+                        rememberSimDelivery(latest);
                         log(`Referência inicial do robô: ${latest.municipio} · ${latest.entidade||''}`);
                         return;
                     }
-                    if(ref && ref!==prev){
-                        enqueueSimAlert({...latest,alert_key:`robot-${ref}`,alert_type:'complete'});
-                        log(`Nova entrega recebida do robô: ${latest.municipio} · ${latest.entidade||''}`);
+
+                    const time=simFilterValue(simCursor.detectado_em);
+                    const id=simFilterValue(simCursor.event_id);
+                    const rows=await fetchRobotEvents({
+                        or:`(detectado_em.gt.${time},and(detectado_em.eq.${time},event_id.gt.${id}))`,
+                        order:'detectado_em.asc,event_id.asc',limit:'100'
+                    });
+                    if(generation!==simReferenceGeneration)return;
+                    for(const event of rows){
+                        enqueueSimAlert(event);
+                        rememberSimDelivery(event);
+                        log(`Nova entrega recebida do robô: ${event.municipio} · ${event.entidade||''}`);
                     }
-                    if(ref){try{localStorage.setItem(storageKey,ref);}catch(e){}}
-                    if(!robotHeartbeatStatus) setSimPollStatus('ativo','robô · Supabase · online');
-                }catch(e){
-                    const msg=String(e?.message||e||'falha desconhecida');
+                }catch(error){
+                    const msg=String(error?.message||error||'falha desconhecida');
                     setSimPollStatus('erro',msg.slice(0,150));
                     log(`Polling do robô falhou: ${msg}`);
+                }finally{
+                    simPollRunning=false;
+                    if(generation!==simReferenceGeneration)pollSimDeliveries();
                 }
             };
 
             startSimDeliveryPolling=function(){
                 clearInterval(simPollTimer); simPollTimer=null;
                 if(!simAlertSettings.enabled){setSimPollStatus('desativado');return;}
-                const every=3;
+                const every=Math.max(5,Math.min(120,Number(simAlertSettings.poll_seconds)||15));
                 setSimPollStatus('aguardando','robô · Supabase · aguardando heartbeat');
-                pollSimDeliveries();
                 simPollTimer=setInterval(pollSimDeliveries,every*1000);
+                pollSimDeliveries();
             };
 
             testarUltimaEntregaSIM=async function(){
@@ -15484,9 +15608,12 @@ function portalStart(host){
             };
 
             resetSimDeliveryBaseline=function(){
+                simReferenceGeneration++;
+                simCursor=null;
+                simLegacyId='';
                 try{
-                    const key=`monitor_sim_robot_event_v318_${profile.id}`;
-                    localStorage.removeItem(key);
+                    localStorage.removeItem(simReferenceKey);
+                    localStorage.removeItem(simCursorKey);
                 }catch(e){}
                 setSimPollStatus('reiniciado','a próxima leitura criará uma nova referência do robô');
                 log('Referência de eventos do robô reiniciada');
@@ -15494,12 +15621,12 @@ function portalStart(host){
             };
 
             renderTicker();
-            iniciarComPolling();
-            startSimDeliveryPolling();
             updateClock(); setInterval(updateClock,1000); setInterval(updateDiag,1000); updateNetwork(); startWatchdog();
             log(`Aplicação iniciada - perfil ${profile.nome}`); log(`Painéis ativos: ${panels.length}`); afterIndexChange('Inicial');
             if(restorePaused && !paused){ alternarPausa(); log('Pausa restaurada do navegador'); }
             showControls();
+            iniciarComPolling();
+            startSimDeliveryPolling();
             if(settings.kioskDefault)setTimeout(()=>alternarModoTV(true),600);
         </script>
     </body>
@@ -15508,7 +15635,7 @@ function portalStart(host){
     html_painel = html_painel.replace(
         "function portalStart(host){",
         Path(__file__).with_name("portal_alerts_v353.js").read_text(encoding="utf-8")
-        + "\nwindow.ssPortalAlerts353.start({mascot:settings.mascotAlert||'__MASCOTE_COMUNICADO_DATA_URI__',recoveryMascot:'__MASCOTE_RETORNO_DATA_URI__',state:portalState,fetch:()=>portalFetchTable('portais_monitor_atual','id,municipio,uf,url,estado,ultima_verificacao,ultima_online,http_status,latencia_ms,detalhe,mudou_em','order=municipio.asc&limit=500')});\nfunction portalStart(host){",
+        + "\nwindow.ssPortalAlerts353.start({mascot:settings.mascotAlert||'__MASCOTE_COMUNICADO_DATA_URI__',recoveryMascot:'__MASCOTE_RETORNO_DATA_URI__',state:portalState,fetch:()=>portalReadCurrent('portais')});\nfunction portalStart(host){",
         1,
     )
     _retorno_png = Path(__file__).with_name("scripts") / "assets" / "mascote_retorno.png"

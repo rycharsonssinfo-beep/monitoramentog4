@@ -149,7 +149,10 @@ function g4fDailyReportHTML(row){
     .summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     h2{font-size:13px;margin:16px 0 8px}
     table.matrix{font-size:7.8px;border-radius:0}
+    .matrix-scroll{overflow:visible}
     .matrix th{font-size:7.2px;padding:7px 2px}
+    .matrix tbody tr:nth-child(even) td{background:#f3f5f7}
+    .rank .bar{border:1px solid #76849a}
     .matrix td{padding:6px 2px}
     .rank{grid-template-columns:18px 130px minmax(60px,1fr) 25px;gap:8px;padding:4px 0}
     .bar{height:11px}
@@ -157,6 +160,11 @@ function g4fDailyReportHTML(row){
     .rank b{font-size:10px}
     .note,footer{font-size:9px}
     footer{break-inside:avoid}
+  }
+  @media screen{
+    .matrix-scroll{overflow-x:auto}
+    .matrix-scroll .matrix{min-width:760px}
+    .matrix-scroll:focus-visible{outline:2px solid #0e5285;outline-offset:2px}
   }
  `;
  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
@@ -170,7 +178,7 @@ function g4fDailyReportHTML(row){
   '<div><strong>Emissão:</strong> '+g4fDailyEscape(emitted.datetime)+'</div>'+
   '<div style="margin-top:7px"><span class="chip">Dados parciais até a última coleta</span></div></div></header>'+
   '<h2>Resumo dos atendimentos</h2><div class="summary">'+statsHTML+'</div>'+
-  '<h2>Matriz horária de indicadores</h2>'+matrixHTML+
+  '<h2>Matriz horária de indicadores</h2><div class="matrix-scroll" role="region" aria-label="Matriz horária" tabindex="0">'+matrixHTML+'</div>'+
   '<h2>Ranking de filas — Top 10</h2>'+rankingHTML+
   '<p class="note">'+g4fDailyEscape(note)+'</p>'+
   '<footer><span>Fonte: coleta automatizada do G4Flex. Os indicadores históricos podem abranger toda a operação, não apenas os atendentes exibidos no Monitor S&amp;S.</span>'+
