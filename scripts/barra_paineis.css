@@ -80,3 +80,15 @@ body.kiosk #toolbar #clock { font-size: 1.3em; }
 @media (prefers-reduced-motion: reduce) {
   #control-shell { transition: none; }
 }
+
+#toolbar #panel-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#toolbar #panel-jump .menu-item {
+  display: grid; grid-template-columns: 1.7rem minmax(0, 1fr);
+  align-items: center; gap: 8px; text-align: start; white-space: normal;
+}
+.panel-jump-position {
+  display: grid; place-items: center; min-height: 1.65rem;
+  border-radius: 6px; background: #edf3f9; color: #214e73;
+  font-size: .85em; font-variant-numeric: tabular-nums;
+}
+#panel-jump .menu-item.active .panel-jump-position { background: #0e5285; color: #fff; }

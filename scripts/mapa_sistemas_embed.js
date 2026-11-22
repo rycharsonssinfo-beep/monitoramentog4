@@ -101,7 +101,14 @@
 .ss-map-svg{height:min(67vh,660px);min-height:485px;background:radial-gradient(ellipse at 48% 40%,rgba(18,73,117,.2),transparent 70%),#081b32;border-radius:12px}
 .ss-map-svg path{stroke:#c3dbed;stroke-width:.9;fill-opacity:.96;transition:fill-opacity .15s ease,filter .15s ease}
 .ss-map-svg path:hover{stroke:#fff;stroke-width:2.1;filter:drop-shadow(0 0 4px #a2dbff)}
-.ss-map-svg path.picked{stroke:#fff;stroke-width:2.9;filter:drop-shadow(0 0 7px rgba(106,197,255,.75))}
+.ss-map-svg path.picked{stroke:#fff;stroke-width:2.9;vector-effect:non-scaling-stroke}
+.ss-map-legend{flex-wrap:wrap}
+.ss-map-layer [data-sm-search-feedback].has-selection{
+ background:#123f58;border-inline-start:3px solid #56dfc8;border-radius:6px;padding:7px 9px;color:#e2faf7
+}
+.ss-map-layer :is(button,a,input,select,summary):focus-visible{
+ outline:2px solid #87e7d8;outline-offset:2px
+}
 .ss-map-detail{padding:0;overflow:hidden;background:linear-gradient(145deg,#102d4e,#0c213c)}
 .ss-map-detail>.ss-map-city{margin:0;padding:27px 19px 3px;background:radial-gradient(circle at 85% 15%,#2477aa77,transparent 47%),linear-gradient(120deg,#0c456f,#173e67);font-size:26px;letter-spacing:-.5px}
 .ss-map-detail>.ss-map-city:before{content:"●";color:#62bcff;font-size:17px;margin-right:9px;vertical-align:3px}
@@ -232,7 +239,10 @@
       function select(c,focus=false){
         selected=c.key;update();
         const selectedFeedback=layer.querySelector("[data-sm-search-feedback]");
-        if(selectedFeedback)selectedFeedback.textContent="Município selecionado: "+c.name;
+        if(selectedFeedback){
+          selectedFeedback.textContent="Município selecionado: "+c.name;
+          selectedFeedback.classList.add("has-selection");
+        }
         const safe=portalEscape;
         let html='<div class="ss-map-city">'+safe(c.name)+' — CE</div><div class="ss-map-note">Código IBGE: '+safe(c.code||"não informado")+'</div><h3>Sistemas cadastrados</h3>';
         for(const mode of modes){
@@ -278,12 +288,19 @@
       };
       function runSearch(allowPartial=false){
         const raw=input.value.trim();
-        if(!raw){feedback.textContent="Digite um município para localizar.";return}
+        if(!raw){
+          feedback.classList.remove("has-selection");
+          feedback.textContent="Digite um município para localizar.";
+          return;
+        }
         const key=norm(raw),exact=keyMap.get(key);
         const city=exact||(allowPartial?findCity(raw):null);
         if(city){
           select(city,true);
-        }else if(allowPartial)feedback.textContent="Município não encontrado na malha do Ceará.";
+        }else if(allowPartial){
+          feedback.classList.remove("has-selection");
+          feedback.textContent="Município não encontrado na malha do Ceará.";
+        }
       }
       input.addEventListener("input",()=>{
         if(keyMap.has(norm(input.value)))runSearch(false);

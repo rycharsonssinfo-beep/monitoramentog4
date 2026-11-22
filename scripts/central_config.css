@@ -379,3 +379,15 @@ body:has(.st-key-cfg_workspace) [data-baseweb="popover"] [role="option"]:is(:hov
     justify-content: flex-start;
   }
 }
+
+.st-key-cfg_workspace .cfg-section-heading h2 { overflow-wrap: anywhere; text-wrap: balance; }
+.st-key-cfg_workspace .cfg-profile-count { flex-wrap: wrap; row-gap: 4px; }
+.st-key-cfg_workspace .cfg-workspace-saved { font-variant-numeric: tabular-nums; }
+.st-key-cfg_workspace [class*="st-key-cfg_order_"] :is(p, button) { overflow-wrap: anywhere; }
+@media (max-width: 800px) {
+  .st-key-cfg_workspace_mobile_nav [data-baseweb="select"] > div { border-color: #79aacd; }
+  .cfg-workspace-header { gap: 10px; }
+}
+@media (max-width: 480px) {
+  .cfg-header-title { border-inline-start: 0; padding-inline-start: 0; }
+}

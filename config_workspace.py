@@ -171,18 +171,19 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
         error = st.session_state.get("ultimo_erro_persistencia")
         saved_at = st.session_state.get("ultima_gravacao")
         if st.session_state.get("config_conflito"):
-            with conflict_notice.container(), st.container(key="cfg_revision_actions"):
-                st.markdown(
-                    '<div class="cfg-revision-notice" role="alert"><strong>Há uma revisão mais recente.</strong> '
-                    'Exporte sua edição antes de carregar a revisão do servidor se quiser preservá-la.</div>',
-                    unsafe_allow_html=True,
-                )
-                recover_col, reload_col = st.columns(2)
-                with recover_col:
-                    st.download_button("Exportar minha edição", json.dumps(config, ensure_ascii=False, indent=2),
-                                       file_name="monitoramento_config_edicao.json", mime="application/json")
-                with reload_col:
-                    st.button("Descartar edição e carregar revisão do servidor", on_click=reload_revision)
+            with conflict_notice.container():
+                with st.container(key="cfg_revision_actions"):
+                    st.markdown(
+                        '<div class="cfg-revision-notice" role="alert"><strong>Há uma revisão mais recente.</strong> '
+                        'Exporte sua edição antes de carregar a revisão do servidor se quiser preservá-la.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    recover_col, reload_col = st.columns(2)
+                    with recover_col:
+                        st.download_button("Exportar minha edição", json.dumps(config, ensure_ascii=False, indent=2),
+                                           file_name="monitoramento_config_edicao.json", mime="application/json")
+                    with reload_col:
+                        st.button("Descartar edição e carregar revisão do servidor", on_click=reload_revision)
         elif error:
             save_status.error(error)
             if st.button("Tentar salvar novamente"):

@@ -87,3 +87,12 @@
  .g4f-insights .g4f-report-head-actions{gap:6px}
  .g4f-insights .g4f-report-daily-btn{font-size:10px;padding:8px 9px;min-height:32px}
 }
+
+/* A coluna de horário permanece visível durante a leitura das métricas. */
+.g4f-insights .g4f-report-table :is(th,td):first-child{
+ position:sticky;inset-inline-start:0;background:#edf5fd;
+ color:#123c68;box-shadow:1px 0 #cbdbeb;z-index:1
+}
+.g4f-insights .g4f-report-table-scroll:focus-visible,
+.g4f-insights .g4f-report-plot:focus-visible{outline:2px solid #1477ba;outline-offset:2px}
+.g4f-insights .g4f-report-bars div[style="height:0%"]{min-height:0}
