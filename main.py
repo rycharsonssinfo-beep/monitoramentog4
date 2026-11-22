@@ -2725,6 +2725,10 @@ def _render_login_gate():
                             data = _auth_login(email, password)
                         st.session_state["_monitor_auth_remember_v342"] = bool(remember_device)
                         _auth_store_session(data)
+                        # Uma entrada manual abre a tela inicial da função do usuário.
+                        # Sessões restauradas pelo navegador mantêm a rota aberta.
+                        st.query_params.pop("sec", None)
+                        st.query_params.pop("iniciado", None)
                         st.rerun()
                     except Exception as exc:
                         feedback.error(_auth_error_pt(exc))
