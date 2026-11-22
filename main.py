@@ -4838,6 +4838,96 @@ def consultar_ip_saida_servidor(timeout=4):
     }
 
 
+def _render_config_diagnostics(config, profile, active_panels, retained_panels):
+    def edit_panel(panel_id=None):
+        if panel_id is not None:
+            st.session_state[f"cfg_edit_{panel_id}"] = True
+        st.session_state["cfg_focus_section"] = "panels"
+        st.query_params["sec"] = "panels"
+
+    invalid = [
+        panel for panel in profile.get("paineis", [])
+        if panel.get("ativo", True) and not url_valida(panel.get("link", "").strip())
+    ]
+    save_error = st.session_state.get("ultimo_erro_persistencia")
+    corrupt_backup = st.session_state.get("config_corrompida_backup")
+    portal_error = st.session_state.get("cfg_portal_cache_error")
+    configuration_ok = bool(active_panels) and not (invalid or save_error or corrupt_backup or portal_error)
+    render_ms = st.session_state.get("cfg_last_render_ms")
+
+    with st.container(key="cfg_diag_summary"):
+        st.markdown("### Configuração deste perfil")
+        st.write(f"{profile['nome']} · {len(active_panels)} painel(is) com endereço válido")
+        if configuration_ok:
+            st.success("Sem pendências na configuração do perfil.")
+        else:
+            st.warning("A configuração deste perfil precisa de atenção.")
+        st.caption("A verificação confere os endereços configurados. A disponibilidade dos sistemas é exibida nos painéis de monitoramento.")
+        if not active_panels:
+            st.write("Nenhum painel está pronto para exibição. Ative um painel e confira o endereço.")
+            if not invalid:
+                st.button("Abrir configuração dos painéis", key="cfg_diag_edit_panels", on_click=edit_panel)
+        for panel in invalid:
+            with st.container(border=True):
+                st.write(panel.get("nome") or "Painel sem nome")
+                st.caption("O endereço está inválido." if panel.get("link", "").strip() else "O endereço ainda não foi preenchido.")
+                st.button("Corrigir endereço", key=f"cfg_diag_edit_{panel['id']}",
+                          on_click=edit_panel, args=(panel["id"],))
+        if save_error:
+            st.error("A última gravação da configuração não foi concluída. Confira o aviso de salvamento no topo da Central.")
+        if corrupt_backup:
+            st.warning("A configuração anterior não pôde ser lida. Uma cópia foi preservada para o suporte.")
+        if portal_error:
+            st.warning("As informações do S&S Conecta foram atualizadas nesta sessão, mas não puderam ser gravadas.")
+
+    with st.container(key="cfg_diag_connection"):
+        st.markdown("### Conexão do servidor")
+        st.caption("O teste verifica se o servidor consegue chegar a um serviço externo. Cada painel tem sua própria conexão.")
+        if st.button("Verificar conexão do servidor", icon=":material/network_check:", key="refresh_outbound_ip_v3162"):
+            with st.spinner("Verificando conexão…"):
+                st.session_state["outbound_ip_diag_v3162"] = consultar_ip_saida_servidor()
+        network = st.session_state.get("outbound_ip_diag_v3162") or {}
+        if network.get("ok"):
+            st.success("O servidor conseguiu alcançar o serviço de teste.")
+        elif network:
+            st.warning("O serviço de teste não respondeu. Tente novamente. Se persistir, envie o resumo ao suporte.")
+        else:
+            st.info("Conexão ainda não verificada.")
+        if network.get("consultado_em"):
+            st.caption(f"Último teste: {network['consultado_em']}")
+
+    with st.expander("Detalhes para o suporte"):
+        st.caption("Use o botão de cópia no canto do bloco para copiar o resumo.")
+        default_name = config["profiles"][config["default_profile_id"]]["nome"]
+        summary = [
+            "Diagnóstico — Monitor Grupo S&S",
+            f"Versão: {APP_VERSION} | Esquema: {CONFIG_VERSION}",
+            f"Perfil: {profile['nome']} ({profile['id']}) | Padrão: {default_name}",
+            f"Painéis com endereço válido: {len(active_panels)} | Com endereço pendente: {len(invalid)}",
+            f"Painéis configurados para permanecer abertos: {retained_panels}",
+            f"Arquivo de configuração: {CONFIG_PATH.name} (gravação atômica com backup)",
+        ]
+        if render_ms is not None:
+            summary.append(f"Última renderização da Central: {render_ms} ms")
+        if network:
+            summary.append(f"Consulta de saída: {network.get('consultado_em') or 'horário indisponível'}")
+            if network.get("ok"):
+                summary.append(f"IP público observado: {network.get('ip')} | Fonte: {network.get('fonte')}")
+            else:
+                summary.append(f"Falha na verificação: {network.get('erro') or 'erro não identificado'}")
+        else:
+            summary.append("Conexão do servidor: ainda não verificada")
+        if save_error:
+            summary.append(f"Erro de gravação: {save_error}")
+        if corrupt_backup:
+            summary.append(f"Cópia da configuração anterior: {corrupt_backup}")
+        if portal_error:
+            summary.append("S&S Conecta: falha na gravação do cache")
+        st.code("\n".join(summary), language=None, wrap_lines=True)
+        st.caption("O IP observado pode variar conforme a instância ou a rota de saída. "
+                   "Em hospedagens com armazenamento temporário, exporte um backup antes de mudanças importantes.")
+
+
 def normalizar_config(data):
     data = migrar_config_legada(copy.deepcopy(data))
     if not isinstance(data, dict):
@@ -6632,8 +6722,62 @@ def _com_storage_apagar(nome):
         pass
 
 
-def _com_listar(limit=25):
-    return _com_request("GET", f"sim_comunicados?select=id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,cancelled_at,imagens,audio_path&order=created_at.desc&limit={int(limit)}")
+COM_HISTORY_PAGE_SIZE = 10
+
+
+def _com_listar(page, status, title, dates, now):
+    from zoneinfo import ZoneInfo
+
+    params = [
+        ("select", "id,titulo,mensagem,som,duracao_segundos,visual_tipo,repeat_enabled,repeat_interval_hours,created_at,expires_at,ativo,imagens,audio_path"),
+        ("order", "created_at.desc,id.desc"),
+        ("limit", COM_HISTORY_PAGE_SIZE + 1),
+        ("offset", page * COM_HISTORY_PAGE_SIZE),
+    ]
+    cutoff = now.isoformat()
+    if status == "Vigentes":
+        params.extend([("ativo", "eq.true"), ("or", f"(expires_at.is.null,expires_at.gt.{cutoff})")])
+    elif status == "Expirados":
+        params.extend([("ativo", "eq.true"), ("expires_at", f"lte.{cutoff}")])
+    elif status == "Cancelados":
+        params.append(("or", "(ativo.eq.false,ativo.is.null)"))
+    if title:
+        params.append(("titulo", f"imatch.{re.escape(title)}"))
+    zone = ZoneInfo("America/Fortaleza")
+    if dates:
+        start = datetime.combine(dates[0], datetime.min.time(), tzinfo=zone)
+        params.append(("created_at", f"gte.{start.isoformat()}"))
+    if len(dates) == 2:
+        end = datetime.combine(dates[1], datetime.min.time(), tzinfo=zone) + timedelta(days=1)
+        params.append(("created_at", f"lt.{end.isoformat()}"))
+    return _com_request("GET", "sim_comunicados?" + urlencode(params))
+
+
+def _com_history_date(value):
+    from zoneinfo import ZoneInfo
+
+    if not value:
+        return "—"
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+            ZoneInfo("America/Fortaleza")
+        ).strftime("%d/%m/%Y %H:%M:%S")
+    except ValueError:
+        return value[:19]
+
+
+def _com_history_status(row, now):
+    if not row.get("ativo", True):
+        return "Cancelado"
+    expires = row.get("expires_at")
+    if expires:
+        try:
+            if datetime.fromisoformat(expires.replace("Z", "+00:00")).timestamp() <= now.timestamp():
+                return "Expirado"
+        except ValueError:
+            return "Validade desconhecida"
+    return "Vigente"
+
 
 
 def _com_enviar(titulo, mensagem, som, duracao_segundos, validade_minutos,
@@ -6707,6 +6851,13 @@ def render_central_comunicados():
         st.error("Acesso restrito: somente administradores cadastrados no Supabase podem enviar comunicados.")
         return
     st.markdown("### Central de Comunicados")
+    view = st.radio("Área dos comunicados", ("Novo comunicado", "Histórico"),
+                    horizontal=True, label_visibility="collapsed", key="com_central_view")
+    if view == "Histórico":
+        with st.container(key="com_history"):
+            _render_com_history()
+        return
+
     st.caption("Envie avisos imediatos ou recorrentes aos monitores já iniciados. Os avisos são sincronizados pelo Supabase sem reiniciar o robô.")
     st.info("A TV deve estar com **Iniciar monitoramento** ativado. Abra esta central em outra aba ou computador para não interromper a exibição.")
 
@@ -6833,47 +6984,102 @@ def render_central_comunicados():
                     _com_storage_apagar(caminho)
                 st.error(f"Falha ao publicar: {exc}")
 
-    st.markdown("#### Histórico e cancelamento")
-    if st.button("Atualizar histórico", key="com_update_v322"):
-        st.rerun()
+
+
+def _render_com_history():
+    from datetime import timezone
+
+    search_col, status_col, period_col = st.columns([1.45, 1, 1.25])
+    with search_col:
+        title = st.text_input("Buscar por título", max_chars=120, key="com_history_title").strip()
+    with status_col:
+        status = st.selectbox("Situação", ("Todos", "Vigentes", "Expirados", "Cancelados"), key="com_history_status")
+    with period_col:
+        dates = st.date_input("Período de envio", value=(), format="DD/MM/YYYY", key="com_history_period")
+    filters = (title, status, dates)
+    if st.session_state.get("com_history_filters") != filters:
+        st.session_state.update(com_history_filters=filters, com_history_page=0, com_history_selected=None)
+    if flash := st.session_state.pop("com_history_flash", None):
+        st.success(flash)
+    if st.button("Atualizar histórico", icon=":material/refresh:", key="com_history_refresh"):
+        st.session_state.update(com_history_page=0, com_history_selected=None)
+
+    page = st.session_state.get("com_history_page", 0)
+    now = datetime.now(timezone.utc)
     try:
-        rows = _com_listar()
+        rows = _com_listar(page, status, title, dates, now)
     except Exception as exc:
         st.error(f"Falha ao consultar comunicados: {exc}")
         return
     if not rows:
-        st.caption("Ainda não há comunicados publicados.")
-    for row in rows:
-        dt = str(row.get("created_at") or "")
-        try:
-            from zoneinfo import ZoneInfo
-            dt = datetime.fromisoformat(dt.replace("Z", "+00:00")).astimezone(ZoneInfo("America/Fortaleza")).strftime("%d/%m/%Y %H:%M:%S")
-        except Exception:
-            dt = dt[:19]
-        expiration = str(row.get("expires_at") or "")
-        try:
-            expired = datetime.fromisoformat(expiration.replace("Z", "+00:00")).timestamp() < time.time()
-        except Exception:
-            expired = False
-        status = "Cancelado" if not row.get("ativo", True) else ("Expirado" if expired else "Ativo")
-        with st.expander(f"{row.get('titulo', '(sem título)')} · {dt} · {status}"):
-            st.write(str(row.get("mensagem") or ""))
-            arte = "Mascote com megafone" if row.get("visual_tipo") == "mascote" else "Megafone sem mascote"
-            recorrencia = (f"Repetição: a cada {row.get('repeat_interval_hours')}h" if row.get("repeat_enabled")
-                           else "Repetição: desativada")
-            qtd_img = len(row.get("imagens") or []) if isinstance(row.get("imagens"), list) else 0
-            tem_audio = bool(row.get("audio_path"))
-            st.caption(f"Ilustração: {arte} · Imagens: {qtd_img} · Áudio anexado: {'sim' if tem_audio else 'não'} · Duração: {row.get('duracao_segundos',40)}s · Toque: {'ligado' if row.get('som') else 'desligado'} · {recorrencia} · Situação: {status}")
-            if row.get('repeat_enabled') and row.get('ativo', True) and not expired:
-                st.caption(f"Repetições programadas até: {expiration[:19].replace('T', ' ')} (UTC) ou cancelamento.")
-            if row.get("ativo", True) and not expired:
-                if st.button("Cancelar comunicado em todos os monitores", key=f"com_cancel_{row['id']}"):
-                    try:
-                        _com_cancelar(row['id'])
-                        st.success("Cancelamento registrado. Os monitores serão atualizados na próxima consulta.")
-                        st.rerun()
-                    except Exception as exc:
-                        st.error(f"Não foi possível cancelar: {exc}")
+        if page:
+            st.session_state.update(com_history_page=page - 1, com_history_selected=None)
+            st.rerun()
+        st.info("Nenhum comunicado encontrado para os filtros selecionados.")
+        return
+
+    selected = st.session_state.get("com_history_selected")
+    for row in rows[:COM_HISTORY_PAGE_SIZE]:
+        uid = row["id"]
+        row_status = _com_history_status(row, now)
+        message = " ".join((row.get("mensagem") or "").split())
+        preview = message[:104] + ("…" if len(message) > 104 else "")
+        tone = {"Vigente": "current", "Cancelado": "cancelled"}.get(row_status, "expired")
+        with st.container(key=f"com_history_row_{uid}"):
+            data_col, action_col = st.columns([5, 1.35], vertical_alignment="center")
+            with data_col:
+                st.html(
+                    '<div class="com-history-record"><div>'
+                    f'<strong>{html.escape(row.get("titulo") or "(sem título)")}</strong>'
+                    f'<small>{html.escape(preview)}</small></div>'
+                    f'<time>{html.escape(_com_history_date(row.get("created_at")))}</time>'
+                    f'<span class="com-history-status {tone}">{row_status}</span></div>'
+                )
+            with action_col:
+                if st.button("Fechar detalhes" if selected == uid else "Ver detalhes",
+                             key=f"com_details_{uid}", use_container_width=True):
+                    st.session_state["com_history_selected"] = None if selected == uid else uid
+                    st.rerun()
+        if selected == uid:
+            _render_com_history_details(row, row_status)
+
+    prev_col, counter_col, next_col = st.columns([1, 2, 1], vertical_alignment="center")
+    with prev_col:
+        if st.button("Anterior", icon=":material/chevron_left:", disabled=page == 0, key="com_history_prev"):
+            st.session_state.update(com_history_page=page - 1, com_history_selected=None)
+            st.rerun()
+    with counter_col:
+        st.caption(f"Página {page + 1}")
+    with next_col:
+        if st.button("Próxima", icon=":material/chevron_right:", disabled=len(rows) <= COM_HISTORY_PAGE_SIZE,
+                     key="com_history_next"):
+            st.session_state.update(com_history_page=page + 1, com_history_selected=None)
+            st.rerun()
+
+
+def _render_com_history_details(row, status):
+    with st.container(border=True):
+        st.markdown("##### Detalhes do comunicado")
+        st.write(str(row.get("mensagem") or ""))
+        arte = "Mascote com megafone" if row.get("visual_tipo") == "mascote" else "Megafone sem mascote"
+        recorrencia = (f"Repetição: a cada {row.get('repeat_interval_hours')} h" if row.get("repeat_enabled")
+                       else "Repetição: desativada")
+        qtd_img = len(row["imagens"]) if isinstance(row.get("imagens"), list) else 0
+        tem_audio = "sim" if row.get("audio_path") else "não"
+        st.caption(f"Ilustração: {arte} · Imagens: {qtd_img} · Áudio anexado: {tem_audio} · "
+                   f"Duração: {row.get('duracao_segundos', 40)} s · Toque: {'ligado' if row.get('som') else 'desligado'} · {recorrencia}")
+        if row.get("repeat_enabled") and status == "Vigente":
+            st.caption(f"Repetições até {_com_history_date(row.get('expires_at'))} ou até o cancelamento.")
+        if status == "Vigente" and st.button("Cancelar comunicado em todos os monitores", key=f"com_cancel_{row['id']}"):
+            try:
+                _com_cancelar(row["id"])
+            except Exception as exc:
+                st.error(f"Não foi possível cancelar: {exc}")
+            else:
+                st.session_state["com_history_flash"] = (
+                    "Cancelamento registrado. Os monitores serão atualizados na próxima consulta."
+                )
+                st.rerun()
 
 
 # Segurança: o convite é confirmado apenas depois do clique do destinatário.
@@ -7275,7 +7481,6 @@ if not st.session_state.iniciado:
 
     paineis = perfil["paineis"]
     ativos = perfil_ativos(perfil)
-    urls_invalidas = sum(1 for p in paineis if p.get("ativo", True) and p.get("link", "").strip() and not url_valida(p.get("link", "")))
     preservados = sum(1 for p in paineis if p.get("preserve_session", False) or not p.get("reload_enabled", True))
 
     # v3.16.3: Modo Foco removido. Campos legados são ignorados para compatibilidade.
@@ -8271,47 +8476,7 @@ if not st.session_state.iniciado:
                         st.rerun()
 
         if active_section == "diagnostics":
-            st.markdown("**Ambiente e configuração**")
-            st.write(f"Versão: `{APP_VERSION}` / esquema `{CONFIG_VERSION}`")
-            st.write(f"Perfil desta tela: `{perfil['nome']}` (`{active_profile_id}`)")
-            st.write(f"Perfil padrão global: `{config['profiles'][config['default_profile_id']]['nome']}`")
-            st.write(f"Painéis ativos com URL válida: `{len(ativos)}`")
-            st.write(f"URLs inválidas ativas: `{urls_invalidas}`")
-            st.write(f"Painéis mantidos abertos: `{preservados}`")
-            st.write(f"Persistência local: `{CONFIG_PATH.name}` com gravação atômica + backup")
-            if (render_ms := st.session_state.get("cfg_last_render_ms")) is not None:
-                st.caption(f"Última renderização da Central no servidor: {render_ms} ms.")
-            if st.session_state.get("cfg_portal_cache_error"):
-                st.warning("O cache do S&S Conecta foi atualizado na sessão, mas não pôde ser gravado.")
-
-            st.markdown("**Rede do backend · IP de saída do servidor**")
-            st.caption(
-                "Este é o IP público observado em uma requisição feita pelo Python do servidor. "
-                "É o endereço mais útil para o responsável pelo Consulta TCE localizar a chamada nos logs do WAF/firewall."
-            )
-            ip_col1, ip_col2 = st.columns([3, 1])
-            with ip_col2:
-                if st.button("Consultar IP de saída", use_container_width=True, key="refresh_outbound_ip_v3162"):
-                    st.session_state.outbound_ip_diag_v3162 = consultar_ip_saida_servidor()
-            ip_diag = st.session_state.get("outbound_ip_diag_v3162", {})
-            with ip_col1:
-                if ip_diag.get("ok"):
-                    st.code(ip_diag.get("ip", ""), language=None)
-                    st.caption(
-                        f"Consultado em {ip_diag.get('consultado_em', 'agora')} · "
-                        f"fonte de diagnóstico: {ip_diag.get('fonte', 'serviço externo')}"
-                    )
-                elif ip_diag:
-                    st.warning(f"Não foi possível consultar o IP de saída: {ip_diag.get('erro', 'erro não identificado')}")
-            st.info(
-                "No Streamlit Community Cloud, o IP de saída pode variar entre instâncias ou reinícios. "
-                "Para uma allowlist permanente, o responsável deve considerar a faixa/lista oficial do provedor ou confirmar o IP observado nos logs no momento do teste."
-            )
-            st.info("Em hospedagens Streamlit com filesystem efêmero, o arquivo local pode ser recriado após redeploy/reinício da infraestrutura. O backup/exportação continua recomendado para mudanças importantes.")
-            if st.session_state.get("config_corrompida_backup"):
-                st.warning(f"Uma configuração corrompida foi preservada como `{st.session_state['config_corrompida_backup']}`.")
-            if st.session_state.get("ultimo_erro_persistencia"):
-                st.error(f"Último erro de persistência: {st.session_state['ultimo_erro_persistencia']}")
+            _render_config_diagnostics(config, perfil, ativos, preservados)
 
         if active_section == "news":
             st.markdown(
