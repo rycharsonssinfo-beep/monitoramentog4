@@ -204,8 +204,6 @@ div[data-testid="stToolbar"], section[data-testid="stSidebar"] { display: none !
 .st-key-monitor_login_layout .auth-brand .auth-brand-logo {
   width: clamp(145px, 47%, 265px);
   margin-bottom: clamp(10px, 2vh, 21px);
-  /* Clareia a marca para o fundo escuro, preservando os tons internos e a transparência. */
-  filter: invert(1) hue-rotate(180deg) brightness(1.18) drop-shadow(0 2px 6px #03234090);
 }
 .stApp .st-key-monitor_login_layout .auth-brand h1 {
   color: #fff !important;
