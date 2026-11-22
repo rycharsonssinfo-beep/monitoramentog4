@@ -8538,6 +8538,7 @@ else:
     if bridge_action == "settings":
         st.session_state.iniciado = False
         st.query_params["perfil"] = active_profile_id
+        st.query_params.pop("sec", None)
         st.query_params["iniciado"] = "false"
         st.rerun()
 
