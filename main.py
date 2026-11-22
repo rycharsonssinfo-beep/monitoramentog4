@@ -2405,7 +2405,7 @@ def _render_auth_brand(subtitle=""):
                  sizes="(min-width: 1450px) 690px, 46vw" width="640" height="360" alt="" decoding="async">
           </picture>
           <div class="auth-brand-copy">
-            <img class="auth-brand-logo" src="app/static/grupo-ss-oficial.png" alt="Grupo S&amp;S" width="225" height="58">
+            <img class="auth-brand-logo" src="app/static/grupo-ss-login-teal.png" alt="Grupo S&amp;S" width="2172" height="724">
             <h1>Painel de <span>Monitoramento</span></h1>
             {subtitle_html}
           </div>
