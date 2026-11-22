@@ -2402,7 +2402,7 @@ def _render_auth_brand(subtitle=""):
             <source media="(max-width:780px)" srcset="app/static/login-mascote-160.webp">
             <img src="app/static/login-mascote-640.webp"
                  srcset="app/static/login-mascote-640.webp 640w, app/static/login-mascote-960.webp 960w"
-                 sizes="450px" width="640" height="360" alt="" decoding="async">
+                 sizes="(min-width: 1450px) 690px, 46vw" width="640" height="360" alt="" decoding="async">
           </picture>
           <div class="auth-brand-copy">
             <img class="auth-brand-logo" src="app/static/grupo-ss-oficial.png" alt="Grupo S&amp;S" width="225" height="58">
@@ -2601,7 +2601,7 @@ def _render_login_gate():
 
     _auth_login_css()
     with st.container(key="monitor_login_layout"):
-        login_hero_col, login_form_col = st.columns([1, 1.15], gap="large", vertical_alignment="center")
+        login_hero_col, login_form_col = st.columns([1.08, 1], gap="large", vertical_alignment="center")
     with login_hero_col:
         _render_auth_brand()
 
@@ -2664,7 +2664,7 @@ def _render_login_gate():
                 st.caption("O acesso ao painel depende de cadastro e autorização realizados pelo administrador.")
                 st.stop()
 
-            st.markdown('<div class="auth-reset-title">Entrar</div>', unsafe_allow_html=True)
+            st.markdown('<h2 class="auth-reset-title">Entrar</h2>', unsafe_allow_html=True)
             st.caption("Use o e-mail e a senha cadastrados pelo administrador do painel.")
             if st.session_state.get("_monitor_auth_browser_unavailable_v342"):
                 st.warning("Este navegador não permite salvar a sessão. O acesso continuará funcionando, mas poderá exigir novo login após fechar a página.")
@@ -2673,7 +2673,7 @@ def _render_login_gate():
                     "Usuário (e-mail)", placeholder="nome@empresa.com.br", autocomplete="username",
                     value=st.session_state.get("_monitor_login_email_hint", ""), key="_monitor_login_email",
                 )
-                password = st.text_input("Senha", type="password", autocomplete="current-password")
+                password = st.text_input("Senha", type="password", autocomplete="current-password", key="monitor_login_password")
                 remember_device = st.checkbox(
                     "Permanecer conectado neste dispositivo",
                     value=True, key="monitor_remember_device_v342",
@@ -2683,10 +2683,10 @@ def _render_login_gate():
                 with st.container(key="monitor_login_actions"):
                     enter_col, recovery_col = st.columns(2)
                     with enter_col:
-                        submit = st.form_submit_button("Entrar no painel", type="primary", use_container_width=True)
+                        submit = st.form_submit_button("Entrar no painel", icon=":material/login:", type="primary", use_container_width=True)
                     with recovery_col, st.container(key="monitor_recovery_action"):
                         st.form_submit_button(
-                            "Esqueci minha senha", on_click=_open_password_recovery, use_container_width=True,
+                            "Esqueci minha senha", icon=":material/key:", on_click=_open_password_recovery, use_container_width=True,
                         )
             if submit:
                 if not email.strip() or not password:
@@ -2701,7 +2701,8 @@ def _render_login_gate():
                     except Exception as exc:
                         feedback.error(_auth_error_pt(exc))
             st.markdown(
-                '<div class="auth-security-note">Acesso restrito a contas aprovadas pela administração.</div>',
+                '<div class="auth-security-note"><span class="auth-icon" aria-hidden="true">verified_user</span>'
+                'Acesso restrito a contas aprovadas pela administração.</div>',
                 unsafe_allow_html=True,
             )
             _focus_auth_control("login")
