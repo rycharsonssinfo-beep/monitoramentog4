@@ -9921,11 +9921,36 @@ else:
  .portal-bar{align-items:flex-start;flex-direction:column}
  .portal-controls{width:100%;margin-left:0;flex-wrap:wrap}
  .portal-pager{display:none}
- .portal-cards.portal-cards-mobile{flex:0 0 auto;min-height:200px;overflow:visible;grid-auto-rows:minmax(150px,max-content)!important}
  .portal-card.portal-card-v347{min-height:150px!important}
  .portal-history{max-height:none;overflow:visible}
  .portal-history-rows{overflow:visible;flex-wrap:wrap}
  .portal-footer{flex-wrap:wrap}
+}
+
+
+/* Mantém cabeçalho, filtros e avisos no fluxo quando a área útil é baixa. */
+.portal-board > :not(.portal-cards){flex-shrink:0;min-width:0}
+.portal-header{flex-wrap:wrap;gap:8px 16px}
+.portal-brand{flex:1 1 320px;max-width:100%}
+.portal-head-meta{flex:1 1 auto;min-width:0;width:auto;justify-content:flex-start;gap:6px}
+.portal-head-meta > span{max-width:100%;flex-wrap:wrap}
+.portal-controls{min-width:0;max-width:100%;flex-wrap:wrap}
+.portal-search{max-width:100%}
+.portal-board.portal-window-scroll .portal-card-v347{max-height:none;justify-content:flex-start;gap:6px}
+.portal-board.portal-window-scroll .portal-card-actions{flex-direction:row;align-items:center;flex-wrap:wrap}
+.portal-board.portal-window-scroll .portal-card-top{flex-direction:column}
+.portal-board.portal-window-scroll .portal-card-v347 h3,
+.portal-board.portal-window-scroll .portal-card-result b,
+.portal-board.portal-window-scroll .portal-card-duration{
+ display:block;white-space:normal;overflow:visible;overflow-wrap:break-word
+}
+.portal-board.portal-window-scroll .portal-history{max-height:none;overflow:visible}
+.portal-board.portal-window-scroll .portal-history-rows{flex-wrap:wrap;overflow:visible}
+.portal-board.portal-window-scroll .portal-footer{flex-wrap:wrap}
+@media(max-width:740px){
+ .portal-search{flex:1 1 100%;width:100%;min-width:0}
+ .portal-mode-switch{max-width:100%}
+ .portal-kpi .name{overflow-wrap:break-word}
 }
 
             __PANEL_TOOLBAR_CSS__
@@ -12424,26 +12449,22 @@ function portalCardMarkup(row){
 function portalFitCards(host,visible){
   const el=host.querySelector('[data-portal="cards"]'),bar=host.querySelector('[data-portal="pager"]');
   if(!el)return {rows:1,columns:1,items:visible};
-  const width=el.clientWidth||host.clientWidth||1400;
-  const compactHeight=host.clientHeight>0 && host.clientHeight<860 && width>=740;
-  host.classList.toggle('portal-compact-height',compactHeight);
-  const mobile=width<740;
-  if(mobile){host.classList.remove('portal-window-scroll');el.style.gridTemplateColumns='repeat(auto-fit,minmax(min(175px,100%),1fr))';el.style.gridTemplateRows='';el.style.gridAutoRows='minmax(150px,max-content)';el.classList.add('portal-cards-mobile');bar.hidden=true;return {rows:0,columns:0,items:visible};}
-  el.classList.remove('portal-cards-mobile');bar.hidden=false;
-  const gap=9,minimumWidth=width<1100?172:180;
-  const columns=Math.min(Math.max(1,Math.floor((width+gap)/(minimumWidth+gap))),9);
-  // Notebook/janela: exibir todos os municípios com rolagem explícita.
-  // Tela cheia ou Modo TV: manter distribuição e paginação da versão 3.47.
-  const windowScroll = width>=740 && host.clientHeight>0 && host.clientHeight<900 &&
-      !document.fullscreenElement && !document.body.classList.contains('kiosk');
+  const width=host.clientWidth||1400;
+  const height=host.clientHeight;
+  host.classList.toggle('portal-compact-height',height>0 && height<860 && width>=740);
+  // Janela de notebook e telas estreitas usam a rolagem do painel inteiro.
+  const windowScroll=width<1100 || (height>0 && height<900 &&
+      !document.fullscreenElement && !document.body.classList.contains('kiosk'));
   host.classList.toggle('portal-window-scroll',windowScroll);
   if(windowScroll){
-    el.style.gridTemplateColumns=`repeat(${columns},minmax(0,1fr))`;
+    el.style.gridTemplateColumns='repeat(auto-fit,minmax(min(218px,100%),1fr))';
     el.style.gridTemplateRows='';
-    el.style.gridAutoRows='minmax(118px,max-content)';
+    el.style.gridAutoRows='';
     bar.hidden=true;
-    return {rows:0,columns,items:visible};
+    return {rows:0,columns:0,items:visible};
   }
+  const gap=9,minimumWidth=180;
+  const columns=Math.min(Math.max(1,Math.floor(((el.clientWidth||width)+gap)/(minimumWidth+gap))),9);
   const usable=el.clientHeight||450;
   const rows=Math.min(7,Math.max(1,Math.floor((usable+gap)/(92+gap))));
   const perPage=Math.max(1,columns*rows);
@@ -14820,7 +14841,7 @@ function portalStart(host){
      for(const panel of portalHosts){
        if(!panel.isConnected||!panel.closest('.iframe-panel.active')||panel.querySelector('[data-portal="report-layer"]').classList.contains('show'))continue;
        const list=panel.querySelector('[data-portal="cards"]');
-       if(!list||list.classList.contains('portal-cards-mobile')||panel.classList.contains('portal-window-scroll'))continue;
+       if(!list||panel.classList.contains('portal-window-scroll'))continue;
        const recordCount=(portalDatas[portalMode]||[]).length;
        const cols=(list.style.gridTemplateColumns.match(/repeat\((\d+)/)||[])[1]||1;
        const rows=(list.style.gridTemplateRows.match(/repeat\((\d+)/)||[])[1]||1;
