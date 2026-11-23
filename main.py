@@ -10046,19 +10046,19 @@ else:
         }
 
 /* Layout S&S — referência visual */
-body.ss-reference #toolbar {
+#toolbar {
     grid-template-columns:minmax(0,1fr) auto auto;
     background:linear-gradient(105deg,#0a2d52,#061a35 70%,#082849);
     column-gap:clamp(8px,1.2vw,22px);
 }
 .ss-toolbar-brand,.ss-toolbar-stamp{display:none}
-body.ss-reference #toolbar .toolbar-left{gap:clamp(7px,1vw,17px);min-width:0}
-body.ss-reference #toolbar .ss-toolbar-brand{display:block;max-width:clamp(88px,12vw,205px);width:auto;height:34px;object-fit:contain;filter:brightness(0) invert(1);border-right:1px solid #ffffff50;padding-right:12px}
-body.ss-reference #toolbar #panel-name{font-size:clamp(13px,1.28vw,23px);font-weight:850;color:white}
-body.ss-reference #toolbar #robot-heartbeat-badge{border-radius:999px;padding:6px 10px;white-space:nowrap}
-body.ss-reference #toolbar #robot-heartbeat-badge.online{background:#0d392f;color:#e6fff5;border-color:#25c978}
-body.ss-reference #toolbar .ss-toolbar-stamp:not([hidden]){display:inline;border-left:1px solid #ffffff50;padding-left:12px;color:#eef7ff;white-space:nowrap;font-variant-numeric:tabular-nums}
-body.ss-reference #toolbar #clock{color:white;font-weight:850}
+#toolbar .toolbar-left{gap:clamp(7px,1vw,17px);min-width:0}
+#toolbar .ss-toolbar-brand:not([hidden]){display:block;max-width:clamp(88px,12vw,205px);width:auto;height:34px;object-fit:contain;background:#fff;border:1px solid #bdd6eb;border-radius:7px;padding:3px 7px}
+#toolbar #panel-name{font-size:clamp(13px,1.28vw,23px);font-weight:850;color:white}
+#toolbar #robot-heartbeat-badge{border-radius:999px;padding:6px 10px;white-space:nowrap}
+#toolbar #robot-heartbeat-badge.online{background:#0d392f;color:#e6fff5;border-color:#25c978}
+#toolbar .ss-toolbar-stamp:not([hidden]){display:inline;border-left:1px solid #ffffff50;padding-left:12px;color:#eef7ff;white-space:nowrap;font-variant-numeric:tabular-nums}
+#toolbar #clock{color:white;font-weight:850}
 .g4f-board.g4f-ss-mode .ss-main{padding:12px 15px 9px;background:linear-gradient(145deg,#e7f2fb,#f5faff)}
 .g4f-board.g4f-ss-mode .ss-heading{min-height:30px;max-height:none;padding:0;justify-content:flex-start}
 .g4f-board.g4f-ss-mode .ss-heading .ss-brand-horizontal,.g4f-board.g4f-ss-mode .ss-heading-title,.g4f-board.g4f-ss-mode .ss-heading-tools{display:none}
@@ -10084,9 +10084,10 @@ body.ss-reference #toolbar #clock{color:white;font-weight:850}
 .g4f-board.g4f-ss-mode .ss-list-badge.online::before{content:"";width:.55em;height:.55em;border-radius:50%;background:#14662f;margin-right:.4em;display:inline-block;vertical-align:.08em}
 .g4f-board.g4f-ss-mode .ss-list-panel .ss-list-time b,.g4f-board.g4f-ss-mode .ss-list-value{font-variant-numeric:tabular-nums}
 .g4f-board.g4f-ss-mode .ss-footer [data-ss="freshness"],.g4f-board.g4f-ss-mode .ss-footer [data-ss="stamp"]{display:none}
-body.ss-reference #news-ticker{border-radius:12px;background:linear-gradient(175deg,#154978,#082d56);box-shadow:0 3px 9px #05528a46}
-@media(max-width:1250px){body.ss-reference #toolbar .ss-toolbar-stamp{display:none!important}.g4f-board.g4f-ss-mode .ss-toolbar .ss-filter-group{flex-wrap:wrap}}
-@media(max-width:800px){body.ss-reference #toolbar .ss-toolbar-brand{display:none}.g4f-board.g4f-ss-mode .ss-kpi{padding:5px;gap:4px}.g4f-board.g4f-ss-mode .ss-kpi-copy{display:block}}
+#news-ticker{border-radius:12px;background:linear-gradient(175deg,#154978,#082d56);box-shadow:0 3px 9px #05528a46}
+@media(max-width:1250px){#toolbar .ss-toolbar-stamp{display:none!important}.g4f-board.g4f-ss-mode .ss-toolbar .ss-filter-group{flex-wrap:wrap}}
+@media(max-width:800px){#toolbar .ss-toolbar-brand:not([hidden]){max-width:112px;height:27px}.g4f-board.g4f-ss-mode .ss-kpi{padding:5px;gap:4px}.g4f-board.g4f-ss-mode .ss-kpi-copy{display:block}}
+@media(max-width:600px){#toolbar .ss-toolbar-brand:not([hidden]){display:none}}
 /* Monitor de Portais v3.47.0 — quadro para TV com leitura rápida e paginação segura. */
 .portal-board{gap:7px;padding:10px 14px}
 .portal-header{padding:8px 15px;min-height:58px}
@@ -10218,7 +10219,6 @@ body.ss-reference #news-ticker{border-radius:12px;background:linear-gradient(175
                         <span id="panel-name">Carregando...</span>
                         <div class="toolbar-meta">
                             <span id="panel-order"></span>
-                            <span id="robot-heartbeat-badge" class="waiting" hidden></span>
                             <span id="network-status" class="status-text" hidden></span>
                         </div>
                     </div>
@@ -10235,6 +10235,7 @@ body.ss-reference #news-ticker{border-radius:12px;background:linear-gradient(175
                     <span id="focus-status" class="hidden-item"></span>
                 </div>
                 <div class="toolbar-right">
+                    <span id="robot-heartbeat-badge" class="waiting" hidden></span>
                     <span class="ss-toolbar-stamp" id="ss-toolbar-stamp" hidden></span>
                     <button class="btn toolbar-desktop-action" type="button" onclick="alternarTelaCheia()" aria-label="Tela cheia" title="Tela cheia (F)">⛶</button>
                     <div class="more-wrap">
@@ -15452,19 +15453,13 @@ function portalStart(host){
             function renderToolbarCollection(){
                 const panel=panels[index];
                 const g4=panel?.tipo==='g4flex';
-                const reference=g4 && g4fCurrentLayout==='ss';
-                document.body.classList.toggle('ss-reference',reference);
+                const sim=panel && isSimPanel(panel);
                 const brand=document.getElementById('ss-toolbar-brand');
                 const collectionStamp=document.getElementById('ss-toolbar-stamp');
-                const logo=reference&&(g4fConfig.ss_official_logo||g4fConfig.logo);
+                const logo=g4fConfig.ss_official_logo||g4fConfig.logo;
                 brand.hidden=!logo;
                 if(logo && brand.getAttribute('src')!==logo)brand.src=logo;
-                const badgeParent=reference?collectionStamp.parentElement:document.querySelector('#toolbar .toolbar-meta');
-                if(robotHeartbeatBadge.parentElement!==badgeParent)badgeParent.append(robotHeartbeatBadge);
-                const captured=reference && settings.showStatus&&(g4fLastData?.recebido_em||g4fLastData?.capturado_em);
-                collectionStamp.hidden=!captured;
-                if(captured)collectionStamp.textContent='Última coleta: '+g4fTime(captured);
-                const sim=panel && isSimPanel(panel);
+                collectionStamp.hidden=true;
                 robotHeartbeatBadge.hidden=!settings.showStatus || (!g4 && !sim);
                 if(robotHeartbeatBadge.hidden)return;
                 const status=robotHeartbeatStatus;
@@ -15475,8 +15470,10 @@ function portalStart(host){
                 const age=toolbarAge(seconds);
                 robotHeartbeatBadge.className=!row?'waiting':state==='online'?'online':age?'stale':'offline';
                 robotHeartbeatBadge.textContent=g4
-                    ? (!row?'Aguardando coleta':state==='online'?(reference?'● Robô G4Flex: Ativo':'Coleta atualizada'):age?`Coleta atrasada · ${age}`:'Coleta indisponível')
+                    ? (!row?'Aguardando coleta':state==='online'?'● Robô G4Flex: Ativo':age?`Coleta atrasada · ${age}`:'Coleta indisponível')
                     : (!row?'Aguardando robô SIM':state==='online'?'Robô SIM conectado':age?`Robô SIM sem sinal · ${age}`:'Robô SIM indisponível');
+                collectionStamp.hidden=!stamp;
+                if(stamp)collectionStamp.textContent=(g4?'Última coleta: ':'Último sinal: ')+g4fTime(stamp);
                 robotHeartbeatBadge.title=stamp?`${g4?'Última coleta':'Último sinal'}: ${g4fTime(stamp)}`:robotHeartbeatBadge.textContent;
             }
 
