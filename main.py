@@ -7507,6 +7507,23 @@ if not st.session_state.iniciado:
     # =========================================================
     def render_config_section(section_key):
         active_section = section_key
+        faixa_preview = None
+        if section_key == "ticker":
+            faixa_preview = st.container(border=True)
+            areas = ("updates", "agenda", "ticker")
+            area_labels = {
+                "updates": "Atualizações S&S",
+                "agenda": "Agenda S&S",
+                "ticker": "Exibição nos painéis",
+            }
+            legacy_section = st.query_params.get("sec", "ticker")
+            default_area = legacy_section if legacy_section in {"updates", "agenda"} else "updates"
+            active_section = st.segmented_control(
+                "Área da programação",
+                areas, default=default_area, format_func=area_labels.get,
+                width="stretch", label_visibility="collapsed",
+                key=f"cfg_programacao_area_{legacy_section}",
+            ) or default_area
         if active_section == "comunicados":
             render_central_comunicados()
         if active_section == "access":
@@ -8009,42 +8026,6 @@ if not st.session_state.iniciado:
 
 
         if active_section == "updates":
-            active_preview = noticias_ativas_ticker(ticker)
-            active_agenda_preview = agenda_ativa_ticker(ticker)
-            if ticker.get("enabled", True) and active_preview:
-                parts = []
-                cat_labels = {"novo": "NOVO", "melhoria": "MELHORIA", "correcao": "CORREÇÃO", "aviso": "AVISO", "importante": "IMPORTANTE"}
-                for item in active_preview[:5]:
-                    bits = []
-                    if ticker.get("show_category", True): bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
-                    if ticker.get("show_system", True) and item.get("sistema"): bits.append(str(item.get("sistema")))
-                    title = str(item.get("titulo") or "").strip(); msg = str(item.get("mensagem") or "").strip()
-                    text = " — ".join([b for b in bits if b]); content = title + ((": " + msg) if title and msg else msg)
-                    if text and content: text += " — " + content
-                    elif content: text = content
-                    if item.get("url") and url_valida(item.get("url")): text += " ↗"
-                    parts.append(html.escape(text))
-                st.markdown(f'<div class="ticker-preview ticker-preview-news"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
-
-            if ticker.get("enabled", True) and ticker.get("agenda_enabled", True) and active_agenda_preview:
-                parts = []
-                hoje = datetime.now().date().isoformat()
-                for item in active_agenda_preview[:5]:
-                    data_txt = "HOJE" if item.get("data") == hoje else datetime.strptime(item.get("data"), "%Y-%m-%d").strftime("%d/%m")
-                    details = [f"{data_txt} {item.get('hora') or ''}".strip(), str(item.get("titulo") or "Compromisso")]
-                    if item.get("sistema"): details.append(str(item.get("sistema")))
-                    if item.get("entidade"): details.append(str(item.get("entidade")))
-                    if item.get("responsavel"): details.append(str(item.get("responsavel")))
-                    if item.get("local"): details.append(str(item.get("local")))
-                    text = " · ".join([d for d in details if d])
-                    if item.get("url") and url_valida(item.get("url")): text += " ↗"
-                    parts.append(html.escape(text))
-                st.markdown(f'<div class="ticker-preview ticker-preview-agenda"><div class="ticker-preview-label">{html.escape(str(ticker.get("agenda_label") or "AGENDA S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
-
-            if ticker.get("enabled", True) and not active_preview and not active_agenda_preview:
-                st.info("As faixas estão ligadas, mas não há atualização nem compromisso ativo para exibir agora. O rodapé não ocupará espaço no monitoramento.")
-
-            st.markdown("### Atualizações S&S")
             st.caption("Os itens do portal aparecem automaticamente na prévia/faixa. Use os cadastros abaixo apenas para conteúdo manual ou contingência.")
             add_left, add_right = st.columns([4, 1])
             with add_right:
@@ -8529,6 +8510,69 @@ if not st.session_state.iniciado:
                 """
             )
 
+
+        if faixa_preview is not None:
+            with faixa_preview:
+                st.markdown("### Prévia da faixa")
+                st.caption("Conteúdo programado para a faixa dos painéis. A posição da rotação depende de cada tela.")
+                active_preview = noticias_ativas_ticker(ticker)
+                active_agenda_preview = agenda_ativa_ticker(ticker)
+                if ticker.get("enabled", True) and active_preview:
+                    parts = []
+                    cat_labels = {"novo": "NOVO", "melhoria": "MELHORIA", "correcao": "CORREÇÃO", "aviso": "AVISO", "importante": "IMPORTANTE"}
+                    for item in active_preview[:5]:
+                        bits = []
+                        if ticker.get("show_category", True): bits.append(f"[{cat_labels.get(item.get('categoria'), 'MELHORIA')}]")
+                        if ticker.get("show_system", True) and item.get("sistema"): bits.append(str(item.get("sistema")))
+                        title = str(item.get("titulo") or "").strip(); msg = str(item.get("mensagem") or "").strip()
+                        text = " — ".join([b for b in bits if b]); content = title + ((": " + msg) if title and msg else msg)
+                        if text and content: text += " — " + content
+                        elif content: text = content
+                        if item.get("url") and url_valida(item.get("url")): text += " ↗"
+                        parts.append(html.escape(text))
+                    st.markdown(f'<div class="ticker-preview ticker-preview-news"><div class="ticker-preview-label">{html.escape(str(ticker.get("label") or "ATUALIZAÇÕES S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
+
+                if ticker.get("enabled", True) and ticker.get("agenda_enabled", True) and active_agenda_preview:
+                    parts = []
+                    hoje = datetime.now().date()
+                    for item in active_agenda_preview[:5]:
+                        dia = _data_from_iso(item.get("data"), hoje)
+                        data_txt = "HOJE" if dia == hoje else dia.strftime("%d/%m")
+                        details = [f"{data_txt} {item.get('hora') or ''}".strip(), str(item.get("titulo") or "Compromisso")]
+                        if item.get("sistema"): details.append(str(item.get("sistema")))
+                        if item.get("entidade"): details.append(str(item.get("entidade")))
+                        if item.get("responsavel"): details.append(str(item.get("responsavel")))
+                        if item.get("local"): details.append(str(item.get("local")))
+                        text = " · ".join([d for d in details if d])
+                        if item.get("url") and url_valida(item.get("url")): text += " ↗"
+                        parts.append(html.escape(text))
+                    st.markdown(f'<div class="ticker-preview ticker-preview-agenda"><div class="ticker-preview-label">{html.escape(str(ticker.get("agenda_label") or "AGENDA S&S"))}</div><div class="ticker-preview-items">{"  •  ".join(parts)}</div></div>', unsafe_allow_html=True)
+
+                if ticker.get("enabled", True):
+                    agora = datetime.now()
+                    hoje = agora.date()
+                    hora_atual = agora.strftime("%H:%M")
+                    proximos = []
+                    for item in noticias_efetivas_ticker(ticker):
+                        inicio = _data_from_iso(item.get("inicio"), hoje)
+                        fim = _data_from_iso(item.get("fim"), None)
+                        titulo = str(item.get("titulo") or item.get("mensagem") or "").strip()
+                        if item.get("ativo", True) and titulo and inicio > hoje and (fim is None or fim >= inicio):
+                            proximos.append((inicio, "", "Atualização", titulo))
+                    for item in active_agenda_preview:
+                        dia = _data_from_iso(item.get("data"), hoje)
+                        hora = str(item.get("hora") or "").strip()
+                        if (dia, hora) >= (hoje, hora_atual):
+                            titulo = str(item.get("titulo") or "Compromisso")
+                            proximos.append((dia, hora, "Agenda", titulo))
+                    if proximos:
+                        dia, hora, tipo, titulo = min(proximos, key=lambda item: (item[0], item[1]))
+                        horario = f" {hora}" if hora else ""
+                        st.text(f"Próximo item programado · {dia:%d/%m}{horario} · {tipo} · {titulo}")
+                if not ticker.get("enabled", True):
+                    st.info("A exibição da faixa está desativada. Ajuste a opção na área Exibição nos painéis.")
+                elif not active_preview and not active_agenda_preview:
+                    st.info("As faixas estão ligadas, mas não há atualização nem compromisso ativo para exibir agora. O rodapé não ocupará espaço no monitoramento.")
 
         if not st.session_state.get("ultimo_erro_persistencia"):
             salvar_config(config)
