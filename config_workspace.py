@@ -18,9 +18,7 @@ GROUPS = {
         ("visual", "Aparência do monitor", "escala relógio barra tema transição g4flex"),
     ),
     "Comunicação": (
-        ("ticker", "Faixas corporativas", "ticker rodapé velocidade notícias"),
-        ("updates", "Atualizações S&S", "notícias conteúdo prévia portal"),
-        ("agenda", "Agenda S&S", "compromisso reunião calendário"),
+        ("ticker", "Faixas e Programação", "faixas corporativas ticker rodapé velocidade notícias atualizações s&s agenda s&s compromisso reunião calendário prévia portal"),
         ("comunicados", "Central de Comunicados", "aviso publicar áudio cancelar"),
     ),
     "Integrações e alertas": (
@@ -39,7 +37,7 @@ GROUPS = {
 SECTION_ICONS = {
     "overview": "dashboard",
     "panels": "layers", "profiles": "group", "stability": "monitor_heart", "visual": "desktop_windows",
-    "ticker": "sell", "updates": "sync", "agenda": "event", "comunicados": "campaign",
+    "ticker": "view_timeline", "comunicados": "campaign",
     "integration": "hub", "sim_alert": "notifications", "access": "manage_accounts",
     "backup": "backup", "diagnostics": "monitoring", "releases": "download", "news": "info",
 }
@@ -148,7 +146,8 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
     groups = {group: [item for item in items if is_admin or item[0] not in {"access", "comunicados"}]
               for group, items in GROUPS.items()}
     sections = {key: title for items in groups.values() for key, title, _ in items}
-    section = st.query_params.get("sec", "overview")
+    requested_section = st.query_params.get("sec", "overview")
+    section = "ticker" if requested_section in {"updates", "agenda"} else requested_section
     if section not in sections:
         section = "overview"
     profile = config["profiles"][profile_id]
@@ -193,7 +192,7 @@ def render_workspace(config, profile_id, is_admin, render_section, active_panels
                 scope = ""
                 if section in {"panels", "stability", "visual"}:
                     scope = f"Perfil: {profile['nome']}"
-                elif section in {"ticker", "updates", "agenda", "integration", "sim_alert", "comunicados", "access"}:
+                elif section in {"ticker", "integration", "sim_alert", "comunicados", "access"}:
                     scope = "Configuração global"
                 scope_html = f'<p class="cfg-section-scope">{html.escape(scope)}</p>' if scope else ""
                 st.html(f'<div class="cfg-section-heading"><span class="cfg-title-tile">{_icon(SECTION_ICONS[section])}</span>'
