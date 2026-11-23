@@ -10263,7 +10263,10 @@ else:
             </div>
             <div id="progress-container"><div id="progress"></div></div>
         </div>
-        <div id="reveal-strip" title="Mostrar controles"></div>
+        <div id="reveal-strip" title="Mostrar controles">
+            <span id="compact-panel-name"></span>
+            <time id="compact-panel-clock"></time>
+        </div>
         <div id="stage"></div>
         <div id="news-ticker" aria-label="Faixas corporativas S&S"><div class="ticker-label"><span class="ticker-led"></span><span class="ticker-label-text" id="ticker-label-text">ATUALIZAÇÕES S&S</span></div><div class="ticker-viewport" id="ticker-viewport"><div class="ticker-track" id="ticker-track"></div></div></div>
         <div id="comunicado-overlay" role="dialog" aria-modal="true" aria-labelledby="com-titulo" aria-live="assertive">
@@ -10448,6 +10451,10 @@ else:
             const focusStatus = document.getElementById('focus-status');
             const revealStrip = document.getElementById('reveal-strip');
             const clock = document.getElementById('clock');
+            const compactPanelName = document.getElementById('compact-panel-name');
+            const compactPanelClock = document.getElementById('compact-panel-clock');
+            const panelDateFormat = new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+            const panelTimeFormat = new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'});
             const dots = document.getElementById('dots');
             const diag = document.getElementById('diag');
             const diagLog = document.getElementById('diag-log');
@@ -15480,6 +15487,7 @@ function portalStart(host){
             function updateHeader(){
                 const p=panels[index];
                 panelName.textContent=p.nome;
+                compactPanelName.textContent=p.nome;
                 panelName.title=p.nome;
                 panelOrder.textContent=`${index+1} de ${panels.length} painéis`;
                 renderPanelNavigation();
@@ -15591,7 +15599,12 @@ function portalStart(host){
                 enviarAcaoHost('reload');
             }
 
-            function updateClock(){ const d=new Date(); clock.textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+            function updateClock(){
+                const now=new Date();
+                const time=panelTimeFormat.format(now);
+                clock.textContent=time;
+                compactPanelClock.textContent=panelDateFormat.format(now)+' · '+time;
+            }
             function updateNetwork(){ const online=navigator.onLine; networkStatus.hidden=online; networkStatus.textContent=online?'':'Sem conexão'; setState(online?'online':'offline'); document.getElementById('d-network').textContent=online?'Online':'Offline'; if(online)log('Conexão restabelecida'); }
             window.addEventListener('online',updateNetwork); window.addEventListener('offline',updateNetwork);
 
