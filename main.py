@@ -10053,7 +10053,7 @@ else:
 }
 .ss-toolbar-brand,.ss-toolbar-stamp{display:none}
 #toolbar .toolbar-left{gap:clamp(7px,1vw,17px);min-width:0}
-#toolbar .ss-toolbar-brand:not([hidden]){display:block;max-width:clamp(88px,12vw,205px);width:auto;height:34px;object-fit:contain;background:#fff;border:1px solid #bdd6eb;border-radius:7px;padding:3px 7px}
+#toolbar .ss-toolbar-brand:not([hidden]){display:block;max-width:clamp(88px,12vw,205px);width:auto;height:min(42px,calc(var(--toolbar-h) - 4px));object-fit:contain}
 #toolbar #panel-name{font-size:clamp(13px,1.28vw,23px);font-weight:850;color:white}
 #toolbar #robot-heartbeat-badge{border-radius:999px;padding:6px 10px;white-space:nowrap}
 #toolbar #robot-heartbeat-badge.online{background:#0d392f;color:#e6fff5;border-color:#25c978}
@@ -10214,7 +10214,7 @@ else:
         <div id="control-shell">
             <div id="toolbar" role="region" aria-label="Controles do monitor">
                 <div class="toolbar-left">
-                    <img class="ss-toolbar-brand" id="ss-toolbar-brand" alt="Grupo S&S" hidden>
+                    <img class="ss-toolbar-brand" src="__PANEL_TOOLBAR_LOGO__" alt="Grupo S&S">
                     <div class="toolbar-identity">
                         <span id="panel-name">Carregando...</span>
                         <div class="toolbar-meta">
@@ -15461,11 +15461,7 @@ function portalStart(host){
                 const panel=panels[index];
                 const g4=panel?.tipo==='g4flex';
                 const sim=panel && isSimPanel(panel);
-                const brand=document.getElementById('ss-toolbar-brand');
                 const collectionStamp=document.getElementById('ss-toolbar-stamp');
-                const logo=g4fConfig.ss_official_logo||g4fConfig.logo;
-                brand.hidden=!logo;
-                if(logo && brand.getAttribute('src')!==logo)brand.src=logo;
                 collectionStamp.hidden=true;
                 robotHeartbeatBadge.hidden=!settings.showStatus || (!g4 && !sim);
                 if(robotHeartbeatBadge.hidden)return;
@@ -15911,6 +15907,9 @@ function portalStart(host){
         _retorno_uri = ""
     html_painel = html_painel.replace("__MASCOTE_RETORNO_DATA_URI__", _retorno_uri)
     toolbar_css = (Path(__file__).parent / "scripts" / "barra_paineis.css").read_text(encoding="utf-8")
+    toolbar_logo=(Path(__file__).parent / "static" / "logo_grupo_ss_cabecalho.png").read_bytes()
+    toolbar_logo_uri="data:image/png;base64,"+base64.b64encode(toolbar_logo).decode("ascii")
+    html_painel = html_painel.replace("__PANEL_TOOLBAR_LOGO__", toolbar_logo_uri)
     html_painel = html_painel.replace("__PANEL_TOOLBAR_CSS__", toolbar_css)
     html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)
     html_painel = html_painel.replace("__MEGAFONE_SVG__", COM_MEGAFONE_SVG)
