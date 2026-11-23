@@ -65,6 +65,12 @@ sync_embedded("/* G4Flex - página informativa de indicadores.",css_anchor,insig
 sync_embedded("/* Painel analítico G4Flex - não faz novas chamadas","/* Tooltip acessível de filas G4Flex:",insights_js+"\n"+official_logo_js+"\n"+daily_report_js)
 sync_embedded("/* Tooltip acessível de filas G4Flex:",js_anchor,tooltip_js)
 
+layout_css=(root/"scripts"/"g4flex_layout_ss.css").read_text(encoding="utf-8").strip()
+layout_start="/* Layout S&S — referência visual */"
+layout_end="/* Monitor de Portais v3.47.0 — quadro para TV com leitura rápida e paginação segura. */"
+insert_once(layout_end,layout_css,"before",layout_start)
+sync_embedded(layout_start,layout_end,layout_css)
+
 ast.parse(source)
 assert source.count("function g4fInsightsRender(host,row)")==1
 assert source.count("function g4fInsightsInit(host)")==1

@@ -10045,6 +10045,48 @@ else:
             }
         }
 
+/* Layout S&S — referência visual */
+body.ss-reference #toolbar {
+    grid-template-columns:minmax(0,1fr) auto auto;
+    background:linear-gradient(105deg,#0a2d52,#061a35 70%,#082849);
+    column-gap:clamp(8px,1.2vw,22px);
+}
+.ss-toolbar-brand,.ss-toolbar-stamp{display:none}
+body.ss-reference #toolbar .toolbar-left{gap:clamp(7px,1vw,17px);min-width:0}
+body.ss-reference #toolbar .ss-toolbar-brand{display:block;max-width:clamp(88px,12vw,205px);width:auto;height:34px;object-fit:contain;filter:brightness(0) invert(1);border-right:1px solid #ffffff50;padding-right:12px}
+body.ss-reference #toolbar #panel-name{font-size:clamp(13px,1.28vw,23px);font-weight:850;color:white}
+body.ss-reference #toolbar #robot-heartbeat-badge{border-radius:999px;padding:6px 10px;white-space:nowrap}
+body.ss-reference #toolbar #robot-heartbeat-badge.online{background:#0d392f;color:#e6fff5;border-color:#25c978}
+body.ss-reference #toolbar .ss-toolbar-stamp:not([hidden]){display:inline;border-left:1px solid #ffffff50;padding-left:12px;color:#eef7ff;white-space:nowrap;font-variant-numeric:tabular-nums}
+body.ss-reference #toolbar #clock{color:white;font-weight:850}
+.g4f-board.g4f-ss-mode .ss-main{padding:12px 15px 9px;background:linear-gradient(145deg,#e7f2fb,#f5faff)}
+.g4f-board.g4f-ss-mode .ss-heading{min-height:30px;max-height:none;padding:0;justify-content:flex-start}
+.g4f-board.g4f-ss-mode .ss-heading .ss-brand-horizontal,.g4f-board.g4f-ss-mode .ss-heading-title,.g4f-board.g4f-ss-mode .ss-heading-tools{display:none}
+.g4f-board.g4f-ss-mode .ss-kpis{gap:12px;margin:5px 0 10px}
+.g4f-board.g4f-ss-mode .ss-kpi{gap:10px;min-height:60px;padding:7px 13px;border-color:var(--ss-border,#b5d8f8);box-shadow:0 2px 5px #1f558224}
+.g4f-board.g4f-ss-mode .ss-kpi-copy{display:flex;align-items:center;justify-content:space-between;gap:7px;flex:1;min-width:0}
+.g4f-board.g4f-ss-mode .ss-kpi small{font-size:clamp(10px,.86vw,16px);line-height:1.1}
+.g4f-board.g4f-ss-mode .ss-kpi strong{font-size:clamp(19px,2vw,35px);line-height:1}
+.g4f-board.g4f-ss-mode .ss-kpi-icon{width:clamp(25px,2.4vw,43px);height:clamp(25px,2.4vw,43px);background:linear-gradient(165deg,color-mix(in srgb,var(--ss-color),white 22%),var(--ss-color))}
+.g4f-board.g4f-ss-mode .ss-kpi.ss-green{--ss-border:#a1e5cb;background:linear-gradient(160deg,#f6fffa,#d5f8e8)}
+.g4f-board.g4f-ss-mode .ss-kpi.ss-amber{--ss-border:#ffd774;background:linear-gradient(160deg,#fffaf0,#ffefd1)}
+.g4f-board.g4f-ss-mode .ss-kpi.ss-blue,.g4f-board.g4f-ss-mode .ss-kpi.ss-navy{background:linear-gradient(160deg,#f5fbff,#dcefff)}
+.g4f-board.g4f-ss-mode .ss-kpi.ss-purple{--ss-border:#d8b9fb}
+.g4f-board.g4f-ss-mode .ss-kpi.ss-red{--ss-border:#ffc1c5;background:linear-gradient(160deg,#fff8f8,#ffe7e8)}
+.g4f-board.g4f-ss-mode .ss-toolbar{min-height:0;padding:7px 10px;margin-bottom:10px;border:1px solid #c1ddf5;border-radius:14px;background:linear-gradient(#f8fcff,#e9f4ff);box-shadow:0 2px 4px #1f558216}
+.g4f-board.g4f-ss-mode .ss-toolbar .ss-filter-group{flex-direction:row;align-items:center;gap:8px}
+.g4f-board.g4f-ss-mode .ss-toolbar .ss-filter-label{color:#10264d}
+.g4f-board.g4f-ss-mode .ss-office-filters button.selected,.g4f-board.g4f-ss-mode .ss-view-switch button.selected{background:linear-gradient(#09899b,#005367);color:white}
+.g4f-board.g4f-ss-mode .ss-list{background:transparent;border:0}
+.g4f-board.g4f-ss-mode .ss-list-panel{border:1px solid #b8d6f3;border-radius:15px;background:#f8fcff;box-shadow:0 4px 8px #2a78ba29}
+.g4f-board.g4f-ss-mode .ss-list-panel .ss-attendants-table thead th{background:linear-gradient(#ecf5fd,#dceafa);color:#10234d}
+.g4f-board.g4f-ss-mode .ss-list-panel .ss-list-name .g4f-avatar,.g4f-board.g4f-ss-mode .ss-agent .g4f-avatar{background:linear-gradient(155deg,#08a2ae,#00475b);color:white;font-weight:850;box-shadow:0 2px 4px #003c4c30}
+.g4f-board.g4f-ss-mode .ss-list-badge.online::before{content:"";width:.55em;height:.55em;border-radius:50%;background:#14662f;margin-right:.4em;display:inline-block;vertical-align:.08em}
+.g4f-board.g4f-ss-mode .ss-list-panel .ss-list-time b,.g4f-board.g4f-ss-mode .ss-list-value{font-variant-numeric:tabular-nums}
+.g4f-board.g4f-ss-mode .ss-footer [data-ss="freshness"],.g4f-board.g4f-ss-mode .ss-footer [data-ss="stamp"]{display:none}
+body.ss-reference #news-ticker{border-radius:12px;background:linear-gradient(175deg,#154978,#082d56);box-shadow:0 3px 9px #05528a46}
+@media(max-width:1250px){body.ss-reference #toolbar .ss-toolbar-stamp{display:none!important}.g4f-board.g4f-ss-mode .ss-toolbar .ss-filter-group{flex-wrap:wrap}}
+@media(max-width:800px){body.ss-reference #toolbar .ss-toolbar-brand{display:none}.g4f-board.g4f-ss-mode .ss-kpi{padding:5px;gap:4px}.g4f-board.g4f-ss-mode .ss-kpi-copy{display:block}}
 /* Monitor de Portais v3.47.0 — quadro para TV com leitura rápida e paginação segura. */
 .portal-board{gap:7px;padding:10px 14px}
 .portal-header{padding:8px 15px;min-height:58px}
@@ -10171,6 +10213,7 @@ else:
         <div id="control-shell">
             <div id="toolbar" role="region" aria-label="Controles do monitor">
                 <div class="toolbar-left">
+                    <img class="ss-toolbar-brand" id="ss-toolbar-brand" alt="Grupo S&S" hidden>
                     <div class="toolbar-identity">
                         <span id="panel-name">Carregando...</span>
                         <div class="toolbar-meta">
@@ -10192,6 +10235,7 @@ else:
                     <span id="focus-status" class="hidden-item"></span>
                 </div>
                 <div class="toolbar-right">
+                    <span class="ss-toolbar-stamp" id="ss-toolbar-stamp" hidden></span>
                     <button class="btn toolbar-desktop-action" type="button" onclick="alternarTelaCheia()" aria-label="Tela cheia" title="Tela cheia (F)">⛶</button>
                     <div class="more-wrap">
                         <button class="btn" id="more-btn" type="button" onclick="toggleMoreMenu(event)" aria-label="Ir para painel e abrir controles" aria-expanded="false" aria-controls="more-menu" title="Ir para painel e abrir controles">⋮</button>
@@ -11571,7 +11615,7 @@ else:
                 if(String(row.status||'').toLowerCase()==='offline')return 'offline';
                 return g4fAgeSec(row)>40?'stale':'online';
             }
-            function g4fAvatar(agent){
+            function g4fAvatar(agent, initialsOnly=false){
                 const name=String(agent.nome||'').trim();
                 const initials=name.split(/\s+/).slice(0,2).map(s=>s.slice(0,1)).join('').toUpperCase()||'?';
                 let photo='';
@@ -11579,7 +11623,7 @@ else:
                     const u = new URL(String(agent.foto_url||''));
                     if(u.protocol==='https:' && u.hostname==='ssinformatica.g4flex.com.br' && u.port==='9090' && u.pathname.startsWith('/configuration/src/public/img/')) photo = u.href;
                 }catch(e){}
-                return `<span class="g4f-avatar">${photo?`<img src="${g4fText(photo)}" alt="" loading="lazy">`:g4fText(initials)}</span>`;
+                return `<span class="g4f-avatar">${photo&&!initialsOnly?`<img src="${g4fText(photo)}" alt="" loading="lazy">`:g4fText(initials)}</span>`;
             }
             // 3.56: filas LOGADAS no G4Flex, diferentes da primeira fila exibida.
             function g4fQueueTitle(agent){
@@ -11737,7 +11781,7 @@ else:
                 const voiceTime=calling && String(agent.voz_tempo||'').trim();
                 const status=paused?'Em pausa':agent.status==='ativo'?'Online':'Sem status';
                 return `<article class="ss-agent ${paused?'ss-paused':''} ${calling?'ss-calling':''} ${alert?'ss-assigned':''} ${changing?'ss-shake':''}">
-                    <div class="ss-agent-head">${g4fAvatar(agent)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong><span class="ss-status">${g4fText(status)}</span></div>
+                    <div class="ss-agent-head">${g4fAvatar(agent,true)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong><span class="ss-status">${g4fText(status)}</span></div>
                     ${paused?`<div class="ss-info ss-reason">${ssPauseIcon(agent.motivo_pausa)}<span>Motivo: ${g4fText(agent.motivo_pausa||'Não informado')}</span></div>`:''}
                     ${calling?`<div class="ss-info ss-phone">☎ Em atendimento telefônico${voiceTime?' · '+g4fText(voiceTime):''}</div>`:''}
                     ${alert?`<div class="ss-info ss-assignment"><span class="ss-alert-bell" aria-hidden="true">${ssAlertBell}</span><span class="ss-alert-label">Atenção: ${count===1?'1 atendimento atribuído':count+' atendimentos atribuídos'}!</span></div>`:''}
@@ -11765,7 +11809,7 @@ else:
                 const statusBadge=(!paused&&!calling&&!alert)?`<span class="ss-list-badge ${status==='Online'?'online':'unknown'}">${g4fText(status)}</span>`:'';
                 const assignedBadge=alert?`<span class="ss-list-badge alert" title="Online · ${count} conversa(s) atribuída(s)">${ssAlertBell}<span>${count} atrib.</span></span>`:'';
                 return `<tr class="ss-list-row ${paused?'is-paused':''} ${calling?'is-calling':''} ${alert?'has-assignment':''} ${changing?'ss-list-shake':''}">
-                  <td><div class="ss-list-name">${g4fAvatar(agent)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong></div></td>
+                  <td><div class="ss-list-name">${g4fAvatar(agent,true)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong></div></td>
                   <td><div class="ss-list-status">${pausedBadge}${voiceBadge}${statusBadge}${assignedBadge}</div></td>
                   <td class="ss-list-value ${alert?'alert-value':''}">${g4fNumber(agent.atribuidas)}</td>
                   <td class="ss-list-value">${g4fNumber(agent.em_atendimento)}</td>
@@ -11790,13 +11834,13 @@ else:
                 const kpis=[
                     ['◉','Disponíveis',all.filter(a=>a.status==='ativo').length,'green'],
                     ['Ⅱ','Em pausa',pausedTotal,'amber'],
-                    ['▣','Em atendimento',all.reduce((sum,a)=>sum+Math.max(0,Number(a.em_atendimento)||0),0),'blue'],
+                    ['▣','Conversas em atendimento',all.reduce((sum,a)=>sum+Math.max(0,Number(a.em_atendimento)||0),0),'blue'],
                     ['☎','Atend. telefônico',voiceCount,'purple'],
                     ['▤','Não atendidas',r.conversas_nao_atendidas,'red'],
                     ['♧','Total monitorados',all.length,'navy'],
                 ];
                 root.querySelector('[data-ss="kpis"]').innerHTML=kpis.map(([icon,title,val,color])=>
-                    `<div class="ss-kpi ss-${color}"><div class="ss-kpi-icon">${icon}</div><div><small>${title}</small><strong>${val==null?'—':g4fNumber(val)}</strong></div></div>`).join('');
+                    `<div class="ss-kpi ss-${color}"><div class="ss-kpi-icon">${icon}</div><div class="ss-kpi-copy"><small>${title}</small><strong>${val==null?'—':g4fNumber(val)}</strong></div></div>`).join('');
                 root.querySelector('[data-ss="connection"]').textContent=state==='online'?'● Coleta G4Flex atualizada':state==='stale'?'● Coleta G4Flex atrasada':'● Coleta G4Flex offline';
                 root.querySelector('[data-ss="stamp"]').textContent=row?'Última coleta G4Flex: '+g4fTime(row.recebido_em):'Aguardando dados';
                 // Este status é EXCLUSIVO da coleta do G4Flex. O robô SIM tem seu próprio heartbeat.
@@ -15408,6 +15452,18 @@ function portalStart(host){
             function renderToolbarCollection(){
                 const panel=panels[index];
                 const g4=panel?.tipo==='g4flex';
+                const reference=g4 && g4fCurrentLayout==='ss';
+                document.body.classList.toggle('ss-reference',reference);
+                const brand=document.getElementById('ss-toolbar-brand');
+                const collectionStamp=document.getElementById('ss-toolbar-stamp');
+                const logo=reference&&(g4fConfig.ss_official_logo||g4fConfig.logo);
+                brand.hidden=!logo;
+                if(logo && brand.getAttribute('src')!==logo)brand.src=logo;
+                const badgeParent=reference?collectionStamp.parentElement:document.querySelector('#toolbar .toolbar-meta');
+                if(robotHeartbeatBadge.parentElement!==badgeParent)badgeParent.append(robotHeartbeatBadge);
+                const captured=reference && settings.showStatus&&(g4fLastData?.recebido_em||g4fLastData?.capturado_em);
+                collectionStamp.hidden=!captured;
+                if(captured)collectionStamp.textContent='Última coleta: '+g4fTime(captured);
                 const sim=panel && isSimPanel(panel);
                 robotHeartbeatBadge.hidden=!settings.showStatus || (!g4 && !sim);
                 if(robotHeartbeatBadge.hidden)return;
@@ -15419,7 +15475,7 @@ function portalStart(host){
                 const age=toolbarAge(seconds);
                 robotHeartbeatBadge.className=!row?'waiting':state==='online'?'online':age?'stale':'offline';
                 robotHeartbeatBadge.textContent=g4
-                    ? (!row?'Aguardando coleta':state==='online'?'Coleta atualizada':age?`Coleta atrasada · ${age}`:'Coleta indisponível')
+                    ? (!row?'Aguardando coleta':state==='online'?(reference?'● Robô G4Flex: Ativo':'Coleta atualizada'):age?`Coleta atrasada · ${age}`:'Coleta indisponível')
                     : (!row?'Aguardando robô SIM':state==='online'?'Robô SIM conectado':age?`Robô SIM sem sinal · ${age}`:'Robô SIM indisponível');
                 robotHeartbeatBadge.title=stamp?`${g4?'Última coleta':'Último sinal'}: ${g4fTime(stamp)}`:robotHeartbeatBadge.textContent;
             }
