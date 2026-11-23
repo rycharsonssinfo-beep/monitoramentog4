@@ -6,7 +6,7 @@
 }
 .ss-toolbar-brand,.ss-toolbar-stamp{display:none}
 #toolbar .toolbar-left{gap:clamp(7px,1vw,17px);min-width:0}
-#toolbar .ss-toolbar-brand:not([hidden]){display:block;max-width:clamp(88px,12vw,205px);width:auto;height:34px;object-fit:contain;background:#fff;border:1px solid #bdd6eb;border-radius:7px;padding:3px 7px}
+#toolbar .ss-toolbar-brand:not([hidden]){display:block;max-width:clamp(88px,12vw,205px);width:auto;height:min(42px,calc(var(--toolbar-h) - 4px));object-fit:contain}
 #toolbar #panel-name{font-size:clamp(13px,1.28vw,23px);font-weight:850;color:white}
 #toolbar #robot-heartbeat-badge{border-radius:999px;padding:6px 10px;white-space:nowrap}
 #toolbar #robot-heartbeat-badge.online{background:#0d392f;color:#e6fff5;border-color:#25c978}
