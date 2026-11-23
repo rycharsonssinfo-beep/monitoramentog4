@@ -92,3 +92,35 @@ body.kiosk #toolbar #clock { font-size: 1.3em; }
   font-size: .85em; font-variant-numeric: tabular-nums;
 }
 #panel-jump .menu-item.active .panel-jump-position { background: #0e5285; color: #fff; }
+
+/* Resumo no mesmo espaço reservado aos controles retraídos. */
+#reveal-strip > * { display: none; }
+body.controls-hidden #reveal-strip {
+  height: calc(var(--toolbar-h) + var(--progress-h));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(8px, 2vw, 24px);
+  padding-inline: clamp(10px, 1.3vw, 24px);
+  background: linear-gradient(105deg, #0a2d52, #061a35 70%, #082849);
+  color: #fff;
+  opacity: 1;
+}
+body.controls-hidden #reveal-strip > * {
+  display: block;
+  white-space: nowrap;
+}
+#compact-panel-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: clamp(13px, 1.2vw, 22px);
+  font-weight: 750;
+}
+#compact-panel-clock {
+  flex: none;
+  font-size: clamp(15px, 1.55vw, 29px);
+  font-weight: 850;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
