@@ -1,0 +1,65 @@
+{
+  "enabled": true,
+  "grace_minutes": 5,
+  "weekdays": [1, 2, 3, 4, 5],
+  "groups": [
+    {
+      "id": "1",
+      "label": "Grupo 1",
+      "members": [
+        {"name": "Abhraao Wniston"},
+        {"name": "Abhraao Winston"},
+        {"name": "Abraao Wniston"},
+        {"name": "Abraao Winston"},
+        {"name": "Abhraão"},
+        {"name": "Aline Carioca"},
+        {"name": "Aline"},
+        {"name": "Célio Neto"},
+        {"name": "Célio"},
+        {"name": "Carlos Daniel"},
+        {"name": "Daniel"},
+        {"name": "Rycharson Xavier"},
+        {"name": "Richarson Xavier"},
+        {"name": "Rycharson"},
+        {"name": "Richarson"},
+        {"name": "Vinícius Ferreira"},
+        {"name": "Ferreira"},
+        {"name": "Luis Lima"},
+        {"name": "Luis"},
+        {"name": "Rodrigo"},
+        {"name": "Rodrigo Carvalho"},
+        {"name": "Yago Costa"},
+        {"name": "Yago"}
+      ],
+      "windows": [
+        {"id": "lanche-manha", "label": "Lanche manhã", "start": "10:00", "end": "10:15", "reason": "Lanche"},
+        {"id": "almoco", "label": "Almoço", "start": "12:00", "end": "13:00", "reason": "Almoço"},
+        {"id": "lanche-tarde", "label": "Lanche tarde", "start": "15:00", "end": "15:15", "reason": "Lanche"}
+      ]
+    },
+    {
+      "id": "2",
+      "label": "Grupo 2",
+      "members": [
+        {"name": "Armando"},
+        {"name": "Armando Rodrigues"},
+        {"name": "André Bitu"},
+        {"name": "Bitu"},
+        {"name": "Neydson Rodrigues"},
+        {"name": "Neydson"},
+        {"name": "Thiago Silva"},
+        {"name": "Thiago"},
+        {"name": "Régis Bezerra"},
+        {"name": "Régis"},
+        {"name": "Tafarel"},
+        {"name": "Tafarel Nascimento"}
+      ],
+      "windows": [
+        {"id": "lanche-manha", "label": "Lanche manhã", "start": "10:15", "end": "10:30", "reason": "Lanche"},
+        {"id": "almoco", "label": "Almoço", "start": "13:00", "end": "14:00", "reason": "Almoço"},
+        {"id": "lanche-tarde", "label": "Lanche tarde", "start": "15:15", "end": "15:30", "reason": "Lanche"}
+      ]
+    }
+  ],
+  "exceptions": []
+}

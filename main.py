@@ -29,6 +29,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from config_workspace import render_workspace
+from scripts.g4flex_escala_config import normalizar_escala, render_escala
 from config_settings import ConfigConflict, config_changes, read_config, revision, write_config, write_portal_cache
 
 # =========================================================
@@ -3702,6 +3703,7 @@ def perfil_padrao(nome="Suporte"):
         "modo_tv_padrao": False,
         "g4flex_auto_fit": True,
         "g4flex_attribution_alert": True,
+        "g4flex_escala": normalizar_escala(None),
         "preload_seconds": 8,
         "watchdog_seconds": 90,
         "ui_scale": 100,
@@ -4773,6 +4775,7 @@ def migrar_config_legada(data):
             "modo_tv_padrao": bool(old_profile.get("modo_tv_padrao", False)),
             "g4flex_auto_fit": bool(old_profile.get("g4flex_auto_fit", True)),
             "g4flex_attribution_alert": bool(old_profile.get("g4flex_attribution_alert", True)),
+            "g4flex_escala": normalizar_escala(old_profile.get("g4flex_escala")),
             "preload_seconds": 8,
             "watchdog_seconds": 90,
             "ui_scale": 100,
@@ -5016,6 +5019,7 @@ def normalizar_config(data):
             "modo_tv_padrao": bool(profile.get("modo_tv_padrao", False)),
             "g4flex_auto_fit": bool(profile.get("g4flex_auto_fit", True)),
             "g4flex_attribution_alert": bool(profile.get("g4flex_attribution_alert", True)),
+            "g4flex_escala": normalizar_escala(profile.get("g4flex_escala")),
             "preload_seconds": _clamp_int(profile.get("preload_seconds", 8), 8, 0, 30),
             "watchdog_seconds": _clamp_int(profile.get("watchdog_seconds", 90), 90, 30, 600),
             "ui_scale": int(profile.get("ui_scale", 100)) if int(profile.get("ui_scale", 100)) in {90, 100, 110, 125} else 100,
@@ -8368,6 +8372,9 @@ if not st.session_state.iniciado:
             )
             st.caption("Quando ativado, as atribuições maiores que zero recebem um aviso. Sem animação contínua ou som; pessoas em pausa continuam com fundo azul e pessoas ativas com fundo verde.")
 
+            if com_is_admin:
+                perfil["g4flex_escala"] = render_escala(st, perfil.get("g4flex_escala"), active_profile_id)
+
         if active_section == "backup":
             export_col, backup_col, default_col = st.columns(3)
             with export_col:
@@ -8956,7 +8963,14 @@ else:
         "profile": {"id": active_profile_id, "nome": perfil["nome"]},
         "ticker": (lambda _t: {**copy.deepcopy(_t), "news": copy.deepcopy(noticias_efetivas_ticker(_t)), "agenda": copy.deepcopy(agenda_efetiva_ticker(_t))})(config.get("ticker", ticker_padrao())),
         "simAlerts": {**sim_poll_cfg, "mascot": _mascot_sim_data_uri(), "mascots": _sim_alert_mascots_data(), "municipality_maps": _sim_mapas_municipais_ipece_2026(), "latest_delivery": st.session_state.get(f"_sim_latest_delivery_v390_{active_profile_id}") or st.session_state.get(f"_sim_latest_delivery_v370_{active_profile_id}"), "test_error": st.session_state.pop(f"_sim_test_error_v311_{active_profile_id}", ""), "api_year": _sim_api_competencia(sim_poll_cfg)[0], "api_month": _sim_api_competencia(sim_poll_cfg)[1], "backend_polling": False, "supabase_url": SUPABASE_URL, "supabase_publishable_key": SUPABASE_PUBLISHABLE_KEY, "event_source": "robot_supabase", "monitor_id": "monitor-sim-principal"},
-        "g4flex": {"monitor_id": "g4flex-principal", "logo": G4FLEX_LOGO_DATA_URI, "ss_official_logo": SS_OFFICIAL_LOGO_DATA_URI, "auto_fit": bool(perfil.get("g4flex_auto_fit", True)), "attribution_alert": bool(perfil.get("g4flex_attribution_alert", True))},
+        "g4flex": {
+            "monitor_id": "g4flex-principal",
+            "logo": G4FLEX_LOGO_DATA_URI,
+            "ss_official_logo": SS_OFFICIAL_LOGO_DATA_URI,
+            "auto_fit": bool(perfil.get("g4flex_auto_fit", True)),
+            "attribution_alert": bool(perfil.get("g4flex_attribution_alert", True)),
+            "escala": normalizar_escala(perfil.get("g4flex_escala")),
+        },
         "portais": {"logo": SS_OFFICIAL_LOGO_DATA_URI, "poll_seconds": 15, "stale_seconds": 180},
         "auth_bridge_nonce": st.session_state.get("_monitor_auth_browser_nonce_v342", ""),
         "comunicados": {
@@ -10216,6 +10230,7 @@ else:
 
             __PANEL_TOOLBAR_CSS__
             __COM_VISUAL_CSS__
+            __G4FLEX_GRUPOS_CSS__
         </style>
     </head>
     <body class="bar-top">
@@ -11520,7 +11535,13 @@ else:
             }
 
             // v3.26 · Painel interno do G4Flex: dados privados, leitura com JWT autenticado.
+            globalThis.G4FlexEscalaPadrao = __G4FLEX_ESCALA_PADRAO__;
+            __G4FLEX_ESCALA_JS__
             const g4fConfig = payload.g4flex || {};
+            const ssSchedule = G4FlexEscala.normalize(g4fConfig.escala);
+            const ssPauseTracker = G4FlexEscala.createTracker();
+            const ssUnassignedGroup = {id: 'unassigned', label: 'Sem grupo', windows: []};
+            let ssPendingPauses = new Map();
             const g4fWidgets = new Set();
             let g4fLastData = null;
             let g4fLastError = '';
@@ -11808,7 +11829,7 @@ else:
             }
             // Lista consolidada: cada legenda aparece apenas uma vez no cabeçalho.
             // Estado telefônico e atribuições seguem exclusivamente o mesmo snapshot do G4Flex.
-            function ssAgentListRow(agent,row){
+            function ssAgentListRow(agent,row,pendingPause){
                 const paused=agent.status==='pausado';
                 const calling=ssPhoneActive(agent,row);
                 const count=Math.max(0,Number(agent.atribuidas)||0);
@@ -11824,15 +11845,82 @@ else:
                 // Em atendimento telefônico e atribuição simultâneos, preservar ambos os avisos.
                 const statusBadge=(!paused&&!calling&&!alert)?`<span class="ss-list-badge ${status==='Online'?'online':'unknown'}">${g4fText(status)}</span>`:'';
                 const assignedBadge=alert?`<span class="ss-list-badge alert" title="Online · ${count} conversa(s) atribuída(s)">${ssAlertBell}<span>${count} atrib.</span></span>`:'';
+                const pauseBadge=pendingPause && !g4fLastError && g4fState(row)==='online'
+                    ? `<span class="ss-list-badge pause-pending" title="Pausa esperada: ${g4fText(pendingPause.label)} · ${g4fText(pendingPause.start)}–${g4fText(pendingPause.end)}">Pausa pendente</span>`
+                    : '';
                 return `<tr class="ss-list-row ${paused?'is-paused':''} ${calling?'is-calling':''} ${alert?'has-assignment':''} ${changing?'ss-list-shake':''}">
                   <td><div class="ss-list-name">${g4fAvatar(agent,true)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong></div></td>
-                  <td><div class="ss-list-status">${pausedBadge}${voiceBadge}${statusBadge}${assignedBadge}</div></td>
+                  <td><div class="ss-list-status">${pausedBadge}${voiceBadge}${statusBadge}${assignedBadge}${pauseBadge}</div></td>
                   <td class="ss-list-value ${alert?'alert-value':''}">${g4fNumber(agent.atribuidas)}</td>
                   <td class="ss-list-value">${g4fNumber(agent.em_atendimento)}</td>
                   <td class="ss-list-value">${g4fNumber(agent.encerradas)}</td>
                   <td><div class="ss-list-time ${paused?'pause':''}"><b>${g4fText(time||'—')}</b><small>${paused?'Pausa':'Fila'}</small></div></td>
                 </tr>`;
             }
+            function ssListPanel(index,group=null){
+                const schedule = group?.windows.map(window => `<li class="ss-group-head__slot">
+                    <span>${g4fText(window.label)}</span>
+                    <span class="ss-group-head__interval">${g4fText(window.start)}–${g4fText(window.end)}</span>
+                  </li>`).join('');
+                const header = group ? `<header class="ss-group-head" data-group="${g4fText(group.id)}">
+                    <div class="ss-group-head__identity"><h3 class="ss-group-head__title">${g4fText(group.label)}</h3><span class="ss-group-head__count"></span></div>
+                    ${schedule ? `<ul class="ss-group-head__schedule" aria-label="Horários de pausa">${schedule}</ul>` : ''}
+                  </header>` : '';
+                const table = `<table class="ss-attendants-table"${group ? ` aria-label="${g4fText(group.label)}"` : ''}>
+                    <thead><tr><th scope="col">Atendente</th><th scope="col">Status</th><th scope="col" title="Atribuídas">Atrib.</th><th scope="col" title="Em atendimento">Em atend.</th><th scope="col" title="Encerradas">Encerr.</th><th scope="col">Tempo</th></tr></thead>
+                    <tbody data-ss-list-col="${index}"></tbody></table>`;
+                const unassigned = group?.id === ssUnassignedGroup.id;
+                return `<div class="ss-list-panel${unassigned ? ' ss-list-panel--unassigned' : ''}" data-ss-list-panel="${index}"${unassigned ? ' hidden' : ''}>
+                    ${header}${group ? `<div class="ss-group-table-wrap">${table}</div>` : table}</div>`;
+            }
+
+            function ssRenderGroupedList(host,root,list,row,agents){
+                const groups = new Map(ssSchedule.groups.map(group => [group.id, []]));
+                groups.set(ssUnassignedGroup.id, []);
+                for(const agent of agents){
+                    const id = G4FlexEscala.groupFor(agent,ssSchedule) || ssUnassignedGroup.id;
+                    groups.get(id).push(agent);
+                }
+                const sections = [...groups.values()];
+                const panels = Array.from(list.querySelectorAll('[data-ss-list-panel]'));
+                panels[2].hidden = sections[2].length === 0;
+                panels.forEach((panel,index) => {
+                    const total = sections[index].length;
+                    const count = panel.querySelector('.ss-group-head__count');
+                    const label = total === 1 ? '1 atendente' : total+' atendentes';
+                    if(count.textContent !== label)count.textContent = label;
+                });
+
+                const width = list.clientWidth || root.clientWidth || 1400;
+                const height = list.clientHeight || 500;
+                const dual = width >= 1090 && !window.matchMedia('(max-width: 1120px)').matches;
+                list.classList.toggle('ss-single-column',!dual);
+                const headerHeight = Math.max(...panels.filter(panel => !panel.hidden)
+                    .map(panel => panel.querySelector('.ss-group-head').getBoundingClientRect().height));
+                const tableHeadHeight = 38;
+                const minRow = width < 1160 || height < 410 ? 52 : 62;
+                const available = height - headerHeight - tableHeadHeight - 8;
+                // No espaço menor, a rolagem mantém os grupos visíveis e preserva a altura das linhas.
+                const scroll = !dual || sections[2].length > 0 || available < minRow;
+                const capacity = scroll ? Infinity : Math.max(1,Math.floor(available / minRow));
+                const maxSection = Math.max(...sections.map(section => section.length));
+                const pages = scroll ? 1 : Math.max(1,Math.ceil(maxSection / capacity));
+                host._ssListPages = pages;
+                host._ssListPage = Math.min(Math.max(0,host._ssListPage || 0),pages - 1);
+                const first = scroll ? 0 : host._ssListPage * capacity;
+                const visible = sections.map(section => scroll ? section : section.slice(first,first + capacity));
+                const rowHeight = scroll ? minRow : Math.min(110,Math.floor(available / Math.max(1,...visible.map(section => section.length))));
+                list.style.setProperty('--ss-row-height',rowHeight+'px');
+                list.style.setProperty('--ss-head-height',tableHeadHeight+'px');
+                panels.forEach((panel,index) => {
+                    panel.querySelector('tbody').innerHTML = visible[index]
+                        .map(agent => ssAgentListRow(agent,row,ssPendingPauses.get(G4FlexEscala.agentKey(agent))))
+                        .join('') || '<tr><td colspan="6" class="ss-list-empty">Nenhum atendente nesta página.</td></tr>';
+                });
+                root.querySelector('[data-ss="list-pager"]').hidden = pages <= 1;
+                root.querySelector('[data-ss="list-page-text"]').textContent = `${host._ssListPage+1}/${pages} · ${agents.length} atendentes`;
+            }
+
             function ssRender(host,row,agents,state){
                 const root=host.querySelector('[data-ss="view"]');if(!root)return;
                 root.hidden=g4fCurrentLayout!=='ss';
@@ -11920,6 +12008,10 @@ else:
                     if(!asList)legend.innerHTML=`<span class="ss-legend-caption">Legenda</span><span>${ssMetricIcons.assigned} Atribuídas</span><span>${ssMetricIcons.attending} Em atendimento</span><span>${ssMetricIcons.closed} Encerradas</span>`;
                 }
                 if(asList){
+                    if(ssSchedule.enabled){
+                        ssRenderGroupedList(host,root,list,row,displayAgents);
+                        return;
+                    }
                     // A largura determina 1 ou 2 colunas. O número de linhas por página
                     // respeita a altura disponível e um tamanho mínimo legível.
                     const w=list.clientWidth||root.clientWidth||1400;
@@ -12022,6 +12114,7 @@ else:
                 renderToolbarCollection();
                 const r=row?.resumo||{};
                 const state=g4fState(row);
+                ssPendingPauses = ssPauseTracker.update(row,ssSchedule,{online:state === 'online' && !g4fLastError});
                 const kpis=[
                     ['Usuários logados','usuarios_logados','#0b5896','Conectados ao G4Flex'],
                     ['Disponíveis','agentes_disponiveis','#0c8978','Indicador original'],
@@ -12043,7 +12136,7 @@ else:
                 // O filtro da apresentação S&S não modifica o Layout G4Flex original.
                 const agents=searched.filter(a=>g4fFilterStatus==='todos'||a.status===g4fFilterStatus);
                 for(const host of g4fWidgets){
-                    if(!host.isConnected){host._g4fResizeObserver?.disconnect();g4fWidgets.delete(host);continue;}
+                    if(!host.isConnected){host._g4fResizeObserver?.disconnect();host._ssResizeObserver?.disconnect();g4fWidgets.delete(host);continue;}
                     const badge=host.querySelector('[data-g4f="state"]');
                     const age=g4fAgeSec(row);
                     badge.className='g4f-connection '+(state==='online'?'':state);
@@ -12578,9 +12671,10 @@ function g4fQueueTooltipInit(host){
                        <div class="ss-filter-group ss-filter-group--search"><label class="ss-filter-label">Pesquisar</label><input data-ss="search" type="search" placeholder="Nome do atendente..." aria-label="Buscar atendente"></div>
                      </div><div class="ss-metric-legend" data-ss="metric-legend" role="note" aria-label="Legenda dos indicadores de cards" hidden></div></div>
                       <div class="ss-g4f-warning" data-ss="warning" role="status" hidden></div><div class="ss-error" data-ss="error" hidden></div><div class="ss-cards" data-ss="cards" hidden></div>
-                      <div class="ss-list" data-ss="list"><div class="ss-list-columns">
-                        <div class="ss-list-panel" data-ss-list-panel="0"><table class="ss-attendants-table"><thead><tr><th scope="col">Atendente</th><th scope="col">Status</th><th scope="col" title="Atribuídas">Atrib.</th><th scope="col" title="Em atendimento">Em atend.</th><th scope="col" title="Encerradas">Encerr.</th><th scope="col">Tempo</th></tr></thead><tbody data-ss-list-col="0"></tbody></table></div>
-                        <div class="ss-list-panel" data-ss-list-panel="1"><table class="ss-attendants-table"><thead><tr><th scope="col">Atendente</th><th scope="col">Status</th><th scope="col" title="Atribuídas">Atrib.</th><th scope="col" title="Em atendimento">Em atend.</th><th scope="col" title="Encerradas">Encerr.</th><th scope="col">Tempo</th></tr></thead><tbody data-ss-list-col="1"></tbody></table></div>
+                       <div class="ss-list${ssSchedule.enabled ? ' ss-list--grouped' : ''}" data-ss="list"><div class="ss-list-columns">
+                         ${ssSchedule.enabled
+                            ? [...ssSchedule.groups,ssUnassignedGroup].map((group,index) => ssListPanel(index,group)).join('')
+                            : ssListPanel(0)+ssListPanel(1)}
                       </div></div>
                       <div class="ss-footer"><span>Dados: robô G4Flex · A fila inicial do usuário não é apresentada.</span><span class="ss-g4f-freshness" data-ss="freshness">Aguardando coleta G4Flex</span><span data-ss="stamp"></span><span class="ss-list-pager" data-ss="list-pager" hidden><button type="button" data-ss-list-page="prev" aria-label="Página anterior de atendentes">‹</button><span data-ss="list-page-text">1/1</span><button type="button" data-ss-list-page="next" aria-label="Próxima página de atendentes">›</button></span><span data-ss="pages"></span></div>
                     </main>
@@ -12618,15 +12712,14 @@ function g4fQueueTooltipInit(host){
                  if(g4fAutoFit && typeof ResizeObserver!=='undefined'){
                      const ro=new ResizeObserver(()=>requestAnimationFrame(()=>g4fLayout(host)));
                      ro.observe(host);host._g4fResizeObserver=ro;
-                     const ssCards=host.querySelector('[data-ss="cards"]');
-                     if(ssCards && typeof ResizeObserver!=='undefined'){
-                         const ssRo=new ResizeObserver(()=>{
-                             if(g4fCurrentLayout==='ss' && host.isConnected && host._g4fAgents)ssRender(host,g4fLastData,host._g4fAgents,g4fState(g4fLastData));
-                         });
-                         // Observar a área principal (não o grid) para evitar ciclos de resize.
-                         ssRo.observe(host.querySelector('.ss-main'));
-                         host._ssResizeObserver=ssRo;
-                     }
+                 }
+                 if((g4fAutoFit || ssSchedule.enabled) && typeof ResizeObserver!=='undefined'){
+                     const ssRo=new ResizeObserver(()=>{
+                         if(g4fCurrentLayout==='ss' && host.isConnected && host._ssAllAgents)ssRender(host,g4fLastData,host._ssAllAgents,g4fState(g4fLastData));
+                     });
+                     // Observar a área principal (não o grid) para evitar ciclos de resize.
+                     ssRo.observe(host.querySelector('.ss-main'));
+                     host._ssResizeObserver=ssRo;
                  }
                 g4fRender();
                 if(!g4fPolling){g4fPoll();g4fPolling=setInterval(g4fPoll,3000);}
@@ -15920,6 +16013,14 @@ function portalStart(host){
     html_painel = html_painel.replace("__PANEL_TOOLBAR_LOGO__", toolbar_logo_uri)
     html_painel = html_painel.replace("__PANEL_TOOLBAR_CSS__", toolbar_css)
     html_painel = html_painel.replace("__PAYLOAD_B64__", payload_b64)
+    scripts_path = Path(__file__).with_name("scripts")
+    html_painel = html_painel.replace(
+        "__G4FLEX_GRUPOS_CSS__", (scripts_path / "g4flex_grupos.css").read_text(encoding="utf-8")
+    ).replace(
+        "__G4FLEX_ESCALA_PADRAO__", (scripts_path / "g4flex_escala_padrao.json").read_text(encoding="utf-8")
+    ).replace(
+        "__G4FLEX_ESCALA_JS__", (scripts_path / "g4flex_escala.js").read_text(encoding="utf-8")
+    )
     html_painel = html_painel.replace("__COM_VISUAL_CSS__", COM_VISUAL_CSS)
     html_painel = html_painel.replace("__COM_MEGAFONE_HTML__", COM_MEGAFONE_HTML)
     html_painel = html_painel.replace("__MASCOTE_COMUNICADO_DATA_URI__", COM_MASCOTE_AVISO_DATA_URI)
