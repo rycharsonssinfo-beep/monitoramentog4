@@ -11845,10 +11845,15 @@ else:
                 // Em atendimento telefônico e atribuição simultâneos, preservar ambos os avisos.
                 const statusBadge=(!paused&&!calling&&!alert)?`<span class="ss-list-badge ${status==='Online'?'online':'unknown'}">${g4fText(status)}</span>`:'';
                 const assignedBadge=alert?`<span class="ss-list-badge alert" title="Online · ${count} conversa(s) atribuída(s)">${ssAlertBell}<span>${count} atrib.</span></span>`:'';
+                const pendingLabel=({
+                    almoco:'Almoço pendente',
+                    'lanche-manha':'Lanche pendente',
+                    'lanche-tarde':'Lanche pendente'
+                })[pendingPause?.id] || 'Pausa pendente';
                 const pauseBadge=pendingPause && !g4fLastError && g4fState(row)==='online'
-                    ? `<span class="ss-list-badge pause-pending" title="Pausa esperada: ${g4fText(pendingPause.label)} · ${g4fText(pendingPause.start)}–${g4fText(pendingPause.end)}">Pausa pendente</span>`
+                    ? `<span class="ss-list-badge pause-pending" title="Pausa esperada: ${g4fText(pendingPause.label)} · ${g4fText(pendingPause.start)}–${g4fText(pendingPause.end)}">${pendingLabel}</span>`
                     : '';
-                return `<tr class="ss-list-row ${paused?'is-paused':''} ${calling?'is-calling':''} ${alert?'has-assignment':''} ${changing?'ss-list-shake':''}">
+                return `<tr class="ss-list-row ${paused?'is-paused':''} ${calling?'is-calling':''} ${alert?'has-assignment':''} ${changing?'ss-list-shake':''} ${pauseBadge?'has-pause-pending':''}">
                   <td><div class="ss-list-name">${g4fAvatar(agent,true)}<strong title="${g4fText(g4fQueueTitle(agent))}">${g4fText(agent.nome||'Sem nome')}</strong></div></td>
                   <td><div class="ss-list-status">${pausedBadge}${voiceBadge}${statusBadge}${assignedBadge}${pauseBadge}</div></td>
                   <td class="ss-list-value ${alert?'alert-value':''}">${g4fNumber(agent.atribuidas)}</td>
