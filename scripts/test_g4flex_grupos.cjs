@@ -98,7 +98,7 @@ assert.match(headers[0], /10:00–10:15/);
 assert.match(headers[1], /Grupo 2/);
 assert.match(headers[1], /13:00–14:00/);
 for (const header of headers) {
-    assert.doesNotMatch(header, /pause-pending|Pausa pendente|Almoço em andamento/i);
+    assert.doesNotMatch(header, /pause-pending|Pausa pendente|Almoço pendente|Almoço em andamento/i);
 }
 assert.match(panelMarkup(2, unassigned), /ss-list-panel--unassigned/);
 assert.match(panelMarkup(2, unassigned), /Sem grupo/);
@@ -116,8 +116,16 @@ assert.match(body(1), /Em pausa[\s\S]*Almoço/);
 const pendingRow = body(1).match(/<tr\b[\s\S]*?<\/tr>/g).find(item => item.includes('Neydson'));
 const statusCell = pendingRow.match(/<td><div class="ss-list-status">([\s\S]*?)<\/div><\/td>/)[1];
 assert.match(statusCell, /Online/);
-assert.match(statusCell, /Pausa pendente/);
-assert.equal(pendingRow.match(/Pausa pendente/g).length, 1);
+assert.match(statusCell, /Online[\s\S]*Almoço pendente/);
+assert.equal(pendingRow.match(/Almoço pendente/g).length, 1);
+assert.match(pendingRow, /has-pause-pending/);
+assert.doesNotMatch(pendingRow, /is-paused/);
+const renderRow = vm.runInContext('ssAgentListRow', context);
+const pausedPending = renderRow({ ...agents[3], status: 'pausado', motivo_pausa: 'Atendimento' }, row, pending.get('id:4'));
+assert.match(pausedPending, /is-paused[^"]*has-pause-pending/);
+assert.match(pausedPending, /Em pausa · Atendimento[\s\S]*Almoço pendente/);
+const snack = renderRow(agents[3], row, { id: 'lanche-tarde', label: 'Lanche tarde', start: '15:00', end: '15:15' });
+assert.match(snack, /Lanche pendente/);
 assert.match(body(2), /Atendente sem cadastro/);
 
 context.ssOfficeFilter = 'fortaleza';

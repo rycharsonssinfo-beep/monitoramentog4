@@ -5,9 +5,10 @@
 
 .g4f-board.g4f-ss-mode .ss-list--grouped .ss-list-columns {
     height: auto;
-    min-height: 100%;
-    grid-template-rows: minmax(auto, 1fr);
+    min-height: 0;
+    grid-template-rows: auto;
     align-content: start;
+    align-items: start;
 }
 
 .g4f-board.g4f-ss-mode .ss-list--grouped.ss-single-column .ss-list-columns {
@@ -121,9 +122,29 @@
 }
 
 .g4f-board.g4f-ss-mode .ss-list--grouped .ss-list-panel .ss-list-badge.pause-pending {
-    border: 1px solid #efbf60;
-    background: #ffe2a5;
-    color: #713e03;
+    border: 1px solid #cf8822;
+    background: #ffca6a;
+    color: #613500;
+}
+
+.g4f-board.g4f-ss-mode .ss-list--grouped .has-pause-pending .ss-list-status {
+    display: grid;
+    justify-items: start;
+    gap: 3px;
+}
+
+.g4f-board.g4f-ss-mode .ss-list--grouped .ss-attendants-table tbody tr.has-pause-pending:not(.is-paused):not(.is-calling):not(.has-assignment) {
+    background: #fff;
+}
+
+.g4f-board.g4f-ss-mode .ss-list--grouped .ss-list-panel .ss-attendants-table tbody tr.is-paused:not(.is-calling) {
+    background: #fff5dc !important;
+    box-shadow: inset 4px 0 #e6af38 !important;
+}
+
+.g4f-board.g4f-ss-mode .ss-list--grouped .ss-list-badge.pause {
+    background: #ffebba;
+    color: #75500f;
 }
 
 @media (max-width: 1120px) {
