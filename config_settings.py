@@ -9,6 +9,23 @@ from uuid import uuid4
 from pathlib import Path
 
 
+PROFILE_ACCESS_ROLES = {
+    "suporte": "Suporte",
+    "ti": "TI",
+    "desenvolvimento": "Desenvolvimento",
+    "visualizador": "Visualizador (acesso antigo)",
+    "gestor": "Gestor (acesso antigo)",
+}
+
+
+def normalize_profile_access(value):
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        return []
+    return [role for role in PROFILE_ACCESS_ROLES if role in value]
+
+
 class ConfigConflict(Exception):
     """Another session saved a newer revision."""
 
