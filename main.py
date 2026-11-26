@@ -7647,15 +7647,19 @@ if not st.session_state.iniciado:
             if com_is_admin:
                 with st.form(f"cfg_profile_access_{active_profile_id}"):
                     current_access = perfil["available_to"]
-                    available_to = st.multiselect(
-                        "Disponível para", list(PROFILE_ACCESS_ROLES),
-                        default=list(PROFILE_ACCESS_ROLES) if current_access is None else current_access,
-                        format_func=PROFILE_ACCESS_ROLES.__getitem__,
-                        help="Gestão e administradores sempre podem abrir todos os perfis. "
-                             "Deixe vazio para permitir acesso somente a eles.",
-                        key=f"cfg_profile_roles_{active_profile_id}",
-                    )
-                    if st.form_submit_button("Salvar acesso"):
+                    selected_roles = list(PROFILE_ACCESS_ROLES) if current_access is None else current_access
+                    st.markdown("**Disponível para**")
+                    st.caption("Gestão e administradores sempre têm acesso. Marque os demais tipos que podem abrir este perfil.")
+                    access_columns = st.columns(2)
+                    available_to = []
+                    for index, (role, label) in enumerate(PROFILE_ACCESS_ROLES.items()):
+                        with access_columns[index % len(access_columns)]:
+                            if st.checkbox(
+                                label, value=role in selected_roles,
+                                key=f"cfg_profile_role_{active_profile_id}_{role}",
+                            ):
+                                available_to.append(role)
+                    if st.form_submit_button("Salvar acesso", type="primary"):
                         perfil["available_to"] = normalize_profile_access(available_to)
                         if salvar_config(config, force=True):
                             st.toast("Acesso ao perfil atualizado.")
