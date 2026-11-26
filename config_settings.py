@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import unicodedata
+from uuid import uuid4
 from pathlib import Path
 
 
@@ -97,6 +98,39 @@ def write_portal_cache(path, expected_revision, cache, lock):
         }, ensure_ascii=False, indent=2).encode("utf-8"))
         if updated != raw:
             atomic_write(path, updated)
+
+
+def profile_settings(config):
+    return {key: config[key] for key in ("profiles", "default_profile_id")}
+
+
+def read_profiles(request):
+    rows = request("GET", "monitor_profiles?id=eq.1&select=revision,settings")
+    if rows == []:
+        return None, None
+    row, = rows
+    return row["revision"], profile_settings(row["settings"])
+
+
+def write_profiles(request, expected_revision, current_revision, current_settings, settings):
+    if current_settings == settings:
+        return current_revision
+    if current_revision != expected_revision:
+        raise ConfigConflict
+    next_revision = str(uuid4())
+    payload = {"revision": next_revision, "settings": settings}
+    if current_revision is None:
+        try:
+            rows = request("POST", "monitor_profiles", {**payload, "id": 1})
+        except RuntimeError as exc:
+            if getattr(exc.__cause__, "code", None) == 409:
+                raise ConfigConflict from exc
+            raise
+    else:
+        rows = request("PATCH", f"monitor_profiles?id=eq.1&revision=eq.{current_revision}", payload)
+    if not rows:
+        raise ConfigConflict
+    return next_revision
 
 
 def matches_search(query, text):

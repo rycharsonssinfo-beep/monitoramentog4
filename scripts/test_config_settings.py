@@ -5,10 +5,15 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest.mock import Mock
+from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from config_settings import ConfigConflict, config_changes, matches_search, revision, write_config, write_portal_cache
+from config_settings import (
+    ConfigConflict, config_changes, matches_search, profile_settings, read_profiles,
+    revision, write_config, write_portal_cache, write_profiles,
+)
 
 
 class SettingsTest(unittest.TestCase):
@@ -77,6 +82,54 @@ class SettingsTest(unittest.TestCase):
             "Alterados": ["Suporte › SIM"],
             "Removidos": ["Suporte › Portais"],
         })
+
+
+class PersistentProfilesTest(unittest.TestCase):
+    def setUp(self):
+        self.config = {
+            "profiles": {"suporte": {"nome": "Suporte"}, "gestao": {"nome": "Gestão"}},
+            "default_profile_id": "gestao",
+            "ticker": {"enabled": True},
+        }
+        self.settings = profile_settings(self.config)
+
+    def test_first_save_preserves_both_profiles_and_default_in_new_session(self):
+        request = Mock(return_value=[])
+        self.assertEqual(read_profiles(request), (None, None))
+        request.return_value = [{"revision": "saved"}]
+        saved_revision = write_profiles(request, None, None, None, self.settings)
+        method, path, payload = request.call_args.args
+        self.assertEqual((method, path), ("POST", "monitor_profiles"))
+        self.assertEqual(payload, {"id": 1, "revision": saved_revision, "settings": self.settings})
+        self.assertNotIn("ticker", payload["settings"])
+        new_session = Mock(return_value=[payload])
+        self.assertEqual(read_profiles(new_session), (saved_revision, self.settings))
+
+    def test_stale_edit_cannot_replace_profiles(self):
+        request = Mock()
+        with self.assertRaises(ConfigConflict):
+            write_profiles(request, "old", "current", {}, self.settings)
+        request.assert_not_called()
+
+    def test_save_uses_revision_filter_and_detects_simultaneous_update(self):
+        request = Mock(return_value=[])
+        with self.assertRaises(ConfigConflict):
+            write_profiles(request, "current", "current", {}, self.settings)
+        method, path, _ = request.call_args.args
+        self.assertEqual(method, "PATCH")
+        self.assertEqual(path, "monitor_profiles?id=eq.1&revision=eq.current")
+
+    def test_simultaneous_first_save_is_a_conflict(self):
+        def request(*args):
+            raise RuntimeError("Conflict") from HTTPError("", 409, "Conflict", {}, None)
+
+        with self.assertRaises(ConfigConflict):
+            write_profiles(request, None, None, None, self.settings)
+
+    def test_retry_after_success_is_idempotent(self):
+        request = Mock()
+        self.assertEqual(write_profiles(request, None, "current", self.settings, self.settings), "current")
+        request.assert_not_called()
 
 
 if __name__ == "__main__":
