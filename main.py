@@ -30,7 +30,10 @@ import streamlit.components.v1 as components
 
 from config_workspace import render_workspace
 from scripts.g4flex_escala_config import normalizar_escala, render_escala
-from config_settings import ConfigConflict, config_changes, read_config, revision, write_config, write_portal_cache
+from config_settings import (
+    ConfigConflict, config_changes, profile_settings, read_config, read_profiles, revision,
+    write_config, write_portal_cache, write_profiles,
+)
 
 # =========================================================
 # Painel de Monitoramento 3.10.0
@@ -4908,7 +4911,8 @@ def _render_config_diagnostics(config, profile, active_panels, retained_panels):
             f"Perfil: {profile['nome']} ({profile['id']}) | Padrão: {default_name}",
             f"Painéis com endereço válido: {len(active_panels)} | Com endereço pendente: {len(invalid)}",
             f"Painéis configurados para permanecer abertos: {retained_panels}",
-            f"Arquivo de configuração: {CONFIG_PATH.name} (gravação atômica com backup)",
+            f"Configuração local: {CONFIG_PATH.name} (gravação atômica com backup)",
+            "Perfis de monitoramento: armazenamento persistente no Supabase",
         ]
         if render_ms is not None:
             summary.append(f"Última renderização da Central: {render_ms} ms")
@@ -5097,10 +5101,11 @@ def validar_config_importada(data):
 
 @st.cache_resource(show_spinner=False)
 def _config_write_lock():
-    return threading.Lock()
+    return threading.RLock()
 
 
-def carregar_config():
+def _carregar_config_local():
+    st.session_state["config_disk_revision"] = None
     raw = None
     try:
         raw = read_config(CONFIG_PATH)
@@ -5120,6 +5125,20 @@ def carregar_config():
     return copy.deepcopy(DEFAULT_CONFIG)
 
 
+def carregar_config():
+    config = _carregar_config_local()
+    st.session_state["config_profiles_revision"] = None
+    try:
+        cloud_revision, saved_profiles = read_profiles(_com_request)
+    except Exception:
+        st.session_state["ultimo_erro_persistencia"] = (
+            "Não foi possível carregar os perfis salvos. Tente novamente antes de editar."
+        )
+        return config
+    st.session_state["config_profiles_revision"] = cloud_revision
+    return normalizar_config({**config, **saved_profiles}) if saved_profiles is not None else config
+
+
 def salvar_config(config, force=False, verify_revision=False):
     """Persiste a revisão editada apenas se ela ainda for a vigente no servidor."""
     if not _com_is_admin():
@@ -5127,16 +5146,34 @@ def salvar_config(config, force=False, verify_revision=False):
     try:
         cfg = normalizar_config(config)
         current_hash = config_hash(cfg)
-        if not force and st.session_state.get("ultimo_hash_salvo") == current_hash:
-            if verify_revision and revision(read_config(CONFIG_PATH)) != st.session_state.get("config_disk_revision"):
-                raise ConfigConflict
+        unchanged = st.session_state.get("ultimo_hash_salvo") == current_hash
+        if unchanged and not force and not verify_revision:
             return not bool(st.session_state.get("ultimo_erro_persistencia"))
         raw = json.dumps(cfg, ensure_ascii=False, indent=2).encode("utf-8")
-        with st.spinner("Salvando configuração…"):
-            st.session_state["config_disk_revision"] = write_config(
-                CONFIG_PATH, BACKUP_PATH, st.session_state.get("config_disk_revision"),
-                raw, _config_write_lock(),
-            )
+        lock = _config_write_lock()
+        with lock:
+            disk_revision = st.session_state.get("config_disk_revision")
+            if revision(read_config(CONFIG_PATH)) not in (disk_revision, current_hash):
+                raise ConfigConflict
+            cloud_revision, saved_profiles = read_profiles(_com_request)
+            expected_revision = st.session_state.get("config_profiles_revision")
+            if unchanged and not force and cloud_revision is not None:
+                if cloud_revision != expected_revision:
+                    raise ConfigConflict
+                return not bool(st.session_state.get("ultimo_erro_persistencia"))
+            with st.spinner("Salvando configuração…"):
+                st.session_state["config_profiles_revision"] = write_profiles(
+                    _com_request, expected_revision, cloud_revision, saved_profiles, profile_settings(cfg),
+                )
+                try:
+                    st.session_state["config_disk_revision"] = write_config(
+                        CONFIG_PATH, BACKUP_PATH, disk_revision, raw, lock,
+                    )
+                except OSError:
+                    st.session_state["ultimo_erro_persistencia"] = (
+                        "Os perfis estão salvos. Falha ao gravar a configuração local e o backup."
+                    )
+                    return False
         st.session_state["ultimo_hash_salvo"] = current_hash
         st.session_state["ultima_gravacao"] = datetime.now().strftime("%H:%M:%S")
         st.session_state.pop("ultimo_erro_persistencia", None)
@@ -7290,12 +7327,17 @@ st.session_state.config_v23 = config
 if st.session_state.get("config_conflito"):
     try:
         stored = read_config(CONFIG_PATH)
-        if stored is not None and config_hash(normalizar_config(json.loads(stored))) == config_hash(config):
+        cloud_revision, saved_profiles = read_profiles(_com_request)
+        stored_config = normalizar_config(json.loads(stored)) if stored is not None else DEFAULT_CONFIG
+        if saved_profiles is not None:
+            stored_config = normalizar_config({**stored_config, **saved_profiles})
+        if config_hash(stored_config) == config_hash(config):
             st.session_state["config_disk_revision"] = revision(stored)
+            st.session_state["config_profiles_revision"] = cloud_revision
             st.session_state["ultimo_hash_salvo"] = config_hash(config)
             st.session_state.pop("config_conflito", None)
             st.session_state.pop("ultimo_erro_persistencia", None)
-    except (OSError, UnicodeError, ValueError):
+    except (OSError, UnicodeError, ValueError, RuntimeError):
         pass
 
 # Atualiza o cache autenticado do S&S Conecta quando o intervalo configurado vencer.
