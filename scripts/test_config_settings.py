@@ -11,7 +11,7 @@ from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config_settings import (
-    ConfigConflict, config_changes, matches_search, profile_settings, read_profiles,
+    ConfigConflict, config_changes, matches_search, normalize_profile_access, profile_settings, read_profiles,
     revision, write_config, write_portal_cache, write_profiles,
 )
 
@@ -92,6 +92,15 @@ class PersistentProfilesTest(unittest.TestCase):
             "ticker": {"enabled": True},
         }
         self.settings = profile_settings(self.config)
+
+    def test_profile_access_preserves_legacy_access_and_validates_explicit_roles(self):
+        self.assertIsNone(normalize_profile_access(None))
+        self.assertEqual(normalize_profile_access([]), [])
+        self.assertEqual(normalize_profile_access("suporte"), [])
+        self.assertEqual(
+            normalize_profile_access(["desenvolvimento", "suporte", "suporte", "desconhecido"]),
+            ["suporte", "desenvolvimento"],
+        )
 
     def test_first_save_preserves_both_profiles_and_default_in_new_session(self):
         request = Mock(return_value=[])

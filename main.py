@@ -31,7 +31,8 @@ import streamlit.components.v1 as components
 from config_workspace import render_workspace
 from scripts.g4flex_escala_config import normalizar_escala, render_escala
 from config_settings import (
-    ConfigConflict, config_changes, profile_settings, read_config, read_profiles, revision,
+    PROFILE_ACCESS_ROLES, ConfigConflict, config_changes, normalize_profile_access,
+    profile_settings, read_config, read_profiles, revision,
     write_config, write_portal_cache, write_profiles,
 )
 
@@ -5016,6 +5017,7 @@ def normalizar_config(data):
         profile_norm = {
             "id": pid,
             "nome": nome,
+            "available_to": normalize_profile_access(profile.get("available_to")),
             "paineis": panels,
             "horas_reload_geral": _clamp_int(profile.get("horas_reload_geral", 0), 0, 0, 24),
             "full_restart_enabled": bool(profile.get("full_restart_enabled", False)),
@@ -7317,28 +7319,39 @@ def render_central_atualizacoes(base,public,admin):
                          f"{'Publicado' if item.get('publicado') else 'Retirado'}")
 
 
-if "config_v23" not in st.session_state:
-    st.session_state.config_v23 = carregar_config()
-    st.session_state["ultimo_hash_salvo"] = config_hash(st.session_state.config_v23)
+if _monitor_profile == "administrador":
+    if "config_v23" not in st.session_state:
+        st.session_state.config_v23 = carregar_config()
+        st.session_state["ultimo_hash_salvo"] = config_hash(st.session_state.config_v23)
 
-config = normalizar_config(st.session_state.config_v23)
-st.session_state.config_v23 = config
+    config = normalizar_config(st.session_state.config_v23)
+    st.session_state.config_v23 = config
 
-if st.session_state.get("config_conflito"):
+    if st.session_state.get("config_conflito"):
+        try:
+            stored = read_config(CONFIG_PATH)
+            cloud_revision, saved_profiles = read_profiles(_com_request)
+            stored_config = normalizar_config(json.loads(stored)) if stored is not None else DEFAULT_CONFIG
+            if saved_profiles is not None:
+                stored_config = normalizar_config({**stored_config, **saved_profiles})
+            if config_hash(stored_config) == config_hash(config):
+                st.session_state["config_disk_revision"] = revision(stored)
+                st.session_state["config_profiles_revision"] = cloud_revision
+                st.session_state["ultimo_hash_salvo"] = config_hash(config)
+                st.session_state.pop("config_conflito", None)
+                st.session_state.pop("ultimo_erro_persistencia", None)
+        except (OSError, UnicodeError, ValueError, RuntimeError):
+            pass
+else:
     try:
-        stored = read_config(CONFIG_PATH)
-        cloud_revision, saved_profiles = read_profiles(_com_request)
-        stored_config = normalizar_config(json.loads(stored)) if stored is not None else DEFAULT_CONFIG
-        if saved_profiles is not None:
-            stored_config = normalizar_config({**stored_config, **saved_profiles})
-        if config_hash(stored_config) == config_hash(config):
-            st.session_state["config_disk_revision"] = revision(stored)
-            st.session_state["config_profiles_revision"] = cloud_revision
-            st.session_state["ultimo_hash_salvo"] = config_hash(config)
-            st.session_state.pop("config_conflito", None)
-            st.session_state.pop("ultimo_erro_persistencia", None)
-    except (OSError, UnicodeError, ValueError, RuntimeError):
-        pass
+        saved_profiles = _com_request("POST", "rpc/monitor_profiles_for_account", {}, timeout=8)
+    except RuntimeError:
+        st.error("Não foi possível verificar os perfis disponíveis. Recarregue o painel para tentar novamente.")
+        st.stop()
+    if not isinstance(saved_profiles, dict) or not saved_profiles.get("profiles"):
+        st.info("Nenhum perfil de monitoramento está disponível para sua conta. Solicite a liberação à administração.")
+        st.stop()
+    config = normalizar_config({**_carregar_config_local(), **saved_profiles})
 
 # Atualiza o cache autenticado do S&S Conecta quando o intervalo configurado vencer.
 # Não grava credenciais; apenas notícias/agenda já renderizadas pelo portal.
@@ -7579,7 +7592,7 @@ if not st.session_state.iniciado:
                     else:
                         pid = novo_id("pr_")
                         new_profile = copy.deepcopy(_DEFAULT_PROFILE)
-                        new_profile.update({"id": pid, "nome": nome, "paineis": []})
+                        new_profile.update({"id": pid, "nome": nome, "paineis": [], "available_to": []})
                         config["profiles"][pid] = new_profile
                         st.query_params["perfil"] = pid
                         if salvar_config(config, force=True):
@@ -7630,6 +7643,23 @@ if not st.session_state.iniciado:
                     if salvar_config(config, force=True):
                         st.toast("Perfil padrão atualizado.")
                     st.rerun()
+
+            if com_is_admin:
+                with st.form(f"cfg_profile_access_{active_profile_id}"):
+                    current_access = perfil["available_to"]
+                    available_to = st.multiselect(
+                        "Disponível para", list(PROFILE_ACCESS_ROLES),
+                        default=list(PROFILE_ACCESS_ROLES) if current_access is None else current_access,
+                        format_func=PROFILE_ACCESS_ROLES.__getitem__,
+                        help="Gestão e administradores sempre podem abrir todos os perfis. "
+                             "Deixe vazio para permitir acesso somente a eles.",
+                        key=f"cfg_profile_roles_{active_profile_id}",
+                    )
+                    if st.form_submit_button("Salvar acesso"):
+                        perfil["available_to"] = normalize_profile_access(available_to)
+                        if salvar_config(config, force=True):
+                            st.toast("Acesso ao perfil atualizado.")
+                            st.rerun()
 
             st.markdown("**URL fixa para esta TV/perfil**")
             st.markdown(f'<div class="profile-url">?perfil={active_profile_id}&amp;iniciado=true</div>', unsafe_allow_html=True)
@@ -8442,6 +8472,7 @@ if not st.session_state.iniciado:
                     default_profile = regenerar_ids(_DEFAULT_PROFILE)
                     default_profile["id"] = active_profile_id
                     default_profile["nome"] = perfil["nome"]
+                    default_profile["available_to"] = perfil["available_to"]
                     candidate["profiles"][active_profile_id] = default_profile
                     st.session_state["cfg_pending_restore"] = ("Restaurar perfil padrão S&S", candidate)
             if st.session_state.pop("cfg_clear_import", False):
